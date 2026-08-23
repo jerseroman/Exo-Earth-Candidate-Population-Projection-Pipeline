@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "status": "AUDITED_METADATA_PATCH",
+  "release_version": "4.0.2",
+  "date_utc": "2026-08-23",
+  "base_release_version": "4.0.1",
+  "base_release_commit": "b89ea80491e8f7807f990a535b837c9b4822b212",
+  "reserved_zenodo_doi": "10.5281/zenodo.22070762",
+  "scope": "ORCID, creator-scope, authorship-license audit, and version-specific release metadata only.",
+  "scientific_logic_changed": false,
+  "mcmc_configuration_or_seeds_changed": false,
+  "frozen_numerical_values_changed": false,
+  "change_groups": [
+    {
+      "reason": "Version-specific v4.0.2 citation, DOI, ORCID, release, and reproducibility metadata.",
+      "paths": [
+        "CITATION.cff",
+        "README.md",
+        "REPRODUCIBILITY.md",
+        "pyproject.toml",
+        "scripts/verify_release_metadata.py"
+      ]
+    },
+    {
+      "reason": "Explicit separation of release-level creator attribution from third-party authorship, copyright, and licensing.",
+      "paths": [
+        "AUTHORSHIP_AND_LICENSING_DECLARATION.md",
+        "LICENSE_POLICY.md",
+        "provenance/AUTHORSHIP_LICENSE_AUDIT_20260823.json",
+        "provenance/AUTHORSHIP_LICENSE_AUDIT_20260823.md"
+      ]
+    },
+    {
+      "reason": "Fail-closed path licensing and deterministic integrity records regenerated for the metadata patch.",
+      "paths": [
+        "MANIFEST.sha256",
+        "provenance/LICENSE_MATRIX.csv",
+        "provenance/RELEASE_4_0_2_CHANGE_RECORD.json",
+        "provenance/ROMAN_MIT_PATHS.txt"
+      ]
+    }
+  ]
+}

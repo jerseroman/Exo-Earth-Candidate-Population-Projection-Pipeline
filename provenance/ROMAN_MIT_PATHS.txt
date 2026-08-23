@@ -21,6 +21,8 @@ Makefile
 README.md
 REPRODUCIBILITY.md
 THIRD_PARTY_NOTICES.md
+provenance/AUTHORSHIP_LICENSE_AUDIT_20260823.json
+provenance/AUTHORSHIP_LICENSE_AUDIT_20260823.md
 provenance/DATA_LOCKS.json
 provenance/EXTRACTION_AUDIT.json
 provenance/INDEPENDENT_NUMERICAL_AUDIT_20260823.json
@@ -29,6 +31,7 @@ provenance/LICENSE_MATRIX.csv
 provenance/MIGRATION_RECORD.json
 provenance/PUBLIC_EXCLUSIONS.csv
 provenance/RELEASE_4_0_1_CHANGE_RECORD.json
+provenance/RELEASE_4_0_2_CHANGE_RECORD.json
 provenance/ROMAN_MIT_PATHS.txt
 provenance/RUN_PROVENANCE.json
 provenance/SOURCE_LOCKS.json

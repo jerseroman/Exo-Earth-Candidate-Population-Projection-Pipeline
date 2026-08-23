@@ -24,6 +24,15 @@ copyleft license because it is copied from or adapted from that material.
 Earlier copies published under another license retain their historical grants;
 the path-level matrix governs files as conveyed in this repository version.
 
+## Creator metadata
+
+Roman Jerše is the creator of the assembled software and reproducibility
+release and of the paths explicitly attributed to him. His ORCID iD is
+`https://orcid.org/0009-0001-5003-5354`. Resource-level creator metadata in
+`CITATION.cff`, GitHub, or Zenodo does not transfer or claim authorship,
+copyright, or licensing authority over third-party components. Those rights
+remain with the holders identified by the path-level matrix and notices.
+
 ## Bryson-derived component
 
 The files listed as `GPL-2.0-only` in the matrix are copied from or closely

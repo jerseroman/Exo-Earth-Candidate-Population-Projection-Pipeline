@@ -79,6 +79,12 @@ The authoritative assignment for every distributed path is
 `provenance/LICENSE_MATRIX.csv`. See `LICENSE_POLICY.md`,
 `THIRD_PARTY_NOTICES.md`, and `LICENSES/` before redistribution.
 
+Roman Jerše is the creator of this assembled software and reproducibility
+release and of the paths explicitly attributed to him. This resource-level
+creator attribution does not claim authorship or copyright in third-party
+components. His ORCID iD is
+[`0009-0001-5003-5354`](https://orcid.org/0009-0001-5003-5354).
+
 ## Scientific status
 
 The frozen baseline contains 400 accepted constant-completeness and 400
@@ -89,7 +95,7 @@ without direct local empirical support.
 
 ## Citation and release
 
-The version-specific archival record for version 4.0.1 uses DOI
-[`10.5281/zenodo.22068062`](https://doi.org/10.5281/zenodo.22068062). The
+The version-specific archival record for version 4.0.2 uses DOI
+[`10.5281/zenodo.22070762`](https://doi.org/10.5281/zenodo.22070762). The
 corresponding source tag and release are
-[`v4.0.1`](https://github.com/jerseroman/exoearth-annulus-v4-software/releases/tag/v4.0.1).
+[`v4.0.2`](https://github.com/jerseroman/exoearth-annulus-v4-software/releases/tag/v4.0.2).

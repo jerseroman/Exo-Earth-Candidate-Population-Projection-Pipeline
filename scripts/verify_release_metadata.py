@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed when v4.0.1 publication metadata or provenance drifts."""
+"""Fail closed when v4.0.2 publication metadata or provenance drifts."""
 
 from __future__ import annotations
 
@@ -11,9 +11,10 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "4.0.1"
+VERSION = "4.0.2"
 RELEASE_DATE = "2026-08-23"
-DOI = "10.5281/zenodo.22068062"
+DOI = "10.5281/zenodo.22070762"
+ORCID = "https://orcid.org/0009-0001-5003-5354"
 PUBLIC_REPOSITORY = "jerseroman/exoearth-annulus-v4-software"
 LEGACY_REPOSITORY = "jerseroman/are-we-alone-in-the-universe"
 PRIVATE_PRODUCTION_REPOSITORY = (
@@ -64,8 +65,10 @@ def main() -> None:
         f'version: "{VERSION}"',
         f'date-released: "{RELEASE_DATE}"',
         f'doi: "{DOI}"',
+        f'orcid: "{ORCID}"',
         f'repository-code: "https://github.com/{PUBLIC_REPOSITORY}"',
         f"/blob/v{VERSION}/LICENSE_POLICY.md",
+        "Creator attribution applies to the assembled ExoEarth Annulus v4 software",
     ):
         require_text(cff, token, "CITATION.cff")
     if re.search(r"(?i)(?:\.dev\d*|-dev|placeholder|x{4,})", cff):
@@ -301,12 +304,14 @@ def main() -> None:
         fail("reproducibility guide contains a stale test count")
     if "workflows from `main`" in reproducibility:
         fail("reproducibility guide uses a mutable workflow ref")
-    for token in ("exact `v4.0.1` tag", "must not be promoted into the baseline"):
+    for token in (f"exact `v{VERSION}` tag", "must not be promoted into the baseline"):
         require_text(reproducibility, token, "REPRODUCIBILITY.md")
 
-    changes = load_json("provenance/RELEASE_4_0_1_CHANGE_RECORD.json")
+    changes = load_json("provenance/RELEASE_4_0_2_CHANGE_RECORD.json")
     if (
         changes.get("release_version") != VERSION
+        or changes.get("base_release_version") != "4.0.1"
+        or changes.get("reserved_zenodo_doi") != DOI
         or changes.get("scientific_logic_changed") is not False
         or changes.get("mcmc_configuration_or_seeds_changed") is not False
         or changes.get("frozen_numerical_values_changed") is not False
@@ -323,7 +328,7 @@ def main() -> None:
     if missing_paths:
         fail(f"release change record contains missing paths: {missing_paths}")
 
-    base = changes["prepublication_candidate_commit"]
+    base = changes["base_release_commit"]
     try:
         base_exists = subprocess.run(
             ["git", "cat-file", "-e", f"{base}^{{commit}}"],

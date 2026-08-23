@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "date_utc": "2026-08-23",
+  "release_version": "4.0.2",
+  "creator": {
+    "name": "Roman Jerše",
+    "orcid": "https://orcid.org/0009-0001-5003-5354",
+    "scope": "Creator of the assembled software and reproducibility release and of explicitly attributed Roman-authored components; no claim over third-party authorship or copyright."
+  },
+  "public_path_counts": {
+    "total": 135,
+    "roman_mit": 127,
+    "roman_mixed_license_notice": 1,
+    "bryson_derived_gpl_python": 3,
+    "third_party_license_texts": 3,
+    "daniel_huber_tams_table": 1
+  },
+  "recorded_excluded_paths": 3,
+  "pinned_upstream_notice_sha256": {
+    "bryson_gpl_2_0_only": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+    "daniel_huber_mit": "9e346db54943ac4138e419ff8c84d8262fa4530e774b33a268717941eabc3a54",
+    "jjmodel_mit": "88f80f50574c7476168ef3cb597d95b584c8833e3a22d8a1bd6565cac21ab006"
+  },
+  "bundled_tams_table_sha256": "d2c47b264a298a599064a9e58f19f309886e7b96f36cc9603c9ca55494f87aac",
+  "gates": {
+    "path_level_license_matrix_complete": true,
+    "roman_mit_allowlist_exact": true,
+    "gpl_spdx_and_modification_notices_present": true,
+    "upstream_license_texts_byte_equal": true,
+    "unknown_paths_fail_closed": true,
+    "manuscript_or_pdf_present": false
+  },
+  "scientific_logic_changed": false,
+  "mcmc_configuration_or_seeds_changed": false,
+  "frozen_numerical_values_changed": false
+}
