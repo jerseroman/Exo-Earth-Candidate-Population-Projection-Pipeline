@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "repository": "jerseroman/are-we-alone-in-the-universe",
+  "run_provenance_record": "provenance/RUN_PROVENANCE.json",
+  "captured_at_utc": "2026-08-22T06:42:58Z",
+  "source_checkout_commit": "950e762c4a6bcdc066bacb2e399742dea8c3ee54",
+  "numerical_freeze_commits": {
+    "corrected_numerical_freeze": "1905c9df8cc4848783d55b2c6debd90bc23e99e2",
+    "committed_freeze_hash_record": "d10e72112569c77a025c6371cd160832b14cdd45",
+    "constant_galactic_propagation": "932726b651aa862e5af0bbe4ddc946b45170c90c",
+    "zero_extended_rerun": "49a1689f8ef87cd3789f9ad9250dda66d9c39d40"
+  },
+  "actions_runs": {
+    "pilot_seed_stability": {
+      "id": 32470830404,
+      "name": "Bryson v4 corrected adaptive-MCMC pilot",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "4d3cadc7579a74481f2675e37805a6e01a3076ae",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-pilot.yml",
+      "maximum_mcmc_steps": 20000,
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32470830404"
+    },
+    "initial_production": {
+      "id": 32472776218,
+      "name": "Bryson v4 corrected production posterior",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_sha": "b06ba8937c61c1a5e2da47f80916338b4f991027",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-production.yml",
+      "maximum_mcmc_steps": 20000,
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32472776218",
+      "selected_successful_job": {
+        "id": 96841400219,
+        "name": "Freeze corrected constant posterior",
+        "conclusion": "success"
+      },
+      "rejected_failed_job": {
+        "id": 96841400176,
+        "name": "Freeze corrected zero posterior",
+        "conclusion": "failure"
+      },
+      "selection_note": "The workflow conclusion is failure. Only the independently successful 400-realization constant aggregate is selected; the failed 20,000-step zero aggregate is excluded."
+    },
+    "zero_extended_rerun": {
+      "id": 32506666772,
+      "name": "Bryson v4 corrected zero extended posterior",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "49a1689f8ef87cd3789f9ad9250dda66d9c39d40",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-zero-extended.yml",
+      "maximum_mcmc_steps": 30000,
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32506666772",
+      "job_summary": {
+        "total": 20,
+        "success": 20,
+        "failure": 0,
+        "other": 0
+      }
+    },
+    "constant_galactic_propagation": {
+      "id": 32527877921,
+      "name": "Bryson v4 propagate corrected constant posterior",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "932726b651aa862e5af0bbe4ddc946b45170c90c",
+      "workflow_path": ".github/workflows/bryson-v4-propagate-constant.yml",
+      "maximum_mcmc_steps": null,
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32527877921"
+    }
+  },
+  "selected_artifacts": {
+    "constant_seed_stability": {
+      "run_id": 32470830404,
+      "artifact_id": 9443107354,
+      "name": "bryson-v4-seed-stability-constant",
+      "size_in_bytes": 1850,
+      "github_archive_digest": "sha256:fcfe785dde462ce9ab800480e43ca2bb5e9a2eb9898e1dc7c1c8834300723f70"
+    },
+    "zero_seed_stability": {
+      "run_id": 32470830404,
+      "artifact_id": 9443107657,
+      "name": "bryson-v4-seed-stability-zero",
+      "size_in_bytes": 1835,
+      "github_archive_digest": "sha256:cf8f5a54e8b3267bf541e74324d00b31ce6ffb9ef93ed81d522ec7800122d872"
+    },
+    "constant_posterior": {
+      "run_id": 32472776218,
+      "artifact_id": 9454764527,
+      "name": "bryson-v4-corrected-posterior-constant",
+      "size_in_bytes": 138345775,
+      "github_archive_digest": "sha256:6fbd662da9376e360e45c925f4e78bdeb58a5e2f5420a3ca725683a3a56ee37a"
+    },
+    "zero_posterior": {
+      "run_id": 32506666772,
+      "artifact_id": 9462011443,
+      "name": "bryson-v4-corrected-posterior-zero-extended",
+      "size_in_bytes": 138399110,
+      "github_archive_digest": "sha256:aebdc142b0bda3fe74542052ebbd7ac2f03f3857d8680ba51dd7e3f8453f6016"
+    },
+    "constant_galactic": {
+      "run_id": 32527877921,
+      "artifact_id": 9462827799,
+      "name": "bryson-v4-galactic-posterior-constant-final",
+      "size_in_bytes": 17643913,
+      "github_archive_digest": "sha256:d99906b4117740cc8c679be2026b5761410931336e8ab522c83609990c73d1a0"
+    },
+    "zero_galactic": {
+      "run_id": 32506666772,
+      "artifact_id": 9462029866,
+      "name": "bryson-v4-galactic-posterior-zero-extended",
+      "size_in_bytes": 17609309,
+      "github_archive_digest": "sha256:2051314d6da5f92bdffcfe9d1334f2d8fc9e0d6281a06bff720fab3fa71f2cdb"
+    }
+  }
+}

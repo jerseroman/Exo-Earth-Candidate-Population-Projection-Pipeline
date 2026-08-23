@@ -1,0 +1,401 @@
+{
+  "status": "PASS_WITH_INVALID_METALLICITY_TEST_EXCLUDED",
+  "scope": "JJ 7--9 kpc host-selector validation; plug-in occurrence is diagnostic only.",
+  "inputs": {
+    "parent": {
+      "path": "local-artifacts\\v4\\host-canonical\\jj_g_hosts_parent_prelogg_padova.csv",
+      "sha256": "1e5421a391d32cd26f4dd6b6007075508ab4e8b9efb992770278fb3bae1e6b23"
+    },
+    "native_tams_points": {
+      "path": "local-artifacts\\v4\\tams-metallicity-differential\\metallicity_tams_anchor_points.csv",
+      "sha256": "250c55f54aa086bc208922680a1a5e2506d5fbf08336e3d2a97009e1c9e6ab1e"
+    },
+    "kepler_stars": {
+      "path": "local-artifacts\\v4\\DR25-occurrence-public\\stellarCatalogs\\unzipped\\dr25_stellar_berger2020_clean_hab2.txt",
+      "sha256": "79744e4daf1f46414dacada9f91be017b2dcfed68028ef18544e3764fe5a4fa3"
+    },
+    "canonical_constant": {
+      "path": "local-artifacts\\v4\\corrected-production-final\\constant-galactic-ci\\galactic_posterior_summary_constant.json",
+      "sha256": "5ff8de0d86c62c71c10b80cb9356df48abbe21f773a9c84f7ea67fe8a0f12945"
+    },
+    "canonical_zero": {
+      "path": "local-artifacts\\v4\\corrected-production-final\\zero-galactic\\galactic_posterior_summary_zero.json",
+      "sha256": "86752103927ddb8bccb45c047ee55b1deeed10b7f621255f7756da1786b1f73c"
+    },
+    "legacy_constant": {
+      "path": "local-artifacts\\v4\\legacy-host-propagation\\constant\\galactic_posterior_summary_constant.json",
+      "sha256": "617f999134e2f448c9811ed332770aca42d284cd97c9e5733c4ab6b5c8749fb2"
+    },
+    "legacy_zero": {
+      "path": "local-artifacts\\v4\\legacy-host-propagation\\zero\\galactic_posterior_summary_zero.json",
+      "sha256": "a38654dd0f30742ce7f34acc46f6221ab0aa5904bc410754805efba2bede16c7"
+    }
+  },
+  "weighted_selector_decomposition": {
+    "parent_N_star": 298770017.3689853,
+    "canonical_N_star": 263061992.36670703,
+    "TAMS_radius_rejected_N_star": 33856748.21718826,
+    "TAMS_radius_rejected_fraction_of_parent": 0.1133204346116655,
+    "compact_veto_N_star": 1851276.785090017,
+    "compact_veto_fraction_of_parent": 0.006196327199739267,
+    "compact_veto_fraction_of_below_TAMS_population": 0.0069882372861784555,
+    "decomposition_relative_closure_error": 0.0
+  },
+  "canonical_plugin": {
+    "N_star": 263061992.36670703,
+    "mean_f_HZ_plugin": 0.4018698563363456,
+    "mean_f_EE_plugin": 0.012835235693491775,
+    "Lambda_HZ_plugin": 105716685.07996139,
+    "Lambda_EE_plugin": 3376462.6740262187
+  },
+  "legacy_plugin": {
+    "N_star": 196679892.57673854,
+    "mean_f_HZ_plugin": 0.3943453766152997,
+    "mean_f_EE_plugin": 0.012249369835981622,
+    "Lambda_HZ_plugin": 77559806.31083065,
+    "Lambda_EE_plugin": 2409204.7434736066
+  },
+  "native_solar_TAMS_validation": {
+    "status": "PASS",
+    "reference_validation_node_count": 7,
+    "reference_validation_temperature_range_K": [
+      5390.139436325507,
+      6060.242461424597
+    ],
+    "full_native_selector_node_count": 9,
+    "full_native_selector_temperature_range_K": [
+      5151.337446989074,
+      6060.242461424597
+    ],
+    "mass_range_Msun": [
+      0.75,
+      1.15
+    ],
+    "age_range_Gyr": [
+      5.58853443962,
+      27.202020114
+    ],
+    "low_temperature_bracketing_nodes": [
+      {
+        "Teff_K": 5151.337446989074,
+        "R_Rsun": 1.011706953863964,
+        "mass": 0.75,
+        "age_Gyr": 27.202020114,
+        "file": "Z0.017Y0.279OUTA1.74_F7_M000.750.DAT"
+      },
+      {
+        "Teff_K": 5304.812032718946,
+        "R_Rsun": 1.0337124217916671,
+        "mass": 0.8,
+        "age_Gyr": 21.0708279315,
+        "file": "Z0.017Y0.279OUTA1.74_F7_M000.800.DAT"
+      },
+      {
+        "Teff_K": 5390.139436325507,
+        "R_Rsun": 1.2292627883933631,
+        "mass": 0.85,
+        "age_Gyr": 18.3962474249,
+        "file": "Z0.017Y0.279OUTA1.74_F7_M000.850.DAT"
+      }
+    ],
+    "max_abs_temperature_difference_K": 4.729554348159581e-06,
+    "max_relative_radius_difference": 2.7608461019882182e-06,
+    "excluded_anchor": "5200 K, 1.15 Rsun",
+    "interpretation": "The 5300--5390 K classification test is bracketed by native 0.75 and 0.80 Msun phase-7 nodes with formal TAMS ages above 20 Gyr. No 5200-K boundary anchor or extrapolation is used."
+  },
+  "shared_domain_native_vs_canonical": {
+    "temperature_domain_K": [
+      5390.13944,
+      6000.0
+    ],
+    "canonical": {
+      "N_star": 233393661.17011315,
+      "mean_f_HZ_plugin": 0.4063324311004714,
+      "mean_f_EE_plugin": 0.013236994591725402,
+      "Lambda_HZ_plugin": 94835413.74669176,
+      "Lambda_EE_plugin": 3089430.6306517785
+    },
+    "native": {
+      "N_star": 233393661.17011315,
+      "mean_f_HZ_plugin": 0.4063324311004714,
+      "mean_f_EE_plugin": 0.013236994591725402,
+      "Lambda_HZ_plugin": 94835413.74669176,
+      "Lambda_EE_plugin": 3089430.6306517785
+    },
+    "disagreement_integrated_weight": 0.0,
+    "N_star_fractional_change": 0.0
+  },
+  "low_temperature_anchor_dependence": {
+    "temperature_domain_K": [
+      5300.0,
+      5390.13944
+    ],
+    "interval_convention": "lower-inclusive, upper-exclusive",
+    "contribution": {
+      "N_star": 29668331.196593918,
+      "mean_f_HZ_plugin": 0.36676384866968365,
+      "mean_f_EE_plugin": 0.009674694591767051,
+      "Lambda_HZ_plugin": 10881271.333269626,
+      "Lambda_EE_plugin": 287032.04337444087
+    },
+    "fraction_of_canonical": {
+      "N_star": 0.11278075912705937,
+      "Lambda_HZ_plugin": 0.1029286089044441,
+      "Lambda_EE_plugin": 0.08500968945472549
+    },
+    "native_selector_without_5200_K_anchor": {
+      "N_star": 263061992.36670703,
+      "mean_f_HZ_plugin": 0.4018698563363456,
+      "mean_f_EE_plugin": 0.012835235693491775,
+      "Lambda_HZ_plugin": 105716685.07996139,
+      "Lambda_EE_plugin": 3376462.6740262187
+    },
+    "native_low_temperature_contribution": {
+      "N_star": 29668331.196593918,
+      "mean_f_HZ_plugin": 0.36676384866968365,
+      "mean_f_EE_plugin": 0.009674694591767051,
+      "Lambda_HZ_plugin": 10881271.333269626,
+      "Lambda_EE_plugin": 287032.04337444087
+    },
+    "native_selector_fractional_change_vs_canonical": {
+      "N_star": 0.0,
+      "Lambda_HZ_plugin": 0.0,
+      "Lambda_EE_plugin": 0.0
+    },
+    "drop_low_temperature_band_stress_test_fractional_change": {
+      "N_star": -0.11278075912705923,
+      "Lambda_HZ_plugin": -0.1029286089044441,
+      "Lambda_EE_plugin": -0.08500968945472528
+    },
+    "drop_band_interpretation": "Removing the full 5300--5390 K estimand is a domain-truncation stress test, not the native-PARSEC selector comparison.",
+    "gate": "PASS"
+  },
+  "stellar_radius_diagnostics": {
+    "JJ_canonical_weighted": {
+      "mean_Rsun": 1.034684973874345,
+      "q16_Rsun": 0.8635015246982746,
+      "median_Rsun": 0.9986329816030602,
+      "q84_Rsun": 1.2368171348910346,
+      "fraction_Rstar_gt_1p35_Rsun": 0.06822180958935999
+    },
+    "Kepler_Hab2_5300_6000_unweighted": {
+      "star_count": 37612,
+      "mean_Rsun": 1.0270618474276547,
+      "median_Rsun": 1.0018197763,
+      "fraction_Rstar_gt_1p35_Rsun": 0.027730511538870573
+    },
+    "linear_width_ratio_diagnostic": {
+      "mean_to_mean_ratio": 0.9926324179444244,
+      "mean_to_mean_fractional_difference": -0.007367582055575639,
+      "median_to_median_ratio": 1.0031911570673584,
+      "median_to_median_fractional_difference": 0.0031911570673583967,
+      "inconsistent_mean_to_median_ratio": 1.0284677818060435,
+      "warning": "The previously suggested approximately 1.028/0.999 ratio mixes a Kepler mean with a JJ median. It is not a valid like-for-like width diagnostic and must not be used.",
+      "interpretation": "At fixed Teff and instellation interval, semimajor-axis width scales linearly with stellar radius. This remains a denominator-mismatch diagnostic, not a post-fit correction."
+    }
+  },
+  "posterior_legacy_selector": {
+    "constant": {
+      "canonical_N_star": 263061992.36670703,
+      "legacy_N_star": 196679892.5767385,
+      "legacy_quantiles": {
+        "mean_f_HZ": {
+          "q2.5": 0.06442516742450265,
+          "q16": 0.15839242748011415,
+          "q50": 0.381239720508108,
+          "q84": 0.8829299592947144,
+          "q97.5": 1.9294858717692565
+        },
+        "mean_f_EE": {
+          "q2.5": 0.0024127204937125636,
+          "q16": 0.0055847797923921005,
+          "q50": 0.011706166169457903,
+          "q84": 0.022222195261875993,
+          "q97.5": 0.038515519037034776
+        },
+        "Lambda_HZ": {
+          "q2.5": 12671135.008289574,
+          "q16": 31152605.621757694,
+          "q50": 74982187.2755205,
+          "q84": 173654569.54686853,
+          "q97.5": 379491073.987912
+        },
+        "Lambda_EE": {
+          "q2.5": 474533.6075210825,
+          "q16": 1098413.8896324183,
+          "q50": 2302367.504694431,
+          "q84": 4370658.976925078,
+          "q97.5": 7575228.146741326
+        }
+      },
+      "legacy_q50_fractional_change_vs_canonical": {
+        "mean_f_HZ": -0.018196921018058938,
+        "mean_f_EE": -0.0447906706252883,
+        "Lambda_HZ": -0.2659489789140742,
+        "Lambda_EE": -0.28583195694866365
+      },
+      "N_star_fractional_change_vs_canonical": -0.2523439406534724
+    },
+    "zero": {
+      "canonical_N_star": 263061992.36670703,
+      "legacy_N_star": 196679892.5767385,
+      "legacy_quantiles": {
+        "mean_f_HZ": {
+          "q2.5": 0.09583453751406452,
+          "q16": 0.24885132667419593,
+          "q50": 0.6400445644910152,
+          "q84": 1.555418168670666,
+          "q97.5": 3.555378859559304
+        },
+        "mean_f_EE": {
+          "q2.5": 0.0032637043313898002,
+          "q16": 0.007630324363884133,
+          "q50": 0.01637177566194848,
+          "q84": 0.031472102962547606,
+          "q97.5": 0.05517846424101024
+        },
+        "Lambda_HZ": {
+          "q2.5": 18848726.543407626,
+          "q16": 48944052.19785972,
+          "q50": 125883896.18841825,
+          "q84": 305919478.3260539,
+          "q97.5": 699271532.1677309
+        },
+        "Lambda_EE": {
+          "q2.5": 641905.017299982,
+          "q16": 1500731.3762144018,
+          "q50": 3219999.078482489,
+          "q84": 6189929.829837917,
+          "q97.5": 10852494.419471301
+        }
+      },
+      "legacy_q50_fractional_change_vs_canonical": {
+        "mean_f_HZ": -0.028865727120282427,
+        "mean_f_EE": -0.05810112579573823,
+        "Lambda_HZ": -0.27392557644239496,
+        "Lambda_EE": -0.2957835994095109
+      },
+      "N_star_fractional_change_vs_canonical": -0.2523439406534724
+    }
+  },
+  "metallicity_dependent_TAMS_audit": {
+    "status": "FAIL",
+    "reason": "The archived differential surface mixes massive phase-7 giant or supergiant points into Teff interpolation, while several low-mass metallicity tracks do not cover 5300--6000 K without extrapolation.",
+    "contaminating_point_count": 42,
+    "contaminating_Z_values": [
+      0.001,
+      0.002,
+      0.004,
+      0.006,
+      0.008,
+      0.01,
+      0.014
+    ],
+    "maximum_contaminating_mass_Msun": 155.28811,
+    "maximum_contaminating_radius_Rsun": 2311.557681487369,
+    "low_mass_coverage": {
+      "0.001": {
+        "low_mass_point_count": 5,
+        "temperature_range_K": [
+          5895.355514669355,
+          6387.192421873255
+        ],
+        "covers_5300_to_6000_K_without_extrapolation": false
+      },
+      "0.002": {
+        "low_mass_point_count": 6,
+        "temperature_range_K": [
+          5737.464349407363,
+          6342.785139306298
+        ],
+        "covers_5300_to_6000_K_without_extrapolation": false
+      },
+      "0.004": {
+        "low_mass_point_count": 7,
+        "temperature_range_K": [
+          5671.526948608318,
+          6342.931189012851
+        ],
+        "covers_5300_to_6000_K_without_extrapolation": false
+      },
+      "0.006": {
+        "low_mass_point_count": 8,
+        "temperature_range_K": [
+          5497.433694962709,
+          6294.91688108549
+        ],
+        "covers_5300_to_6000_K_without_extrapolation": false
+      },
+      "0.008": {
+        "low_mass_point_count": 9,
+        "temperature_range_K": [
+          5534.3930590383525,
+          6391.017400767871
+        ],
+        "covers_5300_to_6000_K_without_extrapolation": false
+      },
+      "0.01": {
+        "low_mass_point_count": 9,
+        "temperature_range_K": [
+          5422.006076959508,
+          6295.496691057201
+        ],
+        "covers_5300_to_6000_K_without_extrapolation": false
+      },
+      "0.014": {
+        "low_mass_point_count": 13,
+        "temperature_range_K": [
+          5243.363903982019,
+          6395.139170517579
+        ],
+        "covers_5300_to_6000_K_without_extrapolation": true
+      },
+      "0.017": {
+        "low_mass_point_count": 16,
+        "temperature_range_K": [
+          5151.337446989074,
+          6376.758944326096
+        ],
+        "covers_5300_to_6000_K_without_extrapolation": true
+      },
+      "0.02": {
+        "low_mass_point_count": 18,
+        "temperature_range_K": [
+          5074.695638646524,
+          6378.227416392381
+        ],
+        "covers_5300_to_6000_K_without_extrapolation": true
+      },
+      "0.03": {
+        "low_mass_point_count": 22,
+        "temperature_range_K": [
+          5065.589581955096,
+          6389.398860998363
+        ],
+        "covers_5300_to_6000_K_without_extrapolation": true
+      },
+      "0.04": {
+        "low_mass_point_count": 21,
+        "temperature_range_K": [
+          4993.096964381284,
+          6379.9900292593775
+        ],
+        "covers_5300_to_6000_K_without_extrapolation": true
+      }
+    },
+    "metallicities_without_full_low_mass_coverage": [
+      "0.001",
+      "0.002",
+      "0.004",
+      "0.006",
+      "0.008",
+      "0.01"
+    ],
+    "decision": "Exclude the reported metallicity-TAMS delta from v4."
+  },
+  "radial_migration_limitation": "Present-day R=7--9 kpc is not a birth-radius selection. Radial migration can mix ages, metallicities, and disk components; no migration correction is inferred from the JJ snapshot.",
+  "threshold_policy": {
+    "above_2_percent": "include in the main sensitivity table",
+    "above_5_percent": "reassess the canonical host selector"
+  }
+}

@@ -1,0 +1,170 @@
+name: JJ G-host dR=0.5 + TAMS validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  jj-export:
+    # Licensing boundary: third-party model acquisition and exports stay private.
+    if: ${{ github.event.repository.private == true }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Verify bundled TAMS table lock
+        run: |
+          python scripts/verify_locked_inputs.py \
+            --check huber_parsec_tams_table=research/jj-host-export/reference-data/tams_parsec_danxhuber.txt
+
+      - name: Install pinned-compatible Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'numpy==1.23.5' 'scipy==1.10.1' 'astropy==5.3.4' 'matplotlib==3.7.5' 'fast-histogram==0.14' 'requests>=2.28'
+
+      - name: Checkout official JJ model at pinned commit
+        run: |
+          git clone https://github.com/askenja/jjmodel.git /tmp/jjmodel-src
+          cd /tmp/jjmodel-src
+          git checkout 2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54
+          python -m pip install -e .
+          git rev-parse HEAD
+
+      - name: Download official Padova/PARSEC JJ isochrone archive
+        run: |
+          python scripts/fetch_locked_inputs.py \
+            --id jj_padova_multiband_archive \
+            --output /tmp/multiband_padova.zip \
+            --accept-terms jj_padova_multiband_archive
+          python - <<'PY'
+          import shutil
+          from pathlib import Path
+          from jjmodel import localpath
+
+          destination = Path(localpath) / 'input' / 'isochrones' / 'Padova'
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          shutil.unpack_archive('/tmp/multiband_padova.zip', destination)
+          PY
+
+      - name: Prepare official JJ tutorial2 configuration at dR=0.5 kpc
+        run: |
+          mkdir -p /tmp/jj-run
+          cp /tmp/jjmodel-src/jjmodel/tutorials/tutorial2/parameters /tmp/jj-run/parameters
+          cp /tmp/jjmodel-src/jjmodel/tutorials/tutorial2/sfrd_peaks_parameters /tmp/jj-run/sfrd_peaks_parameters
+          cp /tmp/jj-run/parameters /tmp/jj-run/parameters.original
+          sed -E -i 's/^(Rmin[[:space:]]+)4([[:space:]])/\14.0\2/' /tmp/jj-run/parameters
+          sed -E -i 's/^(Rmax[[:space:]]+)14([[:space:]])/\114.0\2/' /tmp/jj-run/parameters
+          sed -E -i 's/^(dR[[:space:]]+)1([[:space:]])/\10.5\2/' /tmp/jj-run/parameters
+          # GitHub's ubuntu-22.04 hosted runner exposes two CPU cores, while
+          # JJ tutorial2 requests four and rejects oversubscription. This only
+          # changes process parallelism; the scientific configuration is kept.
+          sed -E -i 's/^(nprocess[[:space:]]+)4([[:space:]])/\12\2/' /tmp/jj-run/parameters
+          grep -Eq '^nprocess[[:space:]]+2[[:space:]]' /tmp/jj-run/parameters
+          grep -E '^(nprocess|Rmin|Rmax|dR)[[:space:]]' /tmp/jj-run/parameters
+          sed -i 's/float(p.dR) == 1.0/float(p.dR) == 0.5/' research/jj-host-export/run_jj_export.py
+          sed -i 's/JJ 1-kpc grid/JJ 0.5-kpc grid/' research/jj-host-export/run_jj_export.py
+          mkdir -p results/jj
+
+      - name: Generate JJ stellar assemblies and export legacy logg hosts
+        run: |
+          python research/jj-host-export/run_jj_export.py \
+            --jj-root /tmp/jjmodel-src \
+            --run-dir /tmp/jj-run \
+            --out "$GITHUB_WORKSPACE/results/jj" \
+            --iso Padova
+
+      - name: Export legacy row-level eligible JJ hosts
+        run: |
+          python research/jj-host-export/export_raw_eligible.py \
+            --jj-root /tmp/jjmodel-src \
+            --run-dir /tmp/jj-run \
+            --out "$GITHUB_WORKSPACE/results/jj" \
+            --iso Padova
+
+      - name: Run PARSEC-TAMS A/B main-sequence validation
+        run: |
+          python research/jj-host-export/tams_ab_test.py \
+            --jj-root /tmp/jjmodel-src \
+            --run-dir /tmp/jj-run \
+            --out "$GITHUB_WORKSPACE/results/jj" \
+            --iso Padova
+          cat results/jj/tams_ab_results.json
+
+      - name: Promote PARSEC-TAMS provider to canonical JJ files
+        run: |
+          python research/jj-host-export/promote_tams_provider.py \
+            --out "$GITHUB_WORKSPACE/results/jj"
+          cat results/jj/jj_g_hosts_summary_padova.json
+          cp research/jj-host-export/TAMS_METHOD_NOTE.md results/jj/TAMS_METHOD_NOTE.md
+
+      - name: Recalculate all frozen Bryson/Kopparapu branches and GHZ masks
+        run: |
+          python research/jj-host-export/recalc_all_branches_tams.py \
+            --input "$GITHUB_WORKSPACE/results/jj/jj_g_hosts_parent_prelogg_padova.csv" \
+            --out "$GITHUB_WORKSPACE/results/jj"
+          cat results/jj/tams_branches_lineweaver_7_9.csv
+          cat results/jj/tams_ghz_sensitivity_chz_constant.csv
+
+      - name: Assert canonical main files are TAMS, not legacy logg
+        run: |
+          python research/jj-host-export/assert_canonical_tams.py \
+            --out "$GITHUB_WORKSPACE/results/jj"
+
+      - name: Audit HZ inner-boundary and planet-mass sensitivity
+        run: |
+          python research/jj-host-export/hz_boundary_sensitivity.py \
+            --input "$GITHUB_WORKSPACE/results/jj/jj_g_hosts_raw_eligible_padova.csv" \
+            --out "$GITHUB_WORKSPACE/results/jj"
+          cat results/jj/hz_inner_boundary_perturbations.csv
+          cat results/jj/hz_planet_mass_sensitivity.csv
+
+      - name: Audit Bryson Model 1 versus Model 2 functional form
+        run: |
+          python research/jj-host-export/bryson_model_form_sensitivity.py \
+            --input "$GITHUB_WORKSPACE/results/jj/jj_g_hosts_raw_eligible_padova.csv" \
+            --out "$GITHUB_WORKSPACE/results/jj"
+          cat results/jj/bryson_model_form_sensitivity.csv
+
+      - name: Record exact provenance
+        run: |
+          cp /tmp/jj-run/parameters.original results/jj/JJ_tutorial2_parameters_original.txt
+          cp /tmp/jj-run/parameters results/jj/JJ_tutorial2_parameters_runtime.txt
+          cp /tmp/jj-run/sfrd_peaks_parameters results/jj/JJ_tutorial2_sfr_peaks_parameters.txt
+          cat > results/jj/PROVENANCE.md <<'EOF'
+          # JJ G-dwarf dR=0.5, PARSEC-TAMS, and downstream branch validation provenance
+
+          - JJ code: `askenja/jjmodel`, commit `2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54` (v1.0.1).
+          - Official tutorial2 SFH/IMF/AMR configuration; radial numerical resolution dR=0.5 kpc.
+          - Official JJ Padova/PARSEC multiband isochrones, heiDATA DOI `10.11588/data/ZCXHOE`.
+          - Parent A/B sample: 5300 <= Teff <= 6000 K; age >= 4.57 Gyr; thin+thick disk; no pre-applied logg cut.
+          - Selection A: legacy 4.3 < logg < 7.0.
+          - Selection B / canonical provider: Rstar <= interpolated public PARSEC TAMS radius boundary plus logg < 7 compact-remnant veto.
+          - The canonical files named `jj_g_hosts_*_padova.*` are rewritten from Selection B after the A/B test. Legacy logg-provider versions are retained only with the explicit `_legacy_logg43` suffix.
+          - Primary radius reconstruction: R/Rsun = sqrt(Mf * 10^(logg_sun-logg)), logg_sun=4.438.
+          - Independent radius check: R/Rsun = 10^(logL/2)*(5772/Teff)^2.
+          - The adopted public Berger/Huber PARSEC TAMS boundary is a one-dimensional function R_TAMS(Teff), without an explicit metallicity coordinate. It is intentionally transferred to both thin- and thick-disk hosts for compatibility with the Bryson/Kepler selection function. This is a host-selection transport approximation, not a claim of metallicity-independent stellar evolution.
+          - The one-dimensional TAMS boundary has no explicit metallicity coordinate. Its application to both disk components is therefore retained as an unquantified host-selection systematic; neither the sign nor the magnitude of the metallicity dependence is assumed here.
+          - Frozen occurrence branches: Bryson Model 1 hab2 constant/zero completeness; HZ definitions: Kopparapu 2014 conservative (runaway/maximum greenhouse) and optimistic (recent Venus/early Mars).
+          - L1 radius domain 0.5-1.5 Rearth; L2 B10 = 0.9-1.1 Rearth x 0.9-1.1 Searth intersected with the selected HZ.
+          - Primary occurrence measure is linear dI dr.
+          - GHZ masks recalculated: 7-9, 6-10, 4-8, and full JJ 4-14 kpc.
+          - HZ-inner-edge sensitivity is explicitly audited by +/-1% and +/-5% flux perturbations around the 1-Mearth runaway boundary. These perturbations are numerical sensitivity tests, not alternative physical climate models.
+          - Planet-mass HZ sensitivity uses the published 0.1, 1 and 5 Mearth runaway-greenhouse coefficients from Kopparapu et al. (2014), Eq. 4 / Table 1, DOI `10.1088/2041-8205/787/2/L29`; maximum greenhouse is unchanged across these mass prescriptions.
+          - Bryson model-form sensitivity compares Model 1 and Model 2 at fixed hab2 / Poisson / With Uncertainty / constant-completeness (low-bound) medians from Bryson et al. (2021), Eq. 5 / Table 1. Model 1 includes the fixed geometric g(T) term; Model 2 measures total Teff dependence directly without g(T).
+          - No extra metallicity, P_evol, SFR, SN, or Lineweaver probability multiplier is applied.
+          EOF
+          sha256sum results/jj/* | sort > results/jj/SHA256SUMS_all.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jj-g-host-export-padova-dr05-tams-canonical
+          path: results/jj/
+          if-no-files-found: error
+          retention-days: 14

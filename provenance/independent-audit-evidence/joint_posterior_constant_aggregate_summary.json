@@ -1,0 +1,336 @@
+{
+  "status": "new seeded no-period-cutoff reconstruction; not the missing historical Bryson chain",
+  "source_repository": "stevepur/DR25-occurrence-public",
+  "source_commit": "d200f54b6f0df49e0dae530e69983cdce5397bfb",
+  "branch": "constant",
+  "period_cutoff_days": null,
+  "measurement_error": {
+    "mode": "quantile_matched_two_sided",
+    "distribution": "equal-side-probability two-sided half-normal",
+    "source_faithful": false,
+    "post_perturbation_teff_filter": true,
+    "construction": "B~Bernoulli(0.5), U=abs(Z), Z~Normal(0,1); X=mu-sigma_minus*U if B=0, else mu+sigma_plus*U",
+    "target_quantiles": {
+      "lower_probability": 0.15865525393145707,
+      "lower_value": "mu-sigma_minus",
+      "median_probability": 0.5,
+      "median_value": "mu",
+      "upper_probability": 0.8413447460685429,
+      "upper_value": "mu+sigma_plus"
+    }
+  },
+  "mixture_definition": "equal number of deterministically spaced post-burn ensemble samples from every reliability and measurement-error realization",
+  "parameter_order": [
+    "F0",
+    "alpha_radius",
+    "beta_inst",
+    "gamma"
+  ],
+  "shards": 16,
+  "trials_per_shard": 25,
+  "total_trials": 400,
+  "walkers": 16,
+  "burnin_steps": 1000,
+  "production_steps_requested_minimum": 3000,
+  "production_steps_completed_q16_q50_q84": [
+    11000.0,
+    12000.0,
+    14000.0
+  ],
+  "runner_thin": 20,
+  "equalized_samples_per_realization": 1024,
+  "full_sample_count": 409600,
+  "propagation_stride_within_each_realization": 2,
+  "galactic_propagation_sample_count": 204800,
+  "perturbation_audit_file": "perturbation_audit_constant_full.csv.gz",
+  "posterior_quantiles": {
+    "F0": {
+      "q2.5": 0.4270206936160717,
+      "q16": 0.6556462712691596,
+      "q50": 1.1089142681131579,
+      "q84": 2.028082839435479,
+      "q97.5": 3.82310272459589
+    },
+    "alpha": {
+      "q2.5": -2.801105107058716,
+      "q16": -2.0208620688190906,
+      "q50": -1.1480885299665884,
+      "q84": -0.17710697038217363,
+      "q97.5": 0.890189011024129
+    },
+    "beta": {
+      "q2.5": -1.415425267871036,
+      "q16": -1.1375997897343157,
+      "q50": -0.8333838128887898,
+      "q84": -0.5068391124744515,
+      "q97.5": -0.16535817676886597
+    },
+    "gamma": {
+      "q2.5": -5.914802970068319,
+      "q16": -4.353564086116407,
+      "q50": -2.7408892470902253,
+      "q84": -1.1184122816959854,
+      "q97.5": 0.47836118074515305
+    }
+  },
+  "posterior_quantile_monte_carlo_error": {
+    "outer_realization_cluster_bootstrap": {
+      "F0": {
+        "q2.5": {
+          "standard_error": 0.006930250696147988,
+          "bootstrap_q2.5": 0.41489484475134863,
+          "bootstrap_q97.5": 0.4417716704612194
+        },
+        "q16": {
+          "standard_error": 0.011024478802267618,
+          "bootstrap_q2.5": 0.6354249966365125,
+          "bootstrap_q97.5": 0.6780142142838365
+        },
+        "q50": {
+          "standard_error": 0.019802167066870265,
+          "bootstrap_q2.5": 1.0730681534338484,
+          "bootstrap_q97.5": 1.1511534224656093
+        },
+        "q84": {
+          "standard_error": 0.04302576876921131,
+          "bootstrap_q2.5": 1.9537698049975845,
+          "bootstrap_q97.5": 2.118377327581196
+        },
+        "q97.5": {
+          "standard_error": 0.10489602512217185,
+          "bootstrap_q2.5": 3.632324448135177,
+          "bootstrap_q97.5": 4.039139104978203
+        }
+      },
+      "alpha": {
+        "q2.5": {
+          "standard_error": 0.03304370426537932,
+          "bootstrap_q2.5": -2.863968663709817,
+          "bootstrap_q97.5": -2.7369801322493807
+        },
+        "q16": {
+          "standard_error": 0.029650871362480496,
+          "bootstrap_q2.5": -2.079369515852491,
+          "bootstrap_q97.5": -1.9682523633097804
+        },
+        "q50": {
+          "standard_error": 0.030084300958974512,
+          "bootstrap_q2.5": -1.2084737604769735,
+          "bootstrap_q97.5": -1.0937369127263536
+        },
+        "q84": {
+          "standard_error": 0.03794716290960512,
+          "bootstrap_q2.5": -0.25445662794647456,
+          "bootstrap_q97.5": -0.10512007557010286
+        },
+        "q97.5": {
+          "standard_error": 0.05825592610737864,
+          "bootstrap_q2.5": 0.7707069752135166,
+          "bootstrap_q97.5": 0.9997445457448014
+        }
+      },
+      "beta": {
+        "q2.5": {
+          "standard_error": 0.007169176618899986,
+          "bootstrap_q2.5": -1.429601478312859,
+          "bootstrap_q97.5": -1.401638803930977
+        },
+        "q16": {
+          "standard_error": 0.006728354618849637,
+          "bootstrap_q2.5": -1.1509344925117866,
+          "bootstrap_q97.5": -1.124649968840232
+        },
+        "q50": {
+          "standard_error": 0.006946822280946092,
+          "bootstrap_q2.5": -0.8469553223638115,
+          "bootstrap_q97.5": -0.8203888527724085
+        },
+        "q84": {
+          "standard_error": 0.007687976846693385,
+          "bootstrap_q2.5": -0.5219998929889959,
+          "bootstrap_q97.5": -0.49244350279507226
+        },
+        "q97.5": {
+          "standard_error": 0.009116678741981668,
+          "bootstrap_q2.5": -0.1836918982310522,
+          "bootstrap_q97.5": -0.14915746776265323
+        }
+      },
+      "gamma": {
+        "q2.5": {
+          "standard_error": 0.056745045796265735,
+          "bootstrap_q2.5": -6.022541875612299,
+          "bootstrap_q97.5": -5.802715219847777
+        },
+        "q16": {
+          "standard_error": 0.046034856428644834,
+          "bootstrap_q2.5": -4.437849891345415,
+          "bootstrap_q97.5": -4.257225533171523
+        },
+        "q50": {
+          "standard_error": 0.04370726800173698,
+          "bootstrap_q2.5": -2.8216342461390655,
+          "bootstrap_q97.5": -2.6501721774319775
+        },
+        "q84": {
+          "standard_error": 0.04579998304900917,
+          "bootstrap_q2.5": -1.2045585659058202,
+          "bootstrap_q97.5": -1.0243737248702356
+        },
+        "q97.5": {
+          "standard_error": 0.05421288837597597,
+          "bootstrap_q2.5": 0.3780568722937578,
+          "bootstrap_q97.5": 0.5906431695619597
+        }
+      }
+    },
+    "outer_realization_cluster_bootstrap_replicates": 1000,
+    "outer_realization_cluster_bootstrap_seed": 2026082101,
+    "inner_chain_contiguous_batch_mcse": {
+      "F0": {
+        "q2.5": 0.0006543323125572895,
+        "q16": 0.0005162983881562537,
+        "q50": 0.0008691391244010502,
+        "q84": 0.0022049118220047762,
+        "q97.5": 0.006876579622953152
+      },
+      "alpha": {
+        "q2.5": 0.0014482509346273825,
+        "q16": 0.001177986456252873,
+        "q50": 0.0020328734604627145,
+        "q84": 0.0023228743383874005,
+        "q97.5": 0.0038927971175926816
+      },
+      "beta": {
+        "q2.5": 0.0010552025996444494,
+        "q16": 0.0007576616743690947,
+        "q50": 0.0004695450049281997,
+        "q84": 0.0007422443211455451,
+        "q97.5": 0.0018769567985695516
+      },
+      "gamma": {
+        "q2.5": 0.0026776331966922784,
+        "q16": 0.005489320454556629,
+        "q50": 0.0032737003548886125,
+        "q84": 0.004931527260278134,
+        "q97.5": 0.008015539096984707
+      }
+    },
+    "inner_chain_batches": 8,
+    "interpretation": "Whole outer realizations, not posterior rows, are resampled. The separate contiguous-block estimate diagnoses residual within-chain Monte Carlo error while retaining every outer realization."
+  },
+  "comparison_with_archived_printed_marginal_summary": {
+    "F0": {
+      "reconstructed_q16": 0.6556462712691596,
+      "reconstructed_q50": 1.1089142681131579,
+      "reconstructed_q84": 2.028082839435479,
+      "archived_q16_from_printed_summary": 0.665,
+      "archived_q50_from_printed_summary": 1.107,
+      "archived_q84_from_printed_summary": 1.988,
+      "median_difference": 0.0019142681131578687
+    },
+    "alpha": {
+      "reconstructed_q16": -2.0208620688190906,
+      "reconstructed_q50": -1.1480885299665884,
+      "reconstructed_q84": -0.17710697038217363,
+      "archived_q16_from_printed_summary": -1.934,
+      "archived_q50_from_printed_summary": -1.082,
+      "archived_q84_from_printed_summary": -0.142,
+      "median_difference": -0.06608852996658832
+    },
+    "beta": {
+      "reconstructed_q16": -1.1375997897343157,
+      "reconstructed_q50": -0.8333838128887898,
+      "reconstructed_q84": -0.5068391124744515,
+      "archived_q16_from_printed_summary": -1.139,
+      "archived_q50_from_printed_summary": -0.839,
+      "archived_q84_from_printed_summary": -0.517,
+      "median_difference": 0.005616187111210147
+    },
+    "gamma": {
+      "reconstructed_q16": -4.353564086116407,
+      "reconstructed_q50": -2.7408892470902253,
+      "reconstructed_q84": -1.1184122816959854,
+      "archived_q16_from_printed_summary": -4.242,
+      "archived_q50_from_printed_summary": -2.671,
+      "archived_q84_from_printed_summary": -1.084,
+      "median_difference": -0.06988924709022548
+    }
+  },
+  "correlation_matrix_file": "joint_posterior_constant_correlation.csv",
+  "diagnostics": {
+    "optimizer_failures": 0,
+    "acceptance_fraction_q16_q50_q84": [
+      0.5428327083333333,
+      0.5483400297619048,
+      0.5553638636363636
+    ],
+    "runtime_seconds_per_realization_q16_q50_q84": [
+      289.2387249660492,
+      361.89408898353577,
+      423.06891459465027
+    ],
+    "candidate_count_q16_q50_q84": [
+      38.0,
+      41.0,
+      44.0
+    ],
+    "realizations_with_estimable_autocorrelation": 400,
+    "adaptive_realizations": 400,
+    "adaptive_realizations_converged": 400,
+    "autocorrelation_time_by_source_parameter": {
+      "F0": {
+        "q16": 90.57704067489962,
+        "q50": 102.84438655721931,
+        "q84": 116.48533532932156
+      },
+      "beta": {
+        "q16": 56.95733967608857,
+        "q50": 61.27799018640648,
+        "q84": 65.59913014461972
+      },
+      "alpha": {
+        "q16": 80.02273653973856,
+        "q50": 90.16923601281312,
+        "q84": 100.33125265226955
+      },
+      "gamma": {
+        "q16": 56.707732380018264,
+        "q50": 61.49311290780209,
+        "q84": 66.23733874083162
+      }
+    },
+    "estimated_chain_ess_by_source_parameter": {
+      "F0": {
+        "minimum_per_realization": 1682.3178659410291,
+        "q16_per_realization": 1779.8782873638163,
+        "median_per_realization": 1862.6911290832063,
+        "sum_over_realizations": 762890.6199575758
+      },
+      "beta": {
+        "minimum_per_realization": 2180.4503388032113,
+        "q16_per_realization": 2816.61289908541,
+        "median_per_realization": 3191.008761071155,
+        "sum_over_realizations": 1283238.834712189
+      },
+      "alpha": {
+        "minimum_per_realization": 1753.0583492337291,
+        "q16_per_realization": 1999.7158110993043,
+        "median_per_realization": 2146.8555452030287,
+        "sum_over_realizations": 873908.3840448977
+      },
+      "gamma": {
+        "minimum_per_realization": 1967.3487897488028,
+        "q16_per_realization": 2833.2379909429665,
+        "median_per_realization": 3191.5871859898134,
+        "sum_over_realizations": 1279706.4878626387
+      }
+    }
+  },
+  "scientific_limits": [
+    "This is a new reproducible rerun, not the unavailable historical chain.",
+    "Each outer realization has its own conditional posterior; the pooled result is a mixture.",
+    "The completeness branches remain separate model scenarios.",
+    "Host-model and transport systematics are not included in these occurrence-only intervals."
+  ]
+}

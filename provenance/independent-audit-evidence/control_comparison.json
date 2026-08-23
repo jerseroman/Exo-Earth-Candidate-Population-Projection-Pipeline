@@ -1,0 +1,136 @@
+{
+  "status": "pass",
+  "comparison": "local WSL2 control versus retained GitHub Actions realization",
+  "trial": 0,
+  "outer_measurement": {
+    "comparison_method": "pandas.DataFrame.equals after selecting trial 0, dropping the optional run_label column, sorting by trial and source_row, and resetting the row index",
+    "perturbed_planets_value_identical_after_normalization": true,
+    "perturbation_audit_value_identical_after_normalization": true
+  },
+  "optimizer": {
+    "cloud": [
+      1.3634071913787658,
+      -0.9300325583584806,
+      -1.567942417919273,
+      -3.157828553050727
+    ],
+    "local": [
+      1.3634056897008844,
+      -0.9300325258047304,
+      -1.5679409652145024,
+      -3.1578322955572156
+    ],
+    "maximum_absolute_difference": 3.7425064887131043e-06
+  },
+  "mcmc": {
+    "same_declared_seed": true,
+    "cloud_steps": 13000,
+    "local_steps": 14000,
+    "cloud_converged": true,
+    "local_converged": true,
+    "equalized_samples_per_chain": 10400
+  },
+  "gate": {
+    "method": "same quantile-width-fraction gate as compare_mcmc_seed_families.py",
+    "maximum_allowed_quantile_width_fraction": 0.15,
+    "failures": []
+  },
+  "stability": {
+    "F0": {
+      "maximum_width_fraction": 0.0063015676755778655,
+      "passed": true,
+      "quantiles": {
+        "q16": {
+          "cloud": 1.0515511328989762,
+          "local": 1.0500173885946251,
+          "absolute_difference": 0.001533744304351048,
+          "fraction_of_combined_q16_q84_width": 0.0008552755822014404
+        },
+        "q50": {
+          "cloud": 1.7055573822726455,
+          "local": 1.6942569386121087,
+          "absolute_difference": 0.01130044366053684,
+          "fraction_of_combined_q16_q84_width": 0.0063015676755778655
+        },
+        "q84": {
+          "cloud": 2.8414139606955433,
+          "local": 2.847382592763545,
+          "absolute_difference": 0.005968632068001689,
+          "fraction_of_combined_q16_q84_width": 0.0033283417923212866
+        }
+      }
+    },
+    "alpha": {
+      "maximum_width_fraction": 0.00419965529710658,
+      "passed": true,
+      "quantiles": {
+        "q16": {
+          "cloud": -2.489464365335662,
+          "local": -2.4838978433124224,
+          "absolute_difference": 0.005566522023239706,
+          "fraction_of_combined_q16_q84_width": 0.00419965529710658
+        },
+        "q50": {
+          "cloud": -1.847933031829451,
+          "local": -1.8472952367822373,
+          "absolute_difference": 0.0006377950472136185,
+          "fraction_of_combined_q16_q84_width": 0.0004811836434521318
+        },
+        "q84": {
+          "cloud": -1.1604023080324195,
+          "local": -1.16164181137107,
+          "absolute_difference": 0.0012395033386505272,
+          "fraction_of_combined_q16_q84_width": 0.0009351416809657017
+        }
+      }
+    },
+    "beta": {
+      "maximum_width_fraction": 0.0042235139894499524,
+      "passed": true,
+      "quantiles": {
+        "q16": {
+          "cloud": -1.2402748345081498,
+          "local": -1.2410530062617309,
+          "absolute_difference": 0.0007781717535810806,
+          "fraction_of_combined_q16_q84_width": 0.0013825401036529053
+        },
+        "q50": {
+          "cloud": -0.9701330225391032,
+          "local": -0.9694383561110942,
+          "absolute_difference": 0.000694666428008972,
+          "fraction_of_combined_q16_q84_width": 0.001234180232016928
+        },
+        "q84": {
+          "cloud": -0.6765061852926085,
+          "local": -0.6788834178074272,
+          "absolute_difference": 0.0023772325148186946,
+          "fraction_of_combined_q16_q84_width": 0.0042235139894499524
+        }
+      }
+    },
+    "gamma": {
+      "maximum_width_fraction": 0.00461966054735099,
+      "passed": true,
+      "quantiles": {
+        "q16": {
+          "cloud": -4.305262411652462,
+          "local": -4.318268577010046,
+          "absolute_difference": 0.013006165357583477,
+          "fraction_of_combined_q16_q84_width": 0.00461966054735099
+        },
+        "q50": {
+          "cloud": -2.893741973923219,
+          "local": -2.9042352450647204,
+          "absolute_difference": 0.010493271141501559,
+          "fraction_of_combined_q16_q84_width": 0.003727105520520468
+        },
+        "q84": {
+          "cloud": -1.4936850674817321,
+          "local": -1.4997541656992457,
+          "absolute_difference": 0.006069098217513558,
+          "fraction_of_combined_q16_q84_width": 0.002155683310384642
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "status": "PINNED",
+  "generated_utc": "2026-08-22T17:35:00Z",
+  "locks": {
+    "bryson_rate_models_3d": {
+      "filename": "rateModels3D.py",
+      "source_url": "https://raw.githubusercontent.com/stevepur/DR25-occurrence-public/d200f54b6f0df49e0dae530e69983cdce5397bfb/insolation/rateModels3D.py",
+      "source_version": "stevepur/DR25-occurrence-public commit d200f54b6f0df49e0dae530e69983cdce5397bfb",
+      "expected_sha256": "0bb479b0c94c4f793b95e4fa1e853973805c54d3de7e2a2acc2e51c05b70a586",
+      "expected_size_bytes": 32797,
+      "distribution_role": "fetch-only",
+      "license": "GPL-2.0-only",
+      "citation": "stevepur/DR25-occurrence-public, exact commit and path recorded above",
+      "requires_terms_acceptance": false
+    },
+    "bryson_pc_catalog": {
+      "filename": "PCs_dr25_hab2.csv",
+      "source_url": "https://raw.githubusercontent.com/stevepur/DR25-occurrence-public/d200f54b6f0df49e0dae530e69983cdce5397bfb/insolation/koiCatalogs/PCs_dr25_hab2.csv",
+      "source_version": "stevepur/DR25-occurrence-public commit d200f54b6f0df49e0dae530e69983cdce5397bfb",
+      "expected_sha256": "c8ae78fcfe4ed27bbe972b1041a3e370031a4f94afea4ad35dd7bd47834c140b",
+      "expected_size_bytes": 1431857,
+      "windows_crlf_checkout_sha256": "5cf4805d8742507ead6916dcd1f7b118b7e5a28966b9ddd5b8d09fc6e181115c",
+      "windows_crlf_checkout_size_bytes": 1434135,
+      "line_ending_note": "The pinned source bytes use LF. The historical Windows execution checkout converted all 2278 line endings to CRLF without changing parsed CSV fields.",
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Kepler DR25 planet-candidate catalog distributed by the pinned Bryson repository",
+      "requires_terms_acceptance": false
+    },
+    "bryson_stellar_catalog_zip": {
+      "filename": "dr25_stellar_berger2020_clean_hab2.txt.zip",
+      "source_url": "https://raw.githubusercontent.com/stevepur/DR25-occurrence-public/d200f54b6f0df49e0dae530e69983cdce5397bfb/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt.zip",
+      "source_version": "stevepur/DR25-occurrence-public commit d200f54b6f0df49e0dae530e69983cdce5397bfb",
+      "expected_sha256": "a5d09eeec307509aa458b5ef6620dfdcfdd144fd0ac35aed1ab4951bc7955041",
+      "expected_size_bytes": 33522717,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "DR25 stellar catalog distributed by the pinned Bryson repository; Berger et al. 2020 provenance retained upstream",
+      "requires_terms_acceptance": false
+    },
+    "bryson_stellar_catalog_extracted": {
+      "filename": "dr25_stellar_berger2020_clean_hab2.txt",
+      "source_url": null,
+      "source_version": "single extracted member of bryson_stellar_catalog_zip",
+      "derived_from": "bryson_stellar_catalog_zip",
+      "expected_sha256": "79744e4daf1f46414dacada9f91be017b2dcfed68028ef18544e3764fe5a4fa3",
+      "expected_size_bytes": 100194836,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "DR25 stellar catalog distributed by the pinned Bryson repository; Berger et al. 2020 provenance retained upstream",
+      "requires_terms_acceptance": false
+    },
+    "completeness_constant": {
+      "filename": "out_sc0_hab2_insol_teff_extrap_const.fits.gz",
+      "source_url": "https://stevepur.com/completenessContours/out_sc0_hab2_insol_teff_extrap_const.fits.gz",
+      "source_version": "server Last-Modified 2020-10-28T09:13:13Z; independently matched input artifact 9478278464 from run 32582964364 in jerseroman/exoearth-annulus-v4-software-private-production",
+      "expected_sha256": "80cbd492d41b16f5f24db4020c5c60f8084faf864b0bb49f22acd99c49782756",
+      "expected_size_bytes": 279546043,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bryson DR25 occurrence completeness contour from the authoritative URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "completeness_zero": {
+      "filename": "out_sc0_hab2_insol_teff.fits.gz",
+      "source_url": "https://stevepur.com/completenessContours/out_sc0_hab2_insol_teff.fits.gz",
+      "source_version": "server Last-Modified 2020-10-28T09:16:45Z; independently matched input artifact 9478278191 from run 32582966433 in jerseroman/exoearth-annulus-v4-software-private-production",
+      "expected_sha256": "5ce090e4edc4bf602f59d162d53bbc6095d071bf907a6df19d3b301d295a09ff",
+      "expected_size_bytes": 265659493,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bryson DR25 occurrence completeness contour from the authoritative URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "jj_padova_multiband_archive": {
+      "filename": "multiband_padova.zip",
+      "source_url": "https://heidata.uni-heidelberg.de/api/access/datafile/:persistentId?persistentId=doi:10.11588/data/ZCXHOE/7XCJQP",
+      "source_version": "heiDATA V1, file DOI 10.11588/DATA/ZCXHOE/7XCJQP, published 2022-04-11",
+      "expected_sha256": "97c8e09ea2669abe4147333f0fa141642e2c56d97b6f44de4e4518974ab7c7e8",
+      "expected_size_bytes": 327078533,
+      "official_md5": "c89b82279db57e05705b8795186d3372",
+      "distribution_role": "fetch-only",
+      "license": "CC-BY-4.0",
+      "citation": "Sysoliatina, Kseniia (2022), JJ-model isochrone set: PARSEC, MIST, and BaSTI stellar evolution, heiDATA V1, DOI 10.11588/DATA/ZCXHOE",
+      "requires_terms_acceptance": true,
+      "terms_url": "https://heidata.uni-heidelberg.de/file.xhtml?persistentId=doi:10.11588/data/ZCXHOE/7XCJQP"
+    },
+    "huber_parsec_tams_table": {
+      "filename": "tams_parsec_danxhuber.txt",
+      "source_url": "https://raw.githubusercontent.com/danxhuber/evolstate/5e904afad81805c4e3ac4c3f78510a2a1df33d14/tams_parsec.txt",
+      "source_version": "danxhuber/evolstate commit 5e904afad81805c4e3ac4c3f78510a2a1df33d14",
+      "expected_sha256": "d2c47b264a298a599064a9e58f19f309886e7b96f36cc9603c9ca55494f87aac",
+      "expected_size_bytes": 1307,
+      "distribution_role": "bundled",
+      "license": "MIT",
+      "citation": "Daniel Huber, evolstate, pinned commit and MIT notice recorded in LICENSES/MIT-Daniel-Huber-evolstate.txt",
+      "requires_terms_acceptance": false,
+      "repository_path": "research/jj-host-export/reference-data/tams_parsec_danxhuber.txt"
+    }
+  },
+  "workflow_requirements": {
+    ".github/workflows/bryson-v4-corrected-pilot.yml": [
+      "bryson_rate_models_3d",
+      "bryson_pc_catalog",
+      "bryson_stellar_catalog_zip",
+      "bryson_stellar_catalog_extracted",
+      "completeness_constant",
+      "completeness_zero"
+    ],
+    ".github/workflows/bryson-v4-corrected-production.yml": [
+      "bryson_rate_models_3d",
+      "bryson_pc_catalog",
+      "bryson_stellar_catalog_zip",
+      "bryson_stellar_catalog_extracted",
+      "completeness_constant"
+    ],
+    ".github/workflows/bryson-v4-corrected-zero-extended.yml": [
+      "bryson_rate_models_3d",
+      "bryson_pc_catalog",
+      "bryson_stellar_catalog_zip",
+      "bryson_stellar_catalog_extracted",
+      "completeness_zero"
+    ],
+    ".github/workflows/jj-g-host-export.yml": [
+      "jj_padova_multiband_archive",
+      "huber_parsec_tams_table"
+    ],
+    ".github/workflows/jj-tams-metallicity-differential.yml": [
+      "jj_padova_multiband_archive",
+      "huber_parsec_tams_table"
+    ],
+    ".github/workflows/jj-tams-radial-convergence.yml": [
+      "jj_padova_multiband_archive",
+      "huber_parsec_tams_table"
+    ]
+  }
+}

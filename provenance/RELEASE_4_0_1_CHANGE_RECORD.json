@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "status": "AUDITED_PUBLICATION_CORRECTIONS",
+  "release_version": "4.0.1",
+  "date_utc": "2026-08-23",
+  "historical_extraction_record": "provenance/EXTRACTION_AUDIT.json",
+  "prepublication_candidate_commit": "fdb4ac3a39221480c116e955984fb25f3f32b6ec",
+  "scope": "Every path changed or added after the prepublication candidate in order to produce the clean v4.0.1 public source tree.",
+  "scientific_logic_changed": false,
+  "mcmc_configuration_or_seeds_changed": false,
+  "frozen_numerical_values_changed": false,
+  "change_groups": [
+    {
+      "reason": "Final v4.0.1 version, DOI, public-repository, deterministic-package, and workflow wording metadata.",
+      "paths": [
+        ".github/workflows/verify.yml",
+        "CITATION.cff",
+        "README.md",
+        "pyproject.toml",
+        "scripts/build_public_package.py"
+      ]
+    },
+    {
+      "reason": "Explicit repository, workflow, commit, URL, step-ceiling, line-ending, evidence-availability, and audit-time-versus-distributed provenance.",
+      "paths": [
+        "REPRODUCIBILITY.md",
+        "provenance/DATA_LOCKS.json",
+        "provenance/EXTRACTION_AUDIT.json",
+        "provenance/INDEPENDENT_NUMERICAL_AUDIT_20260823.json",
+        "provenance/INDEPENDENT_NUMERICAL_AUDIT_20260823.md",
+        "provenance/MIGRATION_RECORD.json",
+        "provenance/RELEASE_4_0_1_CHANGE_RECORD.json",
+        "provenance/RUN_PROVENANCE.json",
+        "research/v4-validation/audit_v4_statistical_baseline.py",
+        "research/v4-validation/dr25_support_audit.py",
+        "research/v4-validation/frozen-dr25-support/dr25_support_audit.json",
+        "research/v4-validation/frozen-sensitivities/V4_SENSITIVITY_FREEZE.json",
+        "research/v4-validation/frozen-statistical-baseline/V4_STATISTICAL_BASELINE_AUDIT.json",
+        "research/v4-validation/frozen-statistical-baseline/V4_STATISTICAL_BASELINE_AUDIT.md",
+        "research/v4-validation/sensitivity_freeze.py",
+        "research/v4-validation/v4_statistical_baseline_github_evidence.json"
+      ]
+    },
+    {
+      "reason": "Redistribution-cleared non-row-level evidence added so public integrity and consistency claims are directly inspectable.",
+      "paths": [
+        "provenance/independent-audit-evidence/README.md",
+        "provenance/independent-audit-evidence/SHA256SUMS_constant_aggregate.txt",
+        "provenance/independent-audit-evidence/SHA256SUMS_galactic_constant.txt",
+        "provenance/independent-audit-evidence/SHA256SUMS_galactic_zero.txt",
+        "provenance/independent-audit-evidence/SHA256SUMS_zero_aggregate.txt",
+        "provenance/independent-audit-evidence/control_comparison.json",
+        "provenance/independent-audit-evidence/joint_posterior_constant_aggregate_summary.json",
+        "provenance/independent-audit-evidence/joint_posterior_zero_aggregate_summary.json",
+        "provenance/independent-audit-evidence/local_vs_frozen_comparison.json",
+        "provenance/independent-audit-evidence/numerical_environment.txt"
+      ]
+    },
+    {
+      "reason": "Mixed-license policy hardened to fail closed, with an exact Roman-authored MIT allowlist and dated GPL modification notices.",
+      "paths": [
+        "LICENSE",
+        "LICENSES/README.md",
+        "LICENSE_POLICY.md",
+        "THIRD_PARTY_NOTICES.md",
+        "provenance/LICENSE_MATRIX.csv",
+        "provenance/ROMAN_MIT_PATHS.txt",
+        "research/bryson-joint-posterior/measurement_error.py",
+        "research/bryson-joint-posterior/run_hab2_joint_posterior.py",
+        "research/bryson-joint-posterior/test_measurement_error.py",
+        "scripts/build_license_matrix.py",
+        "scripts/verify_license_policy.py"
+      ]
+    },
+    {
+      "reason": "Ambiguous, stale, or process-state wording corrected without changing scientific values or algorithms.",
+      "paths": [
+        "research/bryson-joint-posterior/MCMC_PROTOCOL.md",
+        "research/bryson-joint-posterior/MEASUREMENT_ERROR_MODES.md",
+        "research/bryson-joint-posterior/PHASE1_MEASUREMENT_ERROR_REPORT.md",
+        "research/bryson-joint-posterior/PHASE2_NUMERICAL_FREEZE_REPORT.md",
+        "research/bryson-joint-posterior/freeze_v4_numerical_results.py",
+        "research/bryson-joint-posterior/frozen-v4/V4_NUMERICAL_FREEZE.json",
+        "research/jj-host-export/TAMS_METHOD_NOTE.md",
+        "research/jj-host-export/reference-data/TAMS_BOUNDARY_PROVENANCE.md",
+        "research/v4-validation/PHASE3_DR25_SUPPORT_REPORT.md",
+        "research/v4-validation/PHASE4_PRIMARY_LITERATURE_REPORT.md",
+        "research/v4-validation/PHASE4_SENSITIVITY_FREEZE_REPORT.md",
+        "research/v4-validation/make_v4_figures.py",
+        "research/v4-validation/primary_literature_sources.json"
+      ]
+    },
+    {
+      "reason": "Derived literature, sensitivity, and baseline records regenerated after metadata-only source corrections; numerical values remain unchanged.",
+      "paths": [
+        "research/v4-validation/frozen-literature/SHA256SUMS_primary_literature.txt",
+        "research/v4-validation/frozen-literature/primary_literature_comparison.csv",
+        "research/v4-validation/frozen-literature/primary_literature_comparison.json",
+        "research/v4-validation/frozen-sensitivities/SHA256SUMS_v4_sensitivity_freeze.txt",
+        "research/v4-validation/frozen-statistical-baseline/SHA256SUMS_v4_statistical_baseline.txt"
+      ]
+    },
+    {
+      "reason": "Fail-closed publication, scope, provenance, and regression checks added or strengthened.",
+      "paths": [
+        "Makefile",
+        "research/v4-validation/test_data_locks.py",
+        "research/v4-validation/test_dr25_support_audit.py",
+        "research/v4-validation/test_primary_literature_comparison.py",
+        "research/v4-validation/test_sensitivity_freeze.py",
+        "research/v4-validation/test_v4_statistical_baseline.py",
+        "scripts/audit_repository_scope.py",
+        "scripts/verify_release_metadata.py"
+      ]
+    },
+    {
+      "reason": "Repository-wide deterministic integrity records regenerated after all audited changes.",
+      "paths": [
+        "MANIFEST.sha256"
+      ]
+    }
+  ],
+  "excluded_from_clean_public_history": [
+    "all earlier prepublication Git commits and tags",
+    "all obsolete draft release assets",
+    "all row-level DR25 files listed in provenance/PUBLIC_EXCLUSIONS.csv",
+    "all manuscript, LaTeX, PDF, and unrelated application material"
+  ]
+}

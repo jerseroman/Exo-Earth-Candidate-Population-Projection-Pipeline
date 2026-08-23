@@ -1,0 +1,277 @@
+{
+  "status": "SENSITIVITY_REGISTER_FROZEN",
+  "scientific_readiness": "CONDITIONAL_MODEL_PROJECTION_ONLY",
+  "scope": "Audited one-at-a-time numerical, scenario, model, climate, host, and spatial sensitivities for manuscript v4.",
+  "artifact_run": {
+    "github_actions_run_id": 31358271145,
+    "repository": "jerseroman/are-we-alone-in-the-universe",
+    "workflow_path": ".github/workflows/jj-g-host-export.yml",
+    "head_sha": "f9cbe74bfd791ebfb26dc48ff39d54f37dea263d",
+    "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/31358271145",
+    "maximum_mcmc_steps": null,
+    "run_provenance_record": "provenance/RUN_PROVENANCE.json",
+    "validated_artifact_files": {
+      "bryson_model_form_sensitivity.json": "3f0d3de2fda3b40aca508ba855babf976f55141ff90527a9e3b7d2acaf371f21",
+      "hz_sensitivity_results.json": "c4b6bf5229f6940a88a650ef2bc4223c93adb49e3a216354623f134f7698357e",
+      "tams_all_branch_results.json": "6748765e049d49be19f82b363771d56f9cde9bcedbaaeb6c4b1fb819402d9c1b"
+    }
+  },
+  "inputs": {
+    "constant_galactic": {
+      "path": "local-artifacts\\v4\\corrected-production-final\\constant-galactic-ci\\galactic_posterior_summary_constant.json",
+      "sha256": "5ff8de0d86c62c71c10b80cb9356df48abbe21f773a9c84f7ea67fe8a0f12945"
+    },
+    "zero_galactic": {
+      "path": "local-artifacts\\v4\\corrected-production-final\\zero-galactic\\galactic_posterior_summary_zero.json",
+      "sha256": "86752103927ddb8bccb45c047ee55b1deeed10b7f621255f7756da1786b1f73c"
+    },
+    "legacy_measurement_galactic": {
+      "path": "local-artifacts\\v4\\legacy-measurement-propagation\\constant\\galactic_posterior_summary_constant.json",
+      "sha256": "a71b51948d3a0578e25d53ef0d38b46ca074cca1902f47dfb1ae17787b666796"
+    },
+    "host_tams_audit": {
+      "path": "research\\v4-validation\\frozen-host-tams\\host_tams_audit.json",
+      "sha256": "f7187f206e1b13fc3b6ca90ac9c5bb58062adf1c4ed949db936f32c0b407e66c"
+    },
+    "dr25_audit": {
+      "path": "research\\v4-validation\\frozen-dr25-support\\dr25_support_audit.json",
+      "sha256": "9c45b08c0142e2e92bf595e70cd5c7742d2d78078ac4d8cdb1cd67bbe3ab1938"
+    },
+    "tams_convergence": {
+      "path": "local-artifacts\\v4\\tams-convergence\\tams_radial_convergence_results.json",
+      "sha256": "0417cef11f6763049e1aafebcccba10b4c2bbed17d254cd96713cd85bdeffa10"
+    },
+    "sensitivity_artifact_manifest": {
+      "path": "local-artifacts\\v4\\sensitivity-canonical-31358271145\\SHA256SUMS_all.txt",
+      "sha256": "ea5b00941c22937a71f2ff5b97ec4506b666c83383bfe62288bc3d303b991a20"
+    }
+  },
+  "canonical_posterior_q50": {
+    "constant_Lambda_EE": 3223845.6020202106,
+    "zero_Lambda_EE": 4572456.812682157
+  },
+  "sensitivities": [
+    {
+      "category": "measurement",
+      "sensitivity": "legacy measurement-error propagation",
+      "basis": "posterior q50, constant completeness",
+      "reference_Lambda_EE": 3223845.6020202106,
+      "comparison_Lambda_EE": 3224694.651928394,
+      "fractional_change": 0.0002633655618158315,
+      "percent_change": 0.02633655618158315,
+      "status": "PASS_SENSITIVITY",
+      "interpretation": "Source-faithful legacy measurement propagation; not the v4 primary model."
+    },
+    {
+      "category": "completeness",
+      "sensitivity": "zero versus constant completeness",
+      "basis": "separate posterior-scenario q50 values",
+      "reference_Lambda_EE": 3223845.6020202106,
+      "comparison_Lambda_EE": 4572456.812682157,
+      "fractional_change": 0.41832375899666063,
+      "percent_change": 41.83237589966606,
+      "status": "SCENARIO_NOT_INTERVAL",
+      "interpretation": "Alternative completeness models remain separate scenarios."
+    },
+    {
+      "category": "host selector",
+      "sensitivity": "legacy fixed-logg selector (constant)",
+      "basis": "posterior q50 on alternative host measure",
+      "reference_Lambda_EE": 3223845.6020202106,
+      "comparison_Lambda_EE": 2302367.504694431,
+      "fractional_change": -0.2858319569486637,
+      "percent_change": -28.58319569486637,
+      "status": "MODEL_SENSITIVITY",
+      "interpretation": "Changes both host normalization and temperature weighting."
+    },
+    {
+      "category": "host selector",
+      "sensitivity": "legacy fixed-logg selector (zero)",
+      "basis": "posterior q50 on alternative host measure",
+      "reference_Lambda_EE": 4572456.812682157,
+      "comparison_Lambda_EE": 3219999.078482489,
+      "fractional_change": -0.29578359940951093,
+      "percent_change": -29.578359940951092,
+      "status": "MODEL_SENSITIVITY",
+      "interpretation": "Changes both host normalization and temperature weighting."
+    },
+    {
+      "category": "TAMS selector",
+      "sensitivity": "native solar curve without the 5200 K anchor",
+      "basis": "canonical plug-in",
+      "reference_Lambda_EE": 3376462.6740267016,
+      "comparison_Lambda_EE": 3376462.6740267016,
+      "fractional_change": 0.0,
+      "percent_change": 0.0,
+      "status": "PASS",
+      "interpretation": "Native low-mass nodes reproduce the selected population exactly."
+    },
+    {
+      "category": "numerics",
+      "sensitivity": "radial grid 0.5 to 0.25 kpc",
+      "basis": "canonical plug-in",
+      "reference_Lambda_EE": 3376462.674026699,
+      "comparison_Lambda_EE": 3384269.248853759,
+      "fractional_change": 0.0023120571973478388,
+      "percent_change": 0.23120571973478388,
+      "status": "PASS",
+      "interpretation": "Below the predeclared one-percent convergence tolerance."
+    },
+    {
+      "category": "occurrence model form",
+      "sensitivity": "Bryson Model 2 versus Model 1",
+      "basis": "published point-estimate plug-ins",
+      "reference_Lambda_EE": 3376462.6740267016,
+      "comparison_Lambda_EE": 3487758.585087294,
+      "fractional_change": 0.0329622808854757,
+      "percent_change": 3.2962280885475703,
+      "status": "POINT_ESTIMATE_ONLY",
+      "interpretation": "Does not supply a Model-2 posterior or cover arbitrary functional forms."
+    },
+    {
+      "category": "climate boundary",
+      "sensitivity": "runaway-greenhouse flux scale 0.95",
+      "basis": "canonical point-estimate plug-in",
+      "reference_Lambda_EE": 3376462.6740267016,
+      "comparison_Lambda_EE": 2537669.5458383504,
+      "fractional_change": -0.24842363418992675,
+      "percent_change": -24.842363418992676,
+      "status": "NUMERICAL_PERTURBATION",
+      "interpretation": "A boundary perturbation, not a probability distribution."
+    },
+    {
+      "category": "climate boundary",
+      "sensitivity": "runaway-greenhouse flux scale 0.99",
+      "basis": "canonical point-estimate plug-in",
+      "reference_Lambda_EE": 3376462.6740267016,
+      "comparison_Lambda_EE": 3252708.6776024387,
+      "fractional_change": -0.03665196638370549,
+      "percent_change": -3.665196638370549,
+      "status": "NUMERICAL_PERTURBATION",
+      "interpretation": "A boundary perturbation, not a probability distribution."
+    },
+    {
+      "category": "climate boundary",
+      "sensitivity": "runaway-greenhouse flux scale 1.01",
+      "basis": "canonical point-estimate plug-in",
+      "reference_Lambda_EE": 3376462.6740267016,
+      "comparison_Lambda_EE": 3468018.2192633636,
+      "fractional_change": 0.027115817373297046,
+      "percent_change": 2.7115817373297046,
+      "status": "NUMERICAL_PERTURBATION",
+      "interpretation": "A boundary perturbation, not a probability distribution."
+    },
+    {
+      "category": "climate boundary",
+      "sensitivity": "runaway-greenhouse flux scale 1.05",
+      "basis": "canonical point-estimate plug-in",
+      "reference_Lambda_EE": 3376462.6740267016,
+      "comparison_Lambda_EE": 3617950.0293537015,
+      "fractional_change": 0.07152081294564017,
+      "percent_change": 7.152081294564017,
+      "status": "NUMERICAL_PERTURBATION",
+      "interpretation": "A boundary perturbation, not a probability distribution."
+    },
+    {
+      "category": "planet mass / climate",
+      "sensitivity": "Kopparapu runaway boundary for 0.1 Earth masses",
+      "basis": "published point-estimate plug-in",
+      "reference_Lambda_EE": 3376462.6740267016,
+      "comparison_Lambda_EE": 1442422.7266666596,
+      "fractional_change": -0.5728006301498796,
+      "percent_change": -57.28006301498796,
+      "status": "ALTERNATIVE_PRESCRIPTION",
+      "interpretation": "Changes the climate boundary; it is not a planet-mass population model."
+    },
+    {
+      "category": "planet mass / climate",
+      "sensitivity": "Kopparapu runaway boundary for 5 Earth masses",
+      "basis": "published point-estimate plug-in",
+      "reference_Lambda_EE": 3376462.6740267016,
+      "comparison_Lambda_EE": 3617951.937023074,
+      "fractional_change": 0.07152137793615143,
+      "percent_change": 7.152137793615143,
+      "status": "ALTERNATIVE_PRESCRIPTION",
+      "interpretation": "Changes the climate boundary; it is not a planet-mass population model."
+    },
+    {
+      "category": "HZ definition",
+      "sensitivity": "optimistic versus conservative HZ",
+      "basis": "constant-completeness point-estimate plug-in",
+      "reference_Lambda_EE": 3376462.6740267016,
+      "comparison_Lambda_EE": 3617951.937023074,
+      "fractional_change": 0.07152137793615143,
+      "percent_change": 7.152137793615143,
+      "status": "ALTERNATIVE_ESTIMAND",
+      "interpretation": "Recent-Venus/early-Mars boundaries define a different HZ estimand."
+    },
+    {
+      "category": "temperature weighting",
+      "sensitivity": "JJ-weighted versus uniform 5300--6000 K average",
+      "basis": "constant-completeness point-estimate ratio",
+      "reference_Lambda_EE": 1.0,
+      "comparison_Lambda_EE": 1.003797817062196,
+      "fractional_change": 0.0037978170621959517,
+      "percent_change": 0.37978170621959517,
+      "status": "PASS_SENSITIVITY",
+      "interpretation": "A denominator-weighting diagnostic, not a host-normalization change."
+    },
+    {
+      "category": "spatial domain",
+      "sensitivity": "Broad solar annulus 6-10 kpc",
+      "basis": "constant-completeness point-estimate plug-in",
+      "reference_Lambda_EE": 3376462.6740267016,
+      "comparison_Lambda_EE": 6823865.624250114,
+      "fractional_change": 1.0210102355765445,
+      "percent_change": 102.10102355765444,
+      "status": "ALTERNATIVE_ESTIMAND",
+      "interpretation": "Changes the Galactic integration domain and therefore the estimand."
+    },
+    {
+      "category": "spatial domain",
+      "sensitivity": "Full JJ disk 4-14 kpc",
+      "basis": "constant-completeness point-estimate plug-in",
+      "reference_Lambda_EE": 3376462.6740267016,
+      "comparison_Lambda_EE": 15478663.917924533,
+      "fractional_change": 3.584284031034464,
+      "percent_change": 358.4284031034464,
+      "status": "ALTERNATIVE_ESTIMAND",
+      "interpretation": "Changes the Galactic integration domain and therefore the estimand."
+    },
+    {
+      "category": "DR25 local support",
+      "sensitivity": "direct candidates in the exact target",
+      "basis": "nominal and 400 corrected realizations per branch",
+      "reference_Lambda_EE": null,
+      "comparison_Lambda_EE": null,
+      "fractional_change": null,
+      "percent_change": null,
+      "status": "FAIL_LOCAL_EMPIRICAL_SUPPORT",
+      "interpretation": "Zero nominal candidates; median zero and more than 95 percent zero-count trials."
+    },
+    {
+      "category": "metallicity-dependent TAMS",
+      "sensitivity": "archived differential surface",
+      "basis": "low-mass phase-7 coverage audit",
+      "reference_Lambda_EE": null,
+      "comparison_Lambda_EE": null,
+      "fractional_change": null,
+      "percent_change": null,
+      "status": "FAIL_EXCLUDED_OPEN_SYSTEMATIC",
+      "interpretation": "Invalid quantitative result excluded; no replacement value is available."
+    },
+    {
+      "category": "unmodeled host/transport risk",
+      "sensitivity": "JJ normalization, isochrone family, radial migration, occurrence transport",
+      "basis": "not parameterized",
+      "reference_Lambda_EE": null,
+      "comparison_Lambda_EE": null,
+      "fractional_change": null,
+      "percent_change": null,
+      "status": "OPEN",
+      "interpretation": "No defensible probability distribution is available for combination."
+    }
+  ],
+  "combination_policy": "Do not add, envelope, or combine these entries into one uncertainty interval. They mix posterior scenarios, point-estimate perturbations, alternative estimands, categorical failures, and open systematics.",
+  "manuscript_policy": "Report the posterior conditionally, show major sensitivities separately, and foreground the zero local DR25 support finding."
+}

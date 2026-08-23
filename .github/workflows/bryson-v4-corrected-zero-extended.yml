@@ -1,0 +1,311 @@
+name: Bryson v4 corrected zero extended posterior
+
+on:
+  workflow_dispatch:
+    inputs:
+      host_run_id:
+        description: Successful JJ host-export run ID from this repository
+        required: true
+        type: string
+
+concurrency:
+  group: bryson-v4-corrected-zero-extended
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare-inputs:
+    # Licensing boundary: production inputs and derived artifacts stay private.
+    if: ${{ github.event.repository.private == true }}
+    name: Prepare zero-completeness inputs
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sparse-checkout pinned Bryson inputs
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/stevepur/DR25-occurrence-public.git /tmp/DR25-occurrence-public
+          cd /tmp/DR25-occurrence-public
+          git sparse-checkout init --no-cone
+          git sparse-checkout set \
+            /insolation/rateModels3D.py \
+            /insolation/koiCatalogs/PCs_dr25_hab2.csv \
+            /stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt.zip
+          git checkout d200f54b6f0df49e0dae530e69983cdce5397bfb
+          test "$(git rev-parse HEAD)" = "d200f54b6f0df49e0dae530e69983cdce5397bfb"
+          unzip -p stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt.zip \
+            > stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt
+          python "$GITHUB_WORKSPACE/scripts/verify_locked_inputs.py" \
+            --check bryson_rate_models_3d=/tmp/DR25-occurrence-public/insolation/rateModels3D.py \
+            --check bryson_pc_catalog=/tmp/DR25-occurrence-public/insolation/koiCatalogs/PCs_dr25_hab2.csv \
+            --check bryson_stellar_catalog_zip=/tmp/DR25-occurrence-public/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt.zip \
+            --check bryson_stellar_catalog_extracted=/tmp/DR25-occurrence-public/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt
+
+      - name: Download authoritative zero-completeness contour
+        run: |
+          mkdir -p /tmp/DR25-occurrence-public/completenessContours/runtime
+          python - <<'PY'
+          import urllib.request
+          from pathlib import Path
+
+          name = 'out_sc0_hab2_insol_teff.fits.gz'
+          destination = Path('/tmp/DR25-occurrence-public/completenessContours/runtime') / name
+          request = urllib.request.Request(
+              f'https://stevepur.com/completenessContours/{name}',
+              headers={'User-Agent': 'Mozilla/5.0'},
+          )
+          with urllib.request.urlopen(request, timeout=900) as response, destination.open('wb') as output:
+              while block := response.read(1024 * 1024):
+                  output.write(block)
+          if destination.stat().st_size < 100_000_000:
+              raise RuntimeError(f'Completeness download unexpectedly small: {destination.stat().st_size}')
+          PY
+          python "$GITHUB_WORKSPACE/scripts/verify_locked_inputs.py" \
+            --check completeness_zero=/tmp/DR25-occurrence-public/completenessContours/runtime/out_sc0_hab2_insol_teff.fits.gz
+
+      - name: Assemble immutable input artifact
+        run: |
+          OUT="$GITHUB_WORKSPACE/results/bryson-v4-source-zero"
+          mkdir -p "$OUT/insolation/koiCatalogs" "$OUT/stellarCatalogs" "$OUT/completenessContours/runtime"
+          cp /tmp/DR25-occurrence-public/insolation/rateModels3D.py "$OUT/insolation/rateModels3D.py"
+          cp /tmp/DR25-occurrence-public/insolation/koiCatalogs/PCs_dr25_hab2.csv "$OUT/insolation/koiCatalogs/PCs_dr25_hab2.csv"
+          cp /tmp/DR25-occurrence-public/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt "$OUT/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt"
+          cp /tmp/DR25-occurrence-public/completenessContours/runtime/out_sc0_hab2_insol_teff.fits.gz "$OUT/completenessContours/runtime/out_sc0_hab2_insol_teff.fits.gz"
+          cd "$OUT"
+          find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bryson-v4-corrected-zero-extended-inputs
+          path: results/bryson-v4-source-zero/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+  prepare-hosts:
+    if: ${{ github.event.repository.private == true }}
+    name: Import checksum-locked JJ host ensemble
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Download successful canonical JJ artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/jj-hosts
+          gh run download "${{ inputs.host_run_id }}" \
+            --repo "${{ github.repository }}" \
+            --name jj-g-host-export-padova-dr05-tams-canonical \
+            --dir /tmp/jj-hosts
+          (cd /tmp/jj-hosts && sha256sum --check SHA256SUMS_padova.txt)
+          echo 'a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28  /tmp/jj-hosts/jj_g_hosts_raw_eligible_padova.csv' | sha256sum --check
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          path = Path('/tmp/jj-hosts/jj_g_hosts_summary_padova.json')
+          summary = json.loads(path.read_text(encoding='utf-8'))
+          summary.pop('python', None)
+          payload = json.dumps(summary, sort_keys=True, separators=(',', ':')).encode()
+          observed = hashlib.sha256(payload).hexdigest()
+          expected = 'bc38c3d42422b20b57ea433dff12b394881167318ac8e0ad77dd894b429474cd'
+          if observed != expected:
+              raise SystemExit(f'Host-summary semantic hash mismatch: {observed} != {expected}')
+          print(f'Host-summary semantic hash OK: {observed}')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bryson-v4-corrected-zero-extended-hosts
+          path: |
+            /tmp/jj-hosts/jj_g_hosts_raw_eligible_padova.csv
+            /tmp/jj-hosts/jj_g_hosts_summary_padova.json
+            /tmp/jj-hosts/PROVENANCE.md
+            /tmp/jj-hosts/SHA256SUMS_padova.txt
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 1
+
+  reconstruct-shards:
+    if: ${{ github.event.repository.private == true }}
+    name: Corrected zero extended shard ${{ matrix.shard }}
+    needs: [prepare-inputs, prepare-hosts]
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 480
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install pinned numerical environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            'numpy==1.23.5' \
+            'scipy==1.10.1' \
+            'pandas==1.5.3' \
+            'astropy==5.3.4' \
+            'emcee==3.1.6'
+          python -m pip freeze | sort > numerical_environment.txt
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bryson-v4-corrected-zero-extended-inputs
+          path: /tmp/DR25-occurrence-public
+
+      - name: Verify immutable branch inputs
+        run: |
+          cd /tmp/DR25-occurrence-public
+          sha256sum --check SHA256SUMS.txt
+
+      - name: Run 25-realization corrected adaptive shard with extended ceiling
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          SEED=$((2026082200 + 100000 + SHARD * 1000))
+          OUT="$GITHUB_WORKSPACE/results/bryson-v4-zero-extended-$SHARD"
+          mkdir -p "$OUT"
+          cp numerical_environment.txt "$OUT/numerical_environment.txt"
+          python research/bryson-joint-posterior/run_hab2_joint_posterior.py \
+            --bryson-root /tmp/DR25-occurrence-public \
+            --stellar-catalog /tmp/DR25-occurrence-public/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt \
+            --pc-catalog /tmp/DR25-occurrence-public/insolation/koiCatalogs/PCs_dr25_hab2.csv \
+            --completeness /tmp/DR25-occurrence-public/completenessContours/runtime/out_sc0_hab2_insol_teff.fits.gz \
+            --branch zero \
+            --out "$OUT" \
+            --seed "$SEED" \
+            --mcmc-seed-offset 500000003 \
+            --trials 25 \
+            --walkers 16 \
+            --burnin 1000 \
+            --steps 3000 \
+            --adaptive-production \
+            --max-steps 30000 \
+            --check-interval 1000 \
+            --tau-multiple 100 \
+            --tau-relative-tolerance 0.05 \
+            --tau-stability-checks 2 \
+            --thin 20 \
+            --measurement-error-mode quantile_matched_two_sided \
+            --run-label "production-shard-$SHARD"
+          cd "$OUT"
+          find . -maxdepth 1 -type f ! -name SHA256SUMS_complete.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS_complete.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bryson-v4-corrected-zero-extended-shard-${{ matrix.shard }}
+          path: results/bryson-v4-zero-extended-${{ matrix.shard }}/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 1
+
+  aggregate:
+    if: ${{ github.event.repository.private == true }}
+    name: Freeze corrected zero extended posterior
+    needs: reconstruct-shards
+    runs-on: ubuntu-22.04
+    timeout-minutes: 150
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - run: python -m pip install 'numpy==1.23.5' 'pandas==1.5.3'
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bryson-v4-corrected-zero-extended-shard-*
+          path: /tmp/bryson-v4-shards
+
+      - name: Aggregate 400 equal-weight corrected realizations
+        run: |
+          OUT="$GITHUB_WORKSPACE/results/bryson-v4-combined-zero"
+          python research/bryson-joint-posterior/aggregate_hab2_joint_posterior.py \
+            --root /tmp/bryson-v4-shards \
+            --branch zero \
+            --out "$OUT" \
+            --expected-shards 16 \
+            --trials-per-shard 25 \
+            --walkers 16 \
+            --steps 3000 \
+            --runner-thin 20 \
+            --samples-per-realization 1024 \
+            --require-all-converged \
+            --cluster-bootstrap-replicates 1000 \
+            --bootstrap-seed 2026082101 \
+            --inner-chain-batches 8 \
+            --propagation-stride 2 \
+            --expected-measurement-error-mode quantile_matched_two_sided
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bryson-v4-corrected-posterior-zero-extended
+          path: results/bryson-v4-combined-zero/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 1
+
+  propagate:
+    if: ${{ github.event.repository.private == true }}
+    name: Propagate corrected zero extended posterior
+    needs: [aggregate, prepare-hosts]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 150
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - run: python -m pip install 'numpy==1.23.5' 'pandas==1.5.3'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bryson-v4-corrected-posterior-zero-extended
+          path: /tmp/bryson-v4-posterior
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bryson-v4-corrected-zero-extended-hosts
+          path: /tmp/jj-hosts
+
+      - name: Verify and propagate joint samples
+        run: |
+          echo 'a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28  /tmp/jj-hosts/jj_g_hosts_raw_eligible_padova.csv' | sha256sum --check
+          OUT="$GITHUB_WORKSPACE/results/bryson-v4-galactic-zero"
+          python research/bryson-joint-posterior/propagate_hab2_joint_posterior.py \
+            --hosts /tmp/jj-hosts/jj_g_hosts_raw_eligible_padova.csv \
+            --samples /tmp/bryson-v4-posterior/joint_posterior_zero_for_galactic_propagation.csv.gz \
+            --branch zero \
+            --out "$OUT" \
+            --cluster-bootstrap-replicates 1000 \
+            --bootstrap-seed 2026082102 \
+            --inner-chain-batches 8
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bryson-v4-galactic-posterior-zero-extended
+          path: results/bryson-v4-galactic-zero/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 1

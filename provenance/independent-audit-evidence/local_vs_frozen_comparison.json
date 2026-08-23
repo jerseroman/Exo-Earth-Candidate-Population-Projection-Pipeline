@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "comparison_rule": "A local-minus-frozen q50 difference is within recorded Monte Carlo precision when its magnitude does not exceed the quadrature sum of the frozen and local outer-realization q50 MCSE values.",
+  "source_commit": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
+  "frozen_baseline_label": "exoearth-v4-statistical-baseline-20260822",
+  "frozen_baseline_sha256": "d816943291afb49a480192b2f3ff62cc4a28f1d879bc8ec368faf29704aa8ed6",
+  "frozen_numerical_sha256": "e37a4add5f0fbbb7363252adb2f85a41b0fbd1f4572761f90dc285ddd2b476eb",
+  "branches": {
+    "constant": {
+      "status": "PASS",
+      "convergence": {
+        "pass": true,
+        "realizations": 400,
+        "converged": 400,
+        "optimizer_failures": 0,
+        "production_steps_q16_q50_q84": [
+          11000.0,
+          12000.0,
+          14000.0
+        ]
+      },
+      "minimum_ess_per_realization": {
+        "F0": {
+          "frozen_minimum_per_realization": 1682.3178659410291,
+          "local_minimum_per_realization": 1682.3178659410291
+        },
+        "alpha": {
+          "frozen_minimum_per_realization": 1783.3925480871847,
+          "local_minimum_per_realization": 1753.0583492337291
+        },
+        "beta": {
+          "frozen_minimum_per_realization": 2180.4503388032113,
+          "local_minimum_per_realization": 2180.4503388032113
+        },
+        "gamma": {
+          "frozen_minimum_per_realization": 1967.3487897488028,
+          "local_minimum_per_realization": 1967.3487897488028
+        }
+      },
+      "parameter_q50_comparison": {
+        "F0": {
+          "frozen_q50": 1.1106036476735128,
+          "local_q50": 1.1089142681131579,
+          "difference": -0.0016893795603549755,
+          "frozen_outer_q50_mcse": 0.019894385913241518,
+          "local_outer_q50_mcse": 0.019802167066870265,
+          "combined_outer_q50_mcse": 0.02806977754470498,
+          "absolute_difference_in_combined_mcse": 0.060184999958207946,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "alpha": {
+          "frozen_q50": -1.148994408791174,
+          "local_q50": -1.1480885299665884,
+          "difference": 0.0009058788245857041,
+          "frozen_outer_q50_mcse": 0.030116074977298957,
+          "local_outer_q50_mcse": 0.030084300958974512,
+          "combined_outer_q50_mcse": 0.04256809998377244,
+          "absolute_difference_in_combined_mcse": 0.021280696693792723,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "beta": {
+          "frozen_q50": -0.8333935277509106,
+          "local_q50": -0.8333838128887898,
+          "difference": 9.714862120757672e-06,
+          "frozen_outer_q50_mcse": 0.00698300030823365,
+          "local_outer_q50_mcse": 0.006946822280946092,
+          "combined_outer_q50_mcse": 0.00984990523344465,
+          "absolute_difference_in_combined_mcse": 0.0009862899074167283,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "gamma": {
+          "frozen_q50": -2.740454491393911,
+          "local_q50": -2.7408892470902253,
+          "difference": -0.0004347556963142374,
+          "frozen_outer_q50_mcse": 0.0439439077018344,
+          "local_outer_q50_mcse": 0.04370726800173698,
+          "combined_outer_q50_mcse": 0.06197896659579766,
+          "absolute_difference_in_combined_mcse": 0.0070145683316977896,
+          "within_recorded_monte_carlo_precision": true
+        }
+      },
+      "galactic_q50_comparison": {
+        "mean_f_HZ": {
+          "frozen_q50": 0.3883056884517271,
+          "local_q50": 0.38744391778574816,
+          "difference": -0.0008617706659789226,
+          "frozen_outer_q50_mcse": 0.010108312594405647,
+          "local_outer_q50_mcse": 0.010248168689830962,
+          "combined_outer_q50_mcse": 0.014394545668462464,
+          "absolute_difference_in_combined_mcse": 0.059867861468320425,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "mean_f_EE": {
+          "frozen_q50": 0.012255079394085128,
+          "local_q50": 0.012227784331432701,
+          "difference": -2.7295062652426746e-05,
+          "frozen_outer_q50_mcse": 0.0002621437422566773,
+          "local_outer_q50_mcse": 0.0002562639603878283,
+          "combined_outer_q50_mcse": 0.0003665931791482074,
+          "absolute_difference_in_combined_mcse": 0.07445600247077105,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "Lambda_HZ": {
+          "frozen_q50": 102148468.05143714,
+          "local_q50": 101921768.94308153,
+          "difference": -226699.10835561156,
+          "frozen_outer_q50_mcse": 2659112.850549827,
+          "local_outer_q50_mcse": 2695903.6736570382,
+          "combined_outer_q50_mcse": 3786657.8627592884,
+          "absolute_difference_in_combined_mcse": 0.059867861468323645,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "Lambda_EE": {
+          "frozen_q50": 3223845.6020202106,
+          "local_q50": 3216665.3084570887,
+          "difference": -7180.29356312193,
+          "frozen_outer_q50_mcse": 68960.05512450605,
+          "local_outer_q50_mcse": 67413.307991405,
+          "combined_outer_q50_mcse": 96436.7320947726,
+          "absolute_difference_in_combined_mcse": 0.07445600247077577,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "Lambda_EE_over_Lambda_HZ": {
+          "frozen_q50": 0.031187600386790245,
+          "local_q50": 0.0312174948731816,
+          "difference": 2.9894486391353337e-05,
+          "frozen_outer_q50_mcse": 0.00017215001199678687,
+          "local_outer_q50_mcse": 0.00017026170187264787,
+          "combined_outer_q50_mcse": 0.00024212532654611802,
+          "absolute_difference_in_combined_mcse": 0.12346699462544362,
+          "within_recorded_monte_carlo_precision": true
+        }
+      },
+      "headline": {
+        "frozen_Lambda_EE_q50": 3223845.6020202106,
+        "local_Lambda_EE_q50": 3216665.3084570887,
+        "frozen_million_3dp": 3.224,
+        "local_million_3dp": 3.217
+      },
+      "input_and_summary_hashes": {
+        "aggregate_summary_sha256": "d53ce95073dafd49037ba598fca2d904d19f77d089401005ab6da5e4b57731b8",
+        "galactic_summary_sha256": "2bc8a42b897e260808bca1623767d34a17dbcfdfef8e01113a21ae0076d823e2",
+        "host_rows_sha256": "a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28",
+        "source_posterior_sha256": "d4b6cfb061c664aade49062c4d96f5b65b8740146ed737610bd6ed223bbfef43"
+      },
+      "failures": []
+    },
+    "zero": {
+      "status": "PASS",
+      "convergence": {
+        "pass": true,
+        "realizations": 400,
+        "converged": 400,
+        "optimizer_failures": 0,
+        "production_steps_q16_q50_q84": [
+          12000.0,
+          14000.0,
+          17000.0
+        ]
+      },
+      "minimum_ess_per_realization": {
+        "F0": {
+          "frozen_minimum_per_realization": 1662.351587865761,
+          "local_minimum_per_realization": 1658.8165352929548
+        },
+        "alpha": {
+          "frozen_minimum_per_realization": 1875.881324048664,
+          "local_minimum_per_realization": 1844.3724594254238
+        },
+        "beta": {
+          "frozen_minimum_per_realization": 2048.6303831581004,
+          "local_minimum_per_realization": 2222.3686617414482
+        },
+        "gamma": {
+          "frozen_minimum_per_realization": 2280.8156556087297,
+          "local_minimum_per_realization": 2280.8156556087297
+        }
+      },
+      "parameter_q50_comparison": {
+        "F0": {
+          "frozen_q50": 1.617439394638246,
+          "local_q50": 1.6160034874852158,
+          "difference": -0.0014359071530301026,
+          "frozen_outer_q50_mcse": 0.032253376140319416,
+          "local_outer_q50_mcse": 0.03222522079405908,
+          "combined_outer_q50_mcse": 0.04559325748040804,
+          "absolute_difference_in_combined_mcse": 0.031493848704430234,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "alpha": {
+          "frozen_q50": -1.2640654976348944,
+          "local_q50": -1.262832460776204,
+          "difference": 0.0012330368586903617,
+          "frozen_outer_q50_mcse": 0.02847902388534534,
+          "local_outer_q50_mcse": 0.02847910531125325,
+          "combined_outer_q50_mcse": 0.0402754793986555,
+          "absolute_difference_in_combined_mcse": 0.03061507589979236,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "beta": {
+          "frozen_q50": -1.1781005563663265,
+          "local_q50": -1.1784685480765469,
+          "difference": -0.00036799171022039445,
+          "frozen_outer_q50_mcse": 0.008373023699380028,
+          "local_outer_q50_mcse": 0.00841065175413141,
+          "combined_outer_q50_mcse": 0.011867880552131175,
+          "absolute_difference_in_combined_mcse": 0.031007365519390262,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "gamma": {
+          "frozen_q50": -1.490900426886246,
+          "local_q50": -1.493277254010799,
+          "difference": -0.002376827124553005,
+          "frozen_outer_q50_mcse": 0.05213513514268947,
+          "local_outer_q50_mcse": 0.05156560404357238,
+          "combined_outer_q50_mcse": 0.07332860176442056,
+          "absolute_difference_in_combined_mcse": 0.03241337032702367,
+          "within_recorded_monte_carlo_precision": true
+        }
+      },
+      "galactic_q50_comparison": {
+        "mean_f_HZ": {
+          "frozen_q50": 0.6590690724909568,
+          "local_q50": 0.6580585341021099,
+          "difference": -0.0010105383888469044,
+          "frozen_outer_q50_mcse": 0.020022065534718077,
+          "local_outer_q50_mcse": 0.02006025048357694,
+          "combined_outer_q50_mcse": 0.02834249032354769,
+          "absolute_difference_in_combined_mcse": 0.035654537668036966,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "mean_f_EE": {
+          "frozen_q50": 0.017381670273021337,
+          "local_q50": 0.017360217143698498,
+          "difference": -2.14531293228383e-05,
+          "frozen_outer_q50_mcse": 0.0004180690668255901,
+          "local_outer_q50_mcse": 0.00041014376710160047,
+          "combined_outer_q50_mcse": 0.0005856617234621976,
+          "absolute_difference_in_combined_mcse": 0.03663058120994486,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "Lambda_HZ": {
+          "frozen_q50": 173376023.31674877,
+          "local_q50": 173110189.07481566,
+          "difference": -265834.2419331074,
+          "frozen_outer_q50_mcse": 5267044.450859714,
+          "local_outer_q50_mcse": 5277089.459584948,
+          "combined_outer_q50_mcse": 7455831.973146569,
+          "absolute_difference_in_combined_mcse": 0.035654537668036786,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "Lambda_EE": {
+          "frozen_q50": 4572456.812682157,
+          "local_q50": 4566813.30973999,
+          "difference": -5643.5029421672225,
+          "frozen_outer_q50_mcse": 109978.08166602974,
+          "local_outer_q50_mcse": 107893.23653053367,
+          "combined_outer_q50_mcse": 154065.33982688512,
+          "absolute_difference_in_combined_mcse": 0.03663058120994976,
+          "within_recorded_monte_carlo_precision": true
+        },
+        "Lambda_EE_over_Lambda_HZ": {
+          "frozen_q50": 0.02605747593014544,
+          "local_q50": 0.026061794698780994,
+          "difference": 4.318768635554193e-06,
+          "frozen_outer_q50_mcse": 0.00019134299111465427,
+          "local_outer_q50_mcse": 0.00019003238313327386,
+          "combined_outer_q50_mcse": 0.000269674705688194,
+          "absolute_difference_in_combined_mcse": 0.016014733842141218,
+          "within_recorded_monte_carlo_precision": true
+        }
+      },
+      "headline": {
+        "frozen_Lambda_EE_q50": 4572456.812682157,
+        "local_Lambda_EE_q50": 4566813.30973999,
+        "frozen_million_3dp": 4.572,
+        "local_million_3dp": 4.567
+      },
+      "input_and_summary_hashes": {
+        "aggregate_summary_sha256": "da0acc43dae66382ca3c5527e0811b317fb398bedd1ce9fa6b952a7fceab6739",
+        "galactic_summary_sha256": "befaada6837f45f89ef8f6afd8f2881801dc54015c2445378d6b3c0d3a2b8827",
+        "host_rows_sha256": "a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28",
+        "source_posterior_sha256": "b0f9dbdd832b16301bd6dbe7972ae24379ba708a59492ea0f214b3c29257e71f"
+      },
+      "failures": []
+    }
+  },
+  "differences_beyond_recorded_monte_carlo_precision": [],
+  "interpretation": "The hybrid cross-environment reconstruction combines 31 checksum-verified cloud shards with one locally rerun shard, followed by local aggregation and propagation. Exact byte identity is not required; the frozen statistical baseline remains unchanged unless a new statistical baseline is explicitly adopted."
+}

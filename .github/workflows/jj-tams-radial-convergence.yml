@@ -1,0 +1,109 @@
+name: Final TAMS radial convergence
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  convergence:
+    # Licensing boundary: third-party model acquisition and exports stay private.
+    if: ${{ github.event.repository.private == true }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Verify bundled TAMS table lock
+        run: |
+          python scripts/verify_locked_inputs.py \
+            --check huber_parsec_tams_table=research/jj-host-export/reference-data/tams_parsec_danxhuber.txt
+
+      - name: Install pinned-compatible dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'numpy==1.23.5' 'scipy==1.10.1' 'astropy==5.3.4' 'matplotlib==3.7.5' 'fast-histogram==0.14' 'requests>=2.28'
+
+      - name: Checkout official JJ model at pinned commit
+        run: |
+          git clone https://github.com/askenja/jjmodel.git /tmp/jjmodel-src
+          cd /tmp/jjmodel-src
+          git checkout 2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54
+          python -m pip install -e .
+          git rev-parse HEAD
+
+      - name: Download official Padova/PARSEC JJ isochrones
+        run: |
+          python scripts/fetch_locked_inputs.py \
+            --id jj_padova_multiband_archive \
+            --output /tmp/multiband_padova.zip \
+            --accept-terms jj_padova_multiband_archive
+          python - <<'PY'
+          import shutil
+          from pathlib import Path
+          from jjmodel import localpath
+
+          destination = Path(localpath) / 'input' / 'isochrones' / 'Padova'
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          shutil.unpack_archive('/tmp/multiband_padova.zip', destination)
+          PY
+
+      - name: Regenerate final TAMS model at dR 1.0, 0.5 and 0.25 kpc
+        run: |
+          mkdir -p results/tams-convergence
+          for dr in 1.0 0.5 0.25; do
+            tag=$(echo "$dr" | tr '.' 'p')
+            rundir="/tmp/jj-convergence-dr${tag}"
+            outdir="$GITHUB_WORKSPACE/results/tams-convergence/dr${tag}"
+            mkdir -p "$rundir" "$outdir"
+            cp /tmp/jjmodel-src/jjmodel/tutorials/tutorial2/parameters "$rundir/parameters"
+            cp /tmp/jjmodel-src/jjmodel/tutorials/tutorial2/sfrd_peaks_parameters "$rundir/sfrd_peaks_parameters"
+            cp "$rundir/parameters" "$outdir/parameters.original"
+            sed -E -i 's/^(Rmin[[:space:]]+)4([[:space:]])/\14.0\2/' "$rundir/parameters"
+            sed -E -i 's/^(Rmax[[:space:]]+)14([[:space:]])/\114.0\2/' "$rundir/parameters"
+            sed -E -i "s/^(dR[[:space:]]+)[0-9.]+([[:space:]])/\\1${dr}\\2/" "$rundir/parameters"
+            cp "$rundir/parameters" "$outdir/parameters.runtime"
+            grep -E '^(Rmin|Rmax|dR)[[:space:]]' "$rundir/parameters"
+            python research/jj-tams-convergence/tams_radial_convergence.py \
+              --jj-root /tmp/jjmodel-src \
+              --run-dir "$rundir" \
+              --out "$outdir" \
+              --iso Padova
+          done
+
+      - name: Compare convergence and apply publication gate
+        run: |
+          python research/jj-tams-convergence/compare_convergence.py \
+            --root "$GITHUB_WORKSPACE/results/tams-convergence" \
+            --out "$GITHUB_WORKSPACE/results/tams-convergence"
+          cat results/tams-convergence/tams_radial_convergence_table.csv
+
+      - name: Record provenance and hashes
+        run: |
+          cat > results/tams-convergence/PROVENANCE.md <<'EOF'
+          # Final PARSEC-TAMS radial-convergence provenance
+
+          - Purpose: publication-gating radial convergence of the FINAL TAMS host provider, not the legacy logg proxy.
+          - JJ code: `askenja/jjmodel`, commit `2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54` (v1.0.1).
+          - Base science configuration: official JJ tutorial2 parameters, SFH/IMF/AMR, thin+thick disk, Padova/PARSEC multiband isochrones.
+          - Only numerical resolution differs among experiments: dR = 1.0, 0.5, 0.25 kpc; Rmin=4 kpc and Rmax=14 kpc fixed.
+          - Host selector in every experiment: 5300 <= Teff <= 6000 K; age >= 4.57 Gyr; Rstar <= public Berger/Huber PARSEC TAMS(Teff); logg < 7 compact-remnant veto.
+          - Primary radius reconstruction: R/Rsun = sqrt(Mf * 10^(4.438-logg)).
+          - Occurrence calculation in every experiment: frozen Bryson Model 1 / hab2 / constant-completeness branch, linear dI dr measure, Kopparapu 2014 conservative HZ (1-Mearth runaway greenhouse / maximum greenhouse).
+          - L1 planet-radius domain: 0.5-1.5 Rearth. L2: B10 = 0.9-1.1 Rearth x 0.9-1.1 Searth intersected with CHZ.
+          - Radial integration: trapezoidal on the actual regenerated JJ grid. No interpolation of a coarser host profile is used.
+          - Publication gate: absolute 0.5 -> 0.25 kpc change must be <1% for N_G, L1 and L2 in the canonical 7-9 kpc domain.
+          EOF
+          find results/tams-convergence -type f -print0 | sort -z | xargs -0 sha256sum > results/tams-convergence/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: final-tams-radial-convergence
+          path: results/tams-convergence/
+          if-no-files-found: error
+          retention-days: 14

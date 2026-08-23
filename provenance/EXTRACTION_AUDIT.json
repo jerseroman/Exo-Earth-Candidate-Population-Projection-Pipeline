@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "record_scope": "Historical extraction-time snapshot completed on 2026-08-22. Counts, byte-identity claims, and modified_paths describe only the initial isolated extraction, not the later v4.0.1 publication corrections.",
+  "final_release_change_record": "provenance/RELEASE_4_0_1_CHANGE_RECORD.json",
+  "source_snapshot_repository": "jerseroman/are-we-alone-in-the-universe",
+  "source_snapshot_commit": "aeb7eb4c82be5fa755d58c663444df66678152c6",
+  "copied_software_and_workflow_files": 82,
+  "modified_for_repository_isolation": 13,
+  "expected_unmodified": 69,
+  "byte_identical_unmodified": 69,
+  "mismatch_count": 0,
+  "modified_paths": [
+    ".github/workflows/bryson-v4-corrected-pilot.yml",
+    ".github/workflows/bryson-v4-corrected-production.yml",
+    ".github/workflows/bryson-v4-corrected-zero-extended.yml",
+    ".github/workflows/bryson-v4-measurement-tests.yml",
+    ".github/workflows/bryson-v4-propagate-constant.yml",
+    ".github/workflows/jj-g-host-export.yml",
+    ".github/workflows/jj-tams-metallicity-differential.yml",
+    ".github/workflows/jj-tams-radial-convergence.yml",
+    "research/bryson-joint-posterior/PHASE1_MEASUREMENT_ERROR_REPORT.md",
+    "research/v4-validation/make_v4_figures.py",
+    "research/v4-validation/v4_statistical_baseline_github_evidence.json",
+    "research/v4-validation/frozen-statistical-baseline/V4_STATISTICAL_BASELINE_AUDIT.json",
+    "research/v4-validation/frozen-statistical-baseline/SHA256SUMS_v4_statistical_baseline.txt"
+  ],
+  "additional_actions": {
+    "requirements": "Direct software runtime and verification dependencies; publication-only dependencies are excluded from this software repository.",
+    "license": "The imported blanket AGPL notice was removed from this isolated release after the 2026-08-22 licensing audit and replaced by the path-level mixed-license policy; any historical grants remain unaffected.",
+    "publication_code_excluded": [
+      "research/v4-validation/build_v4_release_package.py",
+      "research/v4-validation/validate_v4_manuscript.py",
+      "research/v4-validation/pdf_hidden_object_preflight.py"
+    ]
+  }
+}

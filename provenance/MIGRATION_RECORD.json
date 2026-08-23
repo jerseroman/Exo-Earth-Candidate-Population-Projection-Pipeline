@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "status": "HYBRID_CROSS_ENVIRONMENT_NUMERICAL_AUDIT_PASS",
+  "source_snapshot_repository": "jerseroman/are-we-alone-in-the-universe",
+  "source_snapshot_commit": "aeb7eb4c82be5fa755d58c663444df66678152c6",
+  "extracted_utc_date": "2026-08-22",
+  "scope": [
+    "research/bryson-joint-posterior",
+    "research/jj-host-export",
+    "research/jj-tams-convergence",
+    "research/v4-validation",
+    ".github/workflows"
+  ],
+  "excluded": [
+    "article source and compiled article files",
+    "PDF production and preflight code",
+    "unrelated application code and assets"
+  ],
+  "frozen_baseline_status": "IMPORTED_BASELINE_CHECKED_Q50_VALUES_CROSS_ENVIRONMENT_VERIFIED_NOT_REPLACED",
+  "independent_audit": {
+    "date_utc": "2026-08-23",
+    "record": "provenance/INDEPENDENT_NUMERICAL_AUDIT_20260823.json",
+    "execution_repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+    "scientific_production_commit": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
+    "constant_realizations_converged": "400/400",
+    "zero_realizations_converged": "400/400",
+    "comparison_quantile": "q50",
+    "q50_differences_beyond_recorded_monte_carlo_precision": 0,
+    "baseline_replaced": false
+  }
+}

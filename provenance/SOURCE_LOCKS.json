@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "status": "PINNED",
+  "sources": {
+    "bryson_dr25_occurrence": {
+      "repository": "https://github.com/stevepur/DR25-occurrence-public",
+      "commit": "d200f54b6f0df49e0dae530e69983cdce5397bfb"
+    },
+    "jjmodel": {
+      "repository": "https://github.com/askenja/jjmodel",
+      "commit": "2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54"
+    },
+    "evolstate_tams": {
+      "repository": "https://github.com/danxhuber/evolstate",
+      "commit": "5e904afad81805c4e3ac4c3f78510a2a1df33d14"
+    }
+  }
+}

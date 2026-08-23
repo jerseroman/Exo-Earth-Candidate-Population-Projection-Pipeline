@@ -1,0 +1,72 @@
+name: Bryson v4 propagate corrected constant posterior
+
+on:
+  workflow_dispatch:
+    inputs:
+      production_run_id:
+        description: Successful constant-production run ID from this repository
+        required: true
+        type: string
+      host_run_id:
+        description: Successful JJ host-export run ID from this repository
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  propagate:
+    # Licensing boundary: frozen production artifacts stay private.
+    if: ${{ github.event.repository.private == true }}
+    name: Propagate corrected constant posterior
+    runs-on: ubuntu-22.04
+    timeout-minutes: 150
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install pinned propagation environment
+        run: python -m pip install 'numpy==1.23.5' 'pandas==1.5.3'
+
+      - name: Download checksum-locked posterior and host artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/bryson-v4-posterior /tmp/jj-hosts
+          gh run download "${{ inputs.production_run_id }}" \
+            --repo "${{ github.repository }}" \
+            --name bryson-v4-corrected-posterior-constant \
+            --dir /tmp/bryson-v4-posterior
+          gh run download "${{ inputs.host_run_id }}" \
+            --repo "${{ github.repository }}" \
+            --name jj-g-host-export-padova-dr05-tams-canonical \
+            --dir /tmp/jj-hosts
+          cd /tmp/bryson-v4-posterior
+          sha256sum --check SHA256SUMS_constant_aggregate.txt
+          echo 'a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28  /tmp/jj-hosts/jj_g_hosts_raw_eligible_padova.csv' | sha256sum --check
+
+      - name: Propagate joint samples
+        run: |
+          OUT="$GITHUB_WORKSPACE/results/bryson-v4-galactic-constant"
+          python research/bryson-joint-posterior/propagate_hab2_joint_posterior.py \
+            --hosts /tmp/jj-hosts/jj_g_hosts_raw_eligible_padova.csv \
+            --samples /tmp/bryson-v4-posterior/joint_posterior_constant_for_galactic_propagation.csv.gz \
+            --branch constant \
+            --out "$OUT" \
+            --cluster-bootstrap-replicates 1000 \
+            --bootstrap-seed 2026082102 \
+            --inner-chain-batches 8
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bryson-v4-galactic-posterior-constant-final
+          path: results/bryson-v4-galactic-constant/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 1

@@ -1,0 +1,4 @@
+path,status,reason
+research/v4-validation/frozen-dr25-support/SHA256SUMS_dr25_support.txt,REVIEW/BLOCK,Manifest references excluded row-level DR25 extracts.
+research/v4-validation/frozen-dr25-support/dr25_nominal_near_support.csv,REVIEW/BLOCK,Row-level DR25 catalog extract lacks a recorded redistribution determination.
+research/v4-validation/frozen-dr25-support/dr25_perturbed_candidate_frequency.csv,REVIEW/BLOCK,Row-level DR25-derived candidate records lack a recorded redistribution determination.

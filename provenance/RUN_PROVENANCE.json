@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "status": "VERIFIED_2026-08-23",
+  "purpose": "Authoritative mapping of every Actions run cited by the public v4 software records to its actual source repository, workflow, commit, conclusion, and MCMC ceiling.",
+  "repositories": {
+    "legacy_statistics": {
+      "name": "jerseroman/are-we-alone-in-the-universe",
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe",
+      "visibility_at_verification": "public",
+      "role": "Historical numerical source only; not the final v4 software or reproducibility destination."
+    },
+    "private_production": {
+      "name": "jerseroman/exoearth-annulus-v4-software-private-production",
+      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software-private-production",
+      "visibility_at_verification": "private",
+      "role": "Private licensed-input production and hybrid cross-environment audit/reconstruction source; not made public."
+    },
+    "public_release": {
+      "name": "jerseroman/exoearth-annulus-v4-software",
+      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software",
+      "visibility_at_record_creation": "private pre-publication",
+      "release_visibility": "public",
+      "role": "Final license-cleared public software and reproducibility destination."
+    }
+  },
+  "runs": {
+    "31358271145": {
+      "repository": "legacy_statistics",
+      "workflow": "JJ G-host dR=0.5 + TAMS validation",
+      "workflow_path": ".github/workflows/jj-g-host-export.yml",
+      "head_sha": "f9cbe74bfd791ebfb26dc48ff39d54f37dea263d",
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/31358271145",
+      "conclusion": "success",
+      "maximum_mcmc_steps": null,
+      "role": "Canonical JJ sensitivity evidence"
+    },
+    "32470830404": {
+      "repository": "legacy_statistics",
+      "workflow": "Bryson v4 corrected adaptive-MCMC pilot",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-pilot.yml",
+      "head_sha": "4d3cadc7579a74481f2675e37805a6e01a3076ae",
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32470830404",
+      "conclusion": "success",
+      "maximum_mcmc_steps": 20000,
+      "role": "Frozen seed-family pilot"
+    },
+    "32472776218": {
+      "repository": "legacy_statistics",
+      "workflow": "Bryson v4 corrected production posterior",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-production.yml",
+      "head_sha": "b06ba8937c61c1a5e2da47f80916338b4f991027",
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32472776218",
+      "conclusion": "failure",
+      "maximum_mcmc_steps": 20000,
+      "role": "Retained successful constant branch; failed zero aggregate excluded"
+    },
+    "32506666772": {
+      "repository": "legacy_statistics",
+      "workflow": "Bryson v4 corrected zero extended posterior",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-zero-extended.yml",
+      "head_sha": "49a1689f8ef87cd3789f9ad9250dda66d9c39d40",
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32506666772",
+      "conclusion": "success",
+      "maximum_mcmc_steps": 30000,
+      "role": "Frozen zero-completeness posterior and Galactic propagation"
+    },
+    "32527877921": {
+      "repository": "legacy_statistics",
+      "workflow": "Bryson v4 propagate corrected constant posterior",
+      "workflow_path": ".github/workflows/bryson-v4-propagate-constant.yml",
+      "head_sha": "932726b651aa862e5af0bbe4ddc946b45170c90c",
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32527877921",
+      "conclusion": "success",
+      "maximum_mcmc_steps": null,
+      "role": "Frozen constant-completeness Galactic propagation"
+    },
+    "32581407634": {
+      "repository": "private_production",
+      "workflow": "Bryson v4 corrected adaptive-MCMC pilot",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-pilot.yml",
+      "head_sha": "d8d8f37ad481e33052603d42f640f74573d9b92f",
+      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software-private-production/actions/runs/32581407634",
+      "conclusion": "success",
+      "maximum_mcmc_steps": 20000,
+      "role": "Independent audit control pilot"
+    },
+    "32581659930": {
+      "repository": "private_production",
+      "workflow": "JJ G-host dR=0.5 + TAMS validation",
+      "workflow_path": ".github/workflows/jj-g-host-export.yml",
+      "head_sha": "f00363ec2d2dcb521b54b064388eea87dcfefcba",
+      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software-private-production/actions/runs/32581659930",
+      "conclusion": "success",
+      "maximum_mcmc_steps": null,
+      "role": "Independent audit host artifact"
+    },
+    "32582964364": {
+      "repository": "private_production",
+      "workflow": "Bryson v4 corrected constant production posterior",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-production.yml",
+      "head_sha": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
+      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software-private-production/actions/runs/32582964364",
+      "conclusion": "failure",
+      "maximum_mcmc_steps": 20000,
+      "role": "Fifteen scientific shards retained; missing shard 14 completed locally after a billing runner-start failure"
+    },
+    "32582966433": {
+      "repository": "private_production",
+      "workflow": "Bryson v4 corrected zero extended posterior",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-zero-extended.yml",
+      "head_sha": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
+      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software-private-production/actions/runs/32582966433",
+      "conclusion": "failure",
+      "maximum_mcmc_steps": 30000,
+      "role": "All sixteen scientific shards retained; aggregate completed locally after a billing runner-start failure"
+    }
+  },
+  "limitations": [
+    "The private-production Actions pages are not public evidence endpoints.",
+    "The public package therefore carries checksum-verified aggregate audit records and hashes rather than row-level licensed inputs.",
+    "Historical repositories are provenance sources only and must not be cited as the final v4 software destination."
+  ]
+}

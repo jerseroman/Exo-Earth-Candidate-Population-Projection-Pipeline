@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "audit_status": "PASS",
+  "captured_at_utc": "2026-08-23T08:22:24Z",
+  "public_release_repository": "jerseroman/exoearth-annulus-v4-software",
+  "scientific_production_repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+  "run_provenance_record": "provenance/RUN_PROVENANCE.json",
+  "public_evidence_directory": "provenance/independent-audit-evidence",
+  "evidence_boundary": "Cleared control, comparison, aggregate-summary, checksum-manifest, and representative environment records are bundled. Row-level, large-chain, absolute-path-bearing, and private-download records are retained only by hash and are not represented as publicly retrievable objects.",
+  "scientific_production_commit": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
+  "scope": "Hybrid cross-environment audit using 31 checksum-verified cloud shards, one locally rerun missing constant shard, and local aggregation and Galactic propagation; frozen-baseline agreement is evaluated for the checked q50 parameter and Galactic quantities",
+  "immutability_statement": "The imported frozen v4 statistical baseline is not replaced; hybrid cross-environment agreement in this record is limited to the checked q50 parameter and Galactic quantities.",
+  "scientific_configuration": {
+    "changed": false,
+    "measurement_error_mode": "quantile_matched_two_sided",
+    "outer_realizations_per_branch": 400,
+    "walkers": 16,
+    "maximum_steps_by_workflow": {
+      "pilot": 20000,
+      "constant_production": 20000,
+      "zero_production": 30000
+    },
+    "runner_thin": 20,
+    "samples_per_realization": 1024,
+    "minimum_ess_per_parameter_per_realization": 1000,
+    "aggregation_bootstrap_draws": 1000,
+    "aggregation_bootstrap_seed": 2026082101,
+    "propagation_bootstrap_draws": 1000,
+    "propagation_bootstrap_seed": 2026082102,
+    "propagation_stride": 2
+  },
+  "github_actions": {
+    "pilot": {
+      "repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+      "run_id": 32581407634,
+      "head_sha": "d8d8f37ad481e33052603d42f640f74573d9b92f",
+      "conclusion": "success"
+    },
+    "host_export": {
+      "repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+      "run_id": 32581659930,
+      "head_sha": "f00363ec2d2dcb521b54b064388eea87dcfefcba",
+      "conclusion": "success"
+    },
+    "constant_production": {
+      "repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+      "run_id": 32582964364,
+      "head_sha": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
+      "workflow_conclusion": "failure",
+      "successful_shards": 15,
+      "missing_shard": 14,
+      "classification": "GitHub Actions billing/account infrastructure failure before scientific execution of shard 14; downstream jobs were skipped"
+    },
+    "zero_production": {
+      "repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+      "run_id": 32582966433,
+      "head_sha": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
+      "workflow_conclusion": "failure",
+      "successful_shards": 16,
+      "classification": "All scientific shards succeeded; the aggregate runner failed to start because of the same GitHub Actions billing/account infrastructure condition"
+    }
+  },
+  "local_platform": {
+    "host_os": "Windows 11 Home 10.0.26200 build 26200",
+    "host_cpu": "AMD Ryzen 7 7445HS with Radeon 740M Graphics",
+    "host_logical_processors": 12,
+    "host_memory_bytes": 16396115968,
+    "wsl_version": "2.7.12.0",
+    "distribution": "Ubuntu 22.04.5 LTS",
+    "kernel": "6.18.33.2-microsoft-standard-WSL2",
+    "python": "3.10.12",
+    "cloud_python": "3.10.21",
+    "scientific_packages": {
+      "astropy": "5.3.4",
+      "emcee": "3.1.6",
+      "numpy": "1.23.5",
+      "packaging": "26.3",
+      "pandas": "1.5.3",
+      "pyerfa": "2.0.1.5",
+      "python-dateutil": "2.9.0.post0",
+      "pytz": "2026.3.post1",
+      "PyYAML": "6.0.3",
+      "scipy": "1.10.1",
+      "six": "1.17.0"
+    },
+    "package_freeze_statement": "The scientific package freeze matched all 31 retained cloud numerical_environment.txt records byte-for-byte.",
+    "representative_environment_record": {
+      "distributed_path": "provenance/independent-audit-evidence/numerical_environment.txt",
+      "sha256": "d68796793debc1617d7c053245c831cc49fa5b51b7c6a66c25a74400571df43e",
+      "identical_retained_cloud_records": 31
+    }
+  },
+  "control_comparison": {
+    "status": "PASS",
+    "trial": 0,
+    "outer_measurement_inputs_value_identical_after_documented_normalization": true,
+    "outer_measurement_comparison_method": "pandas.DataFrame.equals after trial selection, optional run_label removal, sorting by trial and source_row, and index reset",
+    "maximum_optimizer_absolute_difference": 3.7425064887131043e-06,
+    "cloud_steps": 13000,
+    "local_steps": 14000,
+    "cloud_converged": true,
+    "local_converged": true,
+    "maximum_quantile_width_fraction": 0.0063015676755778655,
+    "unchanged_gate": 0.15,
+    "sha256": "17b03eb93eded7583ad30f2c65fe8a2a9b18380669945c14f18c6821ac6ae0f4",
+    "distributed_path": "provenance/independent-audit-evidence/control_comparison.json"
+  },
+  "local_missing_constant_shard": {
+    "shard": 14,
+    "outer_realizations": 25,
+    "converged": 25,
+    "optimizer_failures": 0,
+    "base_seed": 2026096200,
+    "mcmc_seed_offset": 500000003,
+    "steps_min_median_max": [10000, 13000, 16000],
+    "complete_manifest_sha256": "6eabbe18c8d16192b935ff8ab80fde3bbfa0fe127f5e5af6ac89ec8672d77a65",
+    "complete_manifest_verified": true
+  },
+  "verified_inputs": {
+    "constant_cloud_shards": 15,
+    "constant_local_shards": 1,
+    "zero_cloud_shards": 16,
+    "every_zip_matched_github_api_sha256": true,
+    "every_internal_complete_manifest_passed": true,
+    "full_host_zip_sha256": "ba771f635d7430f232b654f928e91d5907624db213395f5b80268a924764a373",
+    "host_rows_sha256": "a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28",
+    "constant_download_log_sha256": "2ce740b46cd33a7606e646b45387cf0d209f0ee48ac0e984657d47a4dff90db7",
+    "zero_download_log_sha256": "0d7275f65733bb7197b057be3374920cb5e07956ce76f90f23843c1ec9ff611c",
+    "download_log_distribution": {
+      "distributed": false,
+      "reason": "Retained-private logs describe access to private Actions artifacts; their hashes are provenance anchors, not public retrieval claims."
+    }
+  },
+  "branches": {
+    "constant": {
+      "status": "PASS",
+      "realizations": 400,
+      "converged": 400,
+      "optimizer_failures": 0,
+      "production_steps_q16_q50_q84": [11000.0, 12000.0, 14000.0],
+      "minimum_ess_per_realization": {
+        "F0": 1682.3178659410291,
+        "alpha": 1753.0583492337291,
+        "beta": 2180.4503388032113,
+        "gamma": 1967.3487897488028
+      },
+      "frozen_Lambda_EE_q50": 3223845.6020202106,
+      "local_Lambda_EE_q50": 3216665.3084570887,
+      "difference": -7180.29356312193,
+      "combined_outer_q50_mcse": 96436.7320947726,
+      "absolute_difference_in_combined_mcse": 0.07445600247077577,
+      "within_recorded_monte_carlo_precision": true,
+      "aggregate_summary_sha256": "d53ce95073dafd49037ba598fca2d904d19f77d089401005ab6da5e4b57731b8",
+      "aggregate_summary_distributed_path": "provenance/independent-audit-evidence/joint_posterior_constant_aggregate_summary.json",
+      "galactic_summary_sha256": "2bc8a42b897e260808bca1623767d34a17dbcfdfef8e01113a21ae0076d823e2",
+      "aggregate_manifest_sha256": "7f23ab9660934a4b8228ca5d3d298cfebf9eeeb75fe2c27e91e307e26e5a3d78",
+      "aggregate_manifest_distributed_path": "provenance/independent-audit-evidence/SHA256SUMS_constant_aggregate.txt",
+      "galactic_manifest_sha256": "6a1aaa6057d3c3696138880da8e044d6a4ef26cda6f96291991b972cb771c4ee",
+      "galactic_manifest_distributed_path": "provenance/independent-audit-evidence/SHA256SUMS_galactic_constant.txt",
+      "galactic_summary_distribution": {
+        "distributed": false,
+        "reason": "Exact file contains absolute private execution paths; checked numerical content is represented in the bundled comparison record."
+      }
+    },
+    "zero": {
+      "status": "PASS",
+      "realizations": 400,
+      "converged": 400,
+      "optimizer_failures": 0,
+      "production_steps_q16_q50_q84": [12000.0, 14000.0, 17000.0],
+      "minimum_ess_per_realization": {
+        "F0": 1658.8165352929548,
+        "alpha": 1844.3724594254238,
+        "beta": 2222.3686617414482,
+        "gamma": 2280.8156556087297
+      },
+      "frozen_Lambda_EE_q50": 4572456.812682157,
+      "local_Lambda_EE_q50": 4566813.30973999,
+      "difference": -5643.5029421672225,
+      "combined_outer_q50_mcse": 154065.33982688512,
+      "absolute_difference_in_combined_mcse": 0.03663058120994976,
+      "within_recorded_monte_carlo_precision": true,
+      "aggregate_summary_sha256": "da0acc43dae66382ca3c5527e0811b317fb398bedd1ce9fa6b952a7fceab6739",
+      "aggregate_summary_distributed_path": "provenance/independent-audit-evidence/joint_posterior_zero_aggregate_summary.json",
+      "galactic_summary_sha256": "befaada6837f45f89ef8f6afd8f2881801dc54015c2445378d6b3c0d3a2b8827",
+      "aggregate_manifest_sha256": "ee34f1c651ed5cfb6357b179570a7f7022ffafb31b16859d38d19b255cba1d68",
+      "aggregate_manifest_distributed_path": "provenance/independent-audit-evidence/SHA256SUMS_zero_aggregate.txt",
+      "galactic_manifest_sha256": "03a6b75eae7b2d22bd67e9c7a0bda4573d143ee32d47cfdd224ccaf81b6238cf",
+      "galactic_manifest_distributed_path": "provenance/independent-audit-evidence/SHA256SUMS_galactic_zero.txt",
+      "galactic_summary_distribution": {
+        "distributed": false,
+        "reason": "Exact file contains absolute private execution paths; checked numerical content is represented in the bundled comparison record."
+      }
+    }
+  },
+  "comparison": {
+    "rule": "A local-minus-frozen q50 difference is within recorded Monte Carlo precision when its magnitude does not exceed the quadrature sum of the frozen and local outer-realization q50 MCSE values.",
+    "quantiles_compared": ["q50"],
+    "parameters_checked": ["F0", "alpha", "beta", "gamma"],
+    "galactic_quantities_checked": ["mean_f_HZ", "mean_f_EE", "Lambda_HZ", "Lambda_EE", "Lambda_EE_over_Lambda_HZ"],
+    "differences_beyond_recorded_monte_carlo_precision": [],
+    "comparison_record_sha256": "1c0604455932b2d527e3084fecf7153781565b0d5dec9eae72559b1406e26bf2",
+    "comparison_record_distributed_path": "provenance/independent-audit-evidence/local_vs_frozen_comparison.json"
+  },
+  "frozen_records": {
+    "label": "exoearth-v4-statistical-baseline-20260822",
+    "audit_time_baseline_sha256": "d816943291afb49a480192b2f3ff62cc4a28f1d879bc8ec368faf29704aa8ed6",
+    "audit_time_numerical_sha256": "e37a4add5f0fbbb7363252adb2f85a41b0fbd1f4572761f90dc285ddd2b476eb",
+    "distributed_metadata_adjusted_records": {
+      "baseline_path": "research/v4-validation/frozen-statistical-baseline/V4_STATISTICAL_BASELINE_AUDIT.json",
+      "baseline_sha256": "94c60a3509c814deaa205d001c9369e937e2bc1e07d77763631ab59aae65e2ae",
+      "numerical_path": "research/bryson-joint-posterior/frozen-v4/V4_NUMERICAL_FREEZE.json",
+      "numerical_sha256": "a4ce3d7f9f3ad0c35c33df6ae24e9457e5f88d2d90d36c196f7aea253d7ca6ea",
+      "transformation": "Metadata-only provenance clarification: full run repository/URL/commit/ceiling fields were added and one host-sensitivity key was renamed to state that its values are fractional changes versus canonical. No frozen numerical value changed."
+    },
+    "headline_values_remain_million": {
+      "constant": 3.224,
+      "zero": 4.572
+    }
+  },
+  "conclusion": "PASS: the hybrid cross-environment audit and reconstruction satisfy the unchanged convergence, ESS, optimizer, and manifest checks, and all checked q50 values satisfy the recorded MCSE-consistency rule. This establishes headline-median and checked-q50 reproducibility, not agreement of the full posterior intervals. The frozen v4 values remain unchanged.",
+  "publication_state_at_audit_completion": "The numerical audit process itself did not create or modify a GitHub release, Zenodo record, manuscript, or PDF. Later publication state is governed by the release metadata."
+}

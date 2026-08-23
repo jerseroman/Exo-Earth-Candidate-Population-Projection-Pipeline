@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+title: "ExoEarth Annulus v4 Software"
+message: "If you use this software, cite the archived v4.0.1 release."
+type: software
+authors:
+  - family-names: "Jerše"
+    given-names: "Roman"
+repository-code: "https://github.com/jerseroman/exoearth-annulus-v4-software"
+version: "4.0.1"
+date-released: "2026-08-23"
+doi: "10.5281/zenodo.22068062"
+license-url: "https://github.com/jerseroman/exoearth-annulus-v4-software/blob/v4.0.1/LICENSE_POLICY.md"

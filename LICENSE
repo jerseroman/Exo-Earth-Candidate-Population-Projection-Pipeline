@@ -1,0 +1,19 @@
+# Licensing notice
+
+This repository is a mixed-license scientific software collection. No single
+blanket license applies to every file.
+
+- Roman-authored paths explicitly identified as MIT in
+  `provenance/LICENSE_MATRIX.csv` and `provenance/ROMAN_MIT_PATHS.txt` are
+  offered under the MIT License. Unrecognized paths are not presumed MIT.
+- The source-faithful Bryson-derived likelihood and measurement-error files are
+  distributed under GNU GPL version 2 only, conservatively preserving the
+  upstream terms.
+- Daniel Huber's verbatim PARSEC-TAMS table remains under Daniel Huber's MIT
+  License.
+- Fetched dependencies and scientific inputs remain under their upstream
+  licenses and are not relicensed here.
+
+The authoritative path-level assignments are in
+`provenance/LICENSE_MATRIX.csv`. Full license texts and detailed redistribution
+rules are in `LICENSES/` and `LICENSE_POLICY.md`.

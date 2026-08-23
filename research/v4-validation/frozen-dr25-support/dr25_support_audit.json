@@ -1,0 +1,206 @@
+{
+  "status": "FAIL_LOCAL_EMPIRICAL_SUPPORT",
+  "engineering_validation": "PASS",
+  "scope": "Direct DR25 planet-candidate support for the v4 0.9--1.1 R_earth / conservative-HZ-intersected 0.9--1.1 I_earth / 5300--6000 K target.",
+  "inputs": {
+    "pc_catalog": {
+      "path": "local-artifacts\\v4\\DR25-occurrence-public\\insolation\\koiCatalogs\\PCs_dr25_hab2.csv",
+      "sha256": "5cf4805d8742507ead6916dcd1f7b118b7e5a28966b9ddd5b8d09fc6e181115c",
+      "source_locked_sha256": "c8ae78fcfe4ed27bbe972b1041a3e370031a4f94afea4ad35dd7bd47834c140b",
+      "representation": "historical_windows_crlf_checkout",
+      "line_ending_note": "The pinned source uses LF. The historical Windows checkout used CRLF for all 2278 lines; parsed CSV fields are unchanged."
+    },
+    "stellar_catalog": {
+      "path": "local-artifacts\\v4\\DR25-occurrence-public\\stellarCatalogs\\unzipped\\dr25_stellar_berger2020_clean_hab2.txt",
+      "sha256": "79744e4daf1f46414dacada9f91be017b2dcfed68028ef18544e3764fe5a4fa3"
+    },
+    "constant_perturbation_audit": {
+      "path": "local-artifacts\\v4\\corrected-production-final\\constant-posterior\\perturbation_audit_constant_full.csv.gz",
+      "sha256": "b125b380843f3e0711200caf88a23f458f04c61c7a20a5cfeca11a1a83e417db"
+    },
+    "zero_perturbation_audit": {
+      "path": "local-artifacts\\v4\\corrected-production-final\\zero-posterior\\perturbation_audit_zero_full.csv.gz",
+      "sha256": "93eaeef05eb6af85354809dc74c773bccd889e2c78a8ca7ad37cea70614c1176"
+    }
+  },
+  "source_domain_containment": {
+    "status": "PASS",
+    "source_radius_R_earth": [
+      0.5,
+      2.5
+    ],
+    "source_instellation_I_earth": [
+      0.2,
+      2.2
+    ],
+    "source_temperature_K": [
+      3900.0,
+      6300.0
+    ],
+    "target_radius_R_earth": [
+      0.9,
+      1.1
+    ],
+    "target_instellation_I_earth_intersect_conservative_HZ": [
+      0.9,
+      1.1
+    ],
+    "target_temperature_K": [
+      5300.0,
+      6000.0
+    ],
+    "interpretation": "The target is geometrically contained in the fitted rectangular source domain; this does not establish local empirical support."
+  },
+  "nominal_support": {
+    "merged_pc_rows": 2277,
+    "sum_totalReliability_all_rows": 2091.502377619621,
+    "source_fit_domain": {
+      "candidate_count": 54,
+      "sum_totalReliability": 42.229520265965334
+    },
+    "temperature_only": {
+      "candidate_count": 1071,
+      "sum_totalReliability": 992.2682742055933
+    },
+    "temperature_and_radius": {
+      "candidate_count": 54,
+      "sum_totalReliability": 51.688191402292
+    },
+    "temperature_and_conservative_hz_instellation": {
+      "candidate_count": 3,
+      "sum_totalReliability": 2.1689605434539416
+    },
+    "radius_and_fixed_0p9_1p1_instellation": {
+      "candidate_count": 0,
+      "sum_totalReliability": 0.0
+    },
+    "rectangular_target": {
+      "candidate_count": 0,
+      "sum_totalReliability": 0.0
+    },
+    "earth_analog_target": {
+      "candidate_count": 0,
+      "sum_totalReliability": 0.0
+    }
+  },
+  "corrected_measurement_realizations": {
+    "constant": {
+      "input_sha256": "b125b380843f3e0711200caf88a23f458f04c61c7a20a5cfeca11a1a83e417db",
+      "audit_rows": 836657,
+      "reliability_selected_before_domain": {
+        "quantiles": {
+          "q2.5": 2076.0,
+          "q16": 2084.0,
+          "q50": 2092.0,
+          "q84": 2099.0,
+          "q97.5": 2105.0
+        },
+        "minimum": 2059,
+        "maximum": 2117,
+        "mean": 2091.6425,
+        "fraction_zero": 0.0
+      },
+      "retained_in_source_domain": {
+        "quantiles": {
+          "q2.5": 35.0,
+          "q16": 38.0,
+          "q50": 41.0,
+          "q84": 44.0,
+          "q97.5": 48.0
+        },
+        "minimum": 33,
+        "maximum": 51,
+        "mean": 40.9625,
+        "fraction_zero": 0.0
+      },
+      "rectangular_target_candidates": {
+        "quantiles": {
+          "q2.5": 0.0,
+          "q16": 0.0,
+          "q50": 0.0,
+          "q84": 0.0,
+          "q97.5": 1.0
+        },
+        "minimum": 0,
+        "maximum": 1,
+        "mean": 0.0425,
+        "fraction_zero": 0.9575
+      },
+      "earth_analog_target_candidates": {
+        "quantiles": {
+          "q2.5": 0.0,
+          "q16": 0.0,
+          "q50": 0.0,
+          "q84": 0.0,
+          "q97.5": 1.0
+        },
+        "minimum": 0,
+        "maximum": 1,
+        "mean": 0.0425,
+        "fraction_zero": 0.9575
+      },
+      "total_earth_analog_candidate_realizations": 17,
+      "unique_sources_entering_earth_analog_domain": 2
+    },
+    "zero": {
+      "input_sha256": "93eaeef05eb6af85354809dc74c773bccd889e2c78a8ca7ad37cea70614c1176",
+      "audit_rows": 836919,
+      "reliability_selected_before_domain": {
+        "quantiles": {
+          "q2.5": 2076.975,
+          "q16": 2084.0,
+          "q50": 2092.0,
+          "q84": 2100.0,
+          "q97.5": 2107.0
+        },
+        "minimum": 2071,
+        "maximum": 2110,
+        "mean": 2092.2975,
+        "fraction_zero": 0.0
+      },
+      "retained_in_source_domain": {
+        "quantiles": {
+          "q2.5": 34.0,
+          "q16": 38.0,
+          "q50": 41.0,
+          "q84": 45.0,
+          "q97.5": 48.0
+        },
+        "minimum": 32,
+        "maximum": 49,
+        "mean": 41.155,
+        "fraction_zero": 0.0
+      },
+      "rectangular_target_candidates": {
+        "quantiles": {
+          "q2.5": 0.0,
+          "q16": 0.0,
+          "q50": 0.0,
+          "q84": 0.0,
+          "q97.5": 1.0
+        },
+        "minimum": 0,
+        "maximum": 1,
+        "mean": 0.0325,
+        "fraction_zero": 0.9675
+      },
+      "earth_analog_target_candidates": {
+        "quantiles": {
+          "q2.5": 0.0,
+          "q16": 0.0,
+          "q50": 0.0,
+          "q84": 0.0,
+          "q97.5": 1.0
+        },
+        "minimum": 0,
+        "maximum": 1,
+        "mean": 0.0325,
+        "fraction_zero": 0.9675
+      },
+      "total_earth_analog_candidate_realizations": 13,
+      "unique_sources_entering_earth_analog_domain": 2
+    }
+  },
+  "scientific_interpretation": "The frozen Lambda_EE result is a separable power-law model projection into a locally data-empty target region, not a direct DR25 candidate-supported measurement. Posterior intervals do not include this model-form/local-support uncertainty.",
+  "decision": "Retain the numerical result only with explicit projection language, freeze model-form sensitivity separately, and do not describe the target occurrence as directly constrained by local DR25 candidates."
+}

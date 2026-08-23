@@ -1,0 +1,239 @@
+name: Bryson v4 corrected adaptive-MCMC pilot
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: bryson-v4-corrected-pilot
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-inputs:
+    # Licensing boundary: this job fetches or packages third-party research inputs.
+    if: ${{ github.event.repository.private == true }}
+    name: Prepare ${{ matrix.branch }} corrected-pilot inputs
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - branch: constant
+            contour: out_sc0_hab2_insol_teff_extrap_const.fits.gz
+          - branch: zero
+            contour: out_sc0_hab2_insol_teff.fits.gz
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sparse-checkout pinned Bryson inputs
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/stevepur/DR25-occurrence-public.git /tmp/DR25-occurrence-public
+          cd /tmp/DR25-occurrence-public
+          git sparse-checkout init --no-cone
+          git sparse-checkout set \
+            /insolation/rateModels3D.py \
+            /insolation/koiCatalogs/PCs_dr25_hab2.csv \
+            /stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt.zip
+          git checkout d200f54b6f0df49e0dae530e69983cdce5397bfb
+          test "$(git rev-parse HEAD)" = "d200f54b6f0df49e0dae530e69983cdce5397bfb"
+          unzip -p stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt.zip \
+            > stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt
+          python "$GITHUB_WORKSPACE/scripts/verify_locked_inputs.py" \
+            --check bryson_rate_models_3d=/tmp/DR25-occurrence-public/insolation/rateModels3D.py \
+            --check bryson_pc_catalog=/tmp/DR25-occurrence-public/insolation/koiCatalogs/PCs_dr25_hab2.csv \
+            --check bryson_stellar_catalog_zip=/tmp/DR25-occurrence-public/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt.zip \
+            --check bryson_stellar_catalog_extracted=/tmp/DR25-occurrence-public/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt
+
+      - name: Download authoritative completeness contour
+        env:
+          CONTOUR_NAME: ${{ matrix.contour }}
+        run: |
+          mkdir -p /tmp/DR25-occurrence-public/completenessContours/runtime
+          python - <<'PY'
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          name = os.environ['CONTOUR_NAME']
+          destination = Path('/tmp/DR25-occurrence-public/completenessContours/runtime') / name
+          request = urllib.request.Request(
+              f'https://stevepur.com/completenessContours/{name}',
+              headers={'User-Agent': 'Mozilla/5.0'},
+          )
+          with urllib.request.urlopen(request, timeout=900) as response, destination.open('wb') as output:
+              while block := response.read(1024 * 1024):
+                  output.write(block)
+          if destination.stat().st_size < 100_000_000:
+              raise RuntimeError(f'Completeness download unexpectedly small: {destination.stat().st_size}')
+          PY
+          case "$CONTOUR_NAME" in
+            out_sc0_hab2_insol_teff_extrap_const.fits.gz) LOCK_ID=completeness_constant ;;
+            out_sc0_hab2_insol_teff.fits.gz) LOCK_ID=completeness_zero ;;
+            *) echo "Unknown contour: $CONTOUR_NAME" >&2; exit 1 ;;
+          esac
+          python "$GITHUB_WORKSPACE/scripts/verify_locked_inputs.py" \
+            --check "$LOCK_ID=/tmp/DR25-occurrence-public/completenessContours/runtime/$CONTOUR_NAME"
+
+      - name: Assemble checksummed input artifact
+        env:
+          BRANCH: ${{ matrix.branch }}
+          CONTOUR_NAME: ${{ matrix.contour }}
+        run: |
+          OUT="$GITHUB_WORKSPACE/results/bryson-v4-pilot-source-$BRANCH"
+          mkdir -p "$OUT/insolation/koiCatalogs" "$OUT/stellarCatalogs" "$OUT/completenessContours/runtime"
+          cp /tmp/DR25-occurrence-public/insolation/rateModels3D.py "$OUT/insolation/rateModels3D.py"
+          cp /tmp/DR25-occurrence-public/insolation/koiCatalogs/PCs_dr25_hab2.csv "$OUT/insolation/koiCatalogs/PCs_dr25_hab2.csv"
+          cp /tmp/DR25-occurrence-public/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt "$OUT/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt"
+          cp "/tmp/DR25-occurrence-public/completenessContours/runtime/$CONTOUR_NAME" "$OUT/completenessContours/runtime/$CONTOUR_NAME"
+          cd "$OUT"
+          find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bryson-v4-corrected-pilot-inputs-${{ matrix.branch }}
+          path: results/bryson-v4-pilot-source-${{ matrix.branch }}/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  pilot:
+    if: ${{ github.event.repository.private == true }}
+    name: Pilot ${{ matrix.branch }} MCMC seed ${{ matrix.seed_family }}
+    needs: prepare-inputs
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [constant, zero]
+        seed_family: [1, 2]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 300
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install pinned numerical environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            'numpy==1.23.5' \
+            'scipy==1.10.1' \
+            'pandas==1.5.3' \
+            'astropy==5.3.4' \
+            'emcee==3.1.6'
+          python -m pip freeze | sort > numerical_environment.txt
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bryson-v4-corrected-pilot-inputs-${{ matrix.branch }}
+          path: /tmp/DR25-occurrence-public
+
+      - name: Verify immutable inputs
+        run: |
+          cd /tmp/DR25-occurrence-public
+          sha256sum --check SHA256SUMS.txt
+
+      - name: Run corrected adaptive pilot
+        env:
+          BRANCH: ${{ matrix.branch }}
+          SEED_FAMILY: ${{ matrix.seed_family }}
+        run: |
+          if [ "$BRANCH" = constant ]; then
+            CONTOUR=/tmp/DR25-occurrence-public/completenessContours/runtime/out_sc0_hab2_insol_teff_extrap_const.fits.gz
+            BASE_SEED=2026082101
+          else
+            CONTOUR=/tmp/DR25-occurrence-public/completenessContours/runtime/out_sc0_hab2_insol_teff.fits.gz
+            BASE_SEED=2026182101
+          fi
+          if [ "$SEED_FAMILY" = 1 ]; then
+            MCMC_OFFSET=500000003
+          else
+            MCMC_OFFSET=900000007
+          fi
+          LABEL="corrected-pilot-seed-$SEED_FAMILY"
+          OUT="$GITHUB_WORKSPACE/results/bryson-v4-pilot-$BRANCH-$SEED_FAMILY"
+          mkdir -p "$OUT"
+          cp numerical_environment.txt "$OUT/numerical_environment.txt"
+          python research/bryson-joint-posterior/run_hab2_joint_posterior.py \
+            --bryson-root /tmp/DR25-occurrence-public \
+            --stellar-catalog /tmp/DR25-occurrence-public/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt \
+            --pc-catalog /tmp/DR25-occurrence-public/insolation/koiCatalogs/PCs_dr25_hab2.csv \
+            --completeness "$CONTOUR" \
+            --branch "$BRANCH" \
+            --out "$OUT" \
+            --seed "$BASE_SEED" \
+            --mcmc-seed-offset "$MCMC_OFFSET" \
+            --trials 3 \
+            --walkers 16 \
+            --burnin 1000 \
+            --steps 3000 \
+            --adaptive-production \
+            --max-steps 20000 \
+            --check-interval 1000 \
+            --tau-multiple 100 \
+            --tau-relative-tolerance 0.05 \
+            --tau-stability-checks 2 \
+            --thin 20 \
+            --measurement-error-mode quantile_matched_two_sided \
+            --run-label "$LABEL"
+          cd "$OUT"
+          find . -maxdepth 1 -type f ! -name SHA256SUMS_complete.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS_complete.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bryson-v4-corrected-pilot-${{ matrix.branch }}-${{ matrix.seed_family }}
+          path: results/bryson-v4-pilot-${{ matrix.branch }}-${{ matrix.seed_family }}/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 1
+
+  seed-stability:
+    if: ${{ github.event.repository.private == true }}
+    name: Gate ${{ matrix.branch }} seed stability
+    needs: pilot
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [constant, zero]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - run: python -m pip install 'numpy==1.23.5' 'pandas==1.5.3'
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bryson-v4-corrected-pilot-${{ matrix.branch }}-*
+          path: /tmp/bryson-v4-pilots
+
+      - name: Compare independent MCMC streams
+        env:
+          BRANCH: ${{ matrix.branch }}
+        run: |
+          OUT="$GITHUB_WORKSPACE/results/bryson-v4-seed-stability-$BRANCH"
+          python research/bryson-joint-posterior/compare_mcmc_seed_families.py \
+            --root /tmp/bryson-v4-pilots \
+            --branch "$BRANCH" \
+            --out "$OUT" \
+            --expected-families 2 \
+            --max-quantile-width-fraction 0.15
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bryson-v4-seed-stability-${{ matrix.branch }}
+          path: results/bryson-v4-seed-stability-${{ matrix.branch }}/
+          if-no-files-found: error
+          retention-days: 30

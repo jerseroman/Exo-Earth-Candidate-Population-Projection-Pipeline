@@ -1,0 +1,313 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "baseline_label": "exoearth-v4-statistical-baseline-20260822",
+  "scope": "Read-only audit of the selected corrected posterior and conditional Galactic-propagation artifacts.",
+  "source_actions_repository": "jerseroman/are-we-alone-in-the-universe",
+  "run_provenance_record": "provenance/RUN_PROVENANCE.json",
+  "source_checkout_commit": "950e762c4a6bcdc066bacb2e399742dea8c3ee54",
+  "numerical_freeze_commits": {
+    "corrected_numerical_freeze": "1905c9df8cc4848783d55b2c6debd90bc23e99e2",
+    "committed_freeze_hash_record": "d10e72112569c77a025c6371cd160832b14cdd45",
+    "constant_galactic_propagation": "932726b651aa862e5af0bbe4ddc946b45170c90c",
+    "zero_extended_rerun": "49a1689f8ef87cd3789f9ad9250dda66d9c39d40"
+  },
+  "github_actions_evidence_sha256": "727d7c5bd9ab7eccd14f99173ddeaa6832c68f882e3e375e193c1b21ee601783",
+  "committed_numerical_freeze_sha256": "a4ce3d7f9f3ad0c35c33df6ae24e9457e5f88d2d90d36c196f7aea253d7ca6ea",
+  "committed_galactic_csv_sha256": "8d38fe2680de64d994590e83a4e7b8f6376ba063f913856f9e236d935afcac59",
+  "selected_realizations_total": 800,
+  "actions_runs": {
+    "pilot_seed_stability": {
+      "id": 32470830404,
+      "name": "Bryson v4 corrected adaptive-MCMC pilot",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "4d3cadc7579a74481f2675e37805a6e01a3076ae",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-pilot.yml",
+      "maximum_mcmc_steps": 20000,
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32470830404"
+    },
+    "initial_production": {
+      "id": 32472776218,
+      "name": "Bryson v4 corrected production posterior",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_sha": "b06ba8937c61c1a5e2da47f80916338b4f991027",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-production.yml",
+      "maximum_mcmc_steps": 20000,
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32472776218",
+      "selected_successful_job": {
+        "id": 96841400219,
+        "name": "Freeze corrected constant posterior",
+        "conclusion": "success"
+      },
+      "rejected_failed_job": {
+        "id": 96841400176,
+        "name": "Freeze corrected zero posterior",
+        "conclusion": "failure"
+      },
+      "selection_note": "The workflow conclusion is failure. Only the independently successful 400-realization constant aggregate is selected; the failed 20,000-step zero aggregate is excluded."
+    },
+    "zero_extended_rerun": {
+      "id": 32506666772,
+      "name": "Bryson v4 corrected zero extended posterior",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "49a1689f8ef87cd3789f9ad9250dda66d9c39d40",
+      "workflow_path": ".github/workflows/bryson-v4-corrected-zero-extended.yml",
+      "maximum_mcmc_steps": 30000,
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32506666772",
+      "job_summary": {
+        "total": 20,
+        "success": 20,
+        "failure": 0,
+        "other": 0
+      }
+    },
+    "constant_galactic_propagation": {
+      "id": 32527877921,
+      "name": "Bryson v4 propagate corrected constant posterior",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "932726b651aa862e5af0bbe4ddc946b45170c90c",
+      "workflow_path": ".github/workflows/bryson-v4-propagate-constant.yml",
+      "maximum_mcmc_steps": null,
+      "url": "https://github.com/jerseroman/are-we-alone-in-the-universe/actions/runs/32527877921"
+    }
+  },
+  "selected_artifacts": {
+    "constant_seed_stability": {
+      "run_id": 32470830404,
+      "artifact_id": 9443107354,
+      "name": "bryson-v4-seed-stability-constant",
+      "size_in_bytes": 1850,
+      "github_archive_digest": "sha256:fcfe785dde462ce9ab800480e43ca2bb5e9a2eb9898e1dc7c1c8834300723f70"
+    },
+    "zero_seed_stability": {
+      "run_id": 32470830404,
+      "artifact_id": 9443107657,
+      "name": "bryson-v4-seed-stability-zero",
+      "size_in_bytes": 1835,
+      "github_archive_digest": "sha256:cf8f5a54e8b3267bf541e74324d00b31ce6ffb9ef93ed81d522ec7800122d872"
+    },
+    "constant_posterior": {
+      "run_id": 32472776218,
+      "artifact_id": 9454764527,
+      "name": "bryson-v4-corrected-posterior-constant",
+      "size_in_bytes": 138345775,
+      "github_archive_digest": "sha256:6fbd662da9376e360e45c925f4e78bdeb58a5e2f5420a3ca725683a3a56ee37a"
+    },
+    "zero_posterior": {
+      "run_id": 32506666772,
+      "artifact_id": 9462011443,
+      "name": "bryson-v4-corrected-posterior-zero-extended",
+      "size_in_bytes": 138399110,
+      "github_archive_digest": "sha256:aebdc142b0bda3fe74542052ebbd7ac2f03f3857d8680ba51dd7e3f8453f6016"
+    },
+    "constant_galactic": {
+      "run_id": 32527877921,
+      "artifact_id": 9462827799,
+      "name": "bryson-v4-galactic-posterior-constant-final",
+      "size_in_bytes": 17643913,
+      "github_archive_digest": "sha256:d99906b4117740cc8c679be2026b5761410931336e8ab522c83609990c73d1a0"
+    },
+    "zero_galactic": {
+      "run_id": 32506666772,
+      "artifact_id": 9462029866,
+      "name": "bryson-v4-galactic-posterior-zero-extended",
+      "size_in_bytes": 17609309,
+      "github_archive_digest": "sha256:2051314d6da5f92bdffcfe9d1334f2d8fc9e0d6281a06bff720fab3fa71f2cdb"
+    }
+  },
+  "branches": {
+    "constant": {
+      "status": "PASS",
+      "selected_realizations": 400,
+      "measurement_error_mode": "quantile_matched_two_sided",
+      "convergence": {
+        "estimable_autocorrelation": 400,
+        "adaptive": 400,
+        "converged": 400,
+        "optimizer_failures": 0,
+        "production_steps": {
+          "minimum": 8000,
+          "median": 12000.0,
+          "maximum": 17000,
+          "declared_ceiling": 20000
+        }
+      },
+      "parameter_ess_mcse": {
+        "F0": {
+          "minimum_ess_per_realization": 1682.3178659410291,
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.014465269554222575,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0008994315238085106
+        },
+        "alpha": {
+          "minimum_ess_per_realization": 1783.3925480871847,
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.01633571394171496,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0010141593694236704
+        },
+        "beta": {
+          "minimum_ess_per_realization": 2180.4503388032113,
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.011087371652533129,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0005881919390539711
+        },
+        "gamma": {
+          "minimum_ess_per_realization": 1967.3487897488028,
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.013611145319102038,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0009914422954575364
+        }
+      },
+      "galactic_mcse": {
+        "mean_f_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.013533157699660566,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0012336140559175254
+        },
+        "mean_f_EE": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.014776844615963453,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0014758784269338758
+        },
+        "Lambda_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.013533157699660564,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.00123361405591752
+        },
+        "Lambda_EE": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.014776844615963455,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0014758784269338749
+        },
+        "Lambda_EE_over_Lambda_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.013482012006860335,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.001189574665018926
+        }
+      },
+      "seed_family_stability": {
+        "status": "pass",
+        "maximum_observed_quantile_shift_fraction_of_q16_q84_width": 0.015134746442628744,
+        "maximum_allowed": 0.15
+      },
+      "headline_median_origin": {
+        "N_star_7_9_kpc": 263061992.36670703,
+        "mean_f_EE_q50": 0.012255079394085128,
+        "recomputed_Lambda_EE_q50": 3223845.6020202106,
+        "artifact_Lambda_EE_q50": 3223845.6020202106,
+        "reported_million_3dp": 3.224,
+        "identity": "Lambda_EE_q50 = N_star_7_9_kpc * mean_f_EE_q50"
+      },
+      "verified_internal_manifests": {
+        "posterior": {
+          "joint_posterior_constant_full.csv.gz": "307e5b0ca184cdf9cb3a6091274c183329479c6b21adfc8fceb7c3e34aa45db3",
+          "joint_posterior_constant_for_galactic_propagation.csv.gz": "b7c1642d4ce4a860a2aae01f2c50c11872ee6287e58885266b36e9468a190f80",
+          "joint_posterior_constant_correlation.csv": "0c61d876e6a0c1801174978a33c674244faa21c34e00d9f14dc15b77a5dc02a9",
+          "trial_diagnostics_constant_full.jsonl": "3e90d53561a0d27b8faca75715301252759102d3d6c8e972162023706523abaa",
+          "joint_posterior_constant_aggregate_summary.json": "8472f8b8a431d3e9a3f8fded5b40b8bab6f1f8e2d2368e44bc6816e716d960b1",
+          "perturbation_audit_constant_full.csv.gz": "b125b380843f3e0711200caf88a23f458f04c61c7a20a5cfeca11a1a83e417db"
+        },
+        "galactic": {
+          "collapsed_host_temperature_measure.csv": "cf5b7a04bb971b42ed62f7942a7ffe8f0e8aac8cecdfd0e60fb5fd39c9d1dcdc",
+          "galactic_posterior_draws_constant.csv.gz": "373a48596ad280da35161aa0dbf89daa082105fa31f3cd6471e846d99560f0fa",
+          "galactic_posterior_summary_constant.json": "5ff8de0d86c62c71c10b80cb9356df48abbe21f773a9c84f7ea67fe8a0f12945"
+        }
+      },
+      "freeze_input_hashes": {
+        "aggregate": "8472f8b8a431d3e9a3f8fded5b40b8bab6f1f8e2d2368e44bc6816e716d960b1",
+        "galactic": "5ff8de0d86c62c71c10b80cb9356df48abbe21f773a9c84f7ea67fe8a0f12945",
+        "seed_stability": "04584e9fb72994bfb36dc15d5446372bbe5b4d2f5f40b677736b2e37d22acdde"
+      }
+    },
+    "zero": {
+      "status": "PASS",
+      "selected_realizations": 400,
+      "measurement_error_mode": "quantile_matched_two_sided",
+      "convergence": {
+        "estimable_autocorrelation": 400,
+        "adaptive": 400,
+        "converged": 400,
+        "optimizer_failures": 0,
+        "production_steps": {
+          "minimum": 9000,
+          "median": 14000.0,
+          "maximum": 22000,
+          "declared_ceiling": 30000
+        }
+      },
+      "parameter_ess_mcse": {
+        "F0": {
+          "minimum_ess_per_realization": 1662.351587865761,
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.013709224737282519,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.000606102767233472
+        },
+        "alpha": {
+          "minimum_ess_per_realization": 1875.881324048664,
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.015592921013104005,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0007442627945093678
+        },
+        "beta": {
+          "minimum_ess_per_realization": 2048.6303831581004,
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.011499985368228948,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0008609967334523825
+        },
+        "gamma": {
+          "minimum_ess_per_realization": 2280.8156556087297,
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.014215756040198917,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.001530935466723545
+        }
+      },
+      "galactic_mcse": {
+        "mean_f_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.0146374782151194,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0009964693653636636
+        },
+        "mean_f_EE": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.01615063861636223,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0012344648940757217
+        },
+        "Lambda_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.0146374782151194,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0009964693653636643
+        },
+        "Lambda_EE": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.016150638616362237,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0012344648940757351
+        },
+        "Lambda_EE_over_Lambda_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.01507456753466007,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0015120775001946137
+        }
+      },
+      "seed_family_stability": {
+        "status": "pass",
+        "maximum_observed_quantile_shift_fraction_of_q16_q84_width": 0.016434903030446053,
+        "maximum_allowed": 0.15
+      },
+      "headline_median_origin": {
+        "N_star_7_9_kpc": 263061992.36670703,
+        "mean_f_EE_q50": 0.017381670273021337,
+        "recomputed_Lambda_EE_q50": 4572456.812682157,
+        "artifact_Lambda_EE_q50": 4572456.812682157,
+        "reported_million_3dp": 4.572,
+        "identity": "Lambda_EE_q50 = N_star_7_9_kpc * mean_f_EE_q50"
+      },
+      "verified_internal_manifests": {
+        "posterior": {
+          "joint_posterior_zero_full.csv.gz": "cdfeefa8b6c44c50037efaeb173593a2d8044b7d66db22ce89583dc5ba610540",
+          "joint_posterior_zero_for_galactic_propagation.csv.gz": "da811b2d6ac1a0210da2f7a7105e0ca9e225bd8afb82b9ab1bc66a269ea8a5f6",
+          "joint_posterior_zero_correlation.csv": "f7a298181bbfc953f964f7f478b8ecc99bc651a5070faec87e97a90993025649",
+          "trial_diagnostics_zero_full.jsonl": "68e67a9c388a21aae9b42a559edff89136d2a6426a831e443a0e9a9112ef013f",
+          "joint_posterior_zero_aggregate_summary.json": "37217bf026addf201c3f46354324b55c2bbcb9afb1b28f86197a98fcc79bc85c",
+          "perturbation_audit_zero_full.csv.gz": "93eaeef05eb6af85354809dc74c773bccd889e2c78a8ca7ad37cea70614c1176"
+        },
+        "galactic": {
+          "collapsed_host_temperature_measure.csv": "cf5b7a04bb971b42ed62f7942a7ffe8f0e8aac8cecdfd0e60fb5fd39c9d1dcdc",
+          "galactic_posterior_draws_zero.csv.gz": "d0130302ff9086e56dfe4d28dd8e0ae7d89dc900ed27f4dc40453ac09bd17f34",
+          "galactic_posterior_summary_zero.json": "86752103927ddb8bccb45c047ee55b1deeed10b7f621255f7756da1786b1f73c"
+        }
+      },
+      "freeze_input_hashes": {
+        "aggregate": "37217bf026addf201c3f46354324b55c2bbcb9afb1b28f86197a98fcc79bc85c",
+        "galactic": "86752103927ddb8bccb45c047ee55b1deeed10b7f621255f7756da1786b1f73c",
+        "seed_stability": "ae22c55ea2c9eddd830c165f05c22646f4edd398505662af3eb07f82f63f4156"
+      }
+    }
+  },
+  "freeze_rule": "No later manuscript or figure edit may alter these numerical values without a new statistical rerun and a new baseline audit."
+}

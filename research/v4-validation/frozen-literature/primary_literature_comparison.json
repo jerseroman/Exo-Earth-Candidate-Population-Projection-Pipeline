@@ -1,0 +1,243 @@
+{
+  "status": "PASS_ESTIMAND_AWARE_COMPARISON",
+  "scientific_interpretation": "CONDITIONAL_MODEL_PROJECTION_ONLY",
+  "search_cutoff": "2026-08-22",
+  "inclusion_policy": "Primary peer-reviewed occurrence-rate studies with an Earth-analog, habitable-zone, or directly relevant FGK occurrence estimand, plus primary empirical Galactic-dynamics studies that directly test the source-to-target transport assumptions. Reviews are excluded.",
+  "inputs": {
+    "numerical_freeze": {
+      "path": "research\\bryson-joint-posterior\\frozen-v4\\V4_NUMERICAL_FREEZE.json",
+      "sha256": "a4ce3d7f9f3ad0c35c33df6ae24e9457e5f88d2d90d36c196f7aea253d7ca6ea"
+    },
+    "dr25_support_audit": {
+      "path": "research\\v4-validation\\frozen-dr25-support\\dr25_support_audit.json",
+      "sha256": "9c45b08c0142e2e92bf595e70cd5c7742d2d78078ac4d8cdb1cd67bbe3ab1938"
+    },
+    "primary_literature_registry": {
+      "path": "research\\v4-validation\\primary_literature_sources.json",
+      "sha256": "ec32558affaf818bc227aa03e37adce713eb65a3a55ed6d370f8b845f99d3440"
+    }
+  },
+  "v4_estimand": {
+    "unit": "planets per star",
+    "radius_R_earth": [
+      0.9,
+      1.1
+    ],
+    "instellation_I_earth": [
+      0.9,
+      1.1
+    ],
+    "climate_intersection": "conservative Kopparapu habitable zone",
+    "host_temperature_K": [
+      5300.0,
+      6000.0
+    ],
+    "spatial_domain_kpc": [
+      7.0,
+      9.0
+    ]
+  },
+  "v4_posterior": {
+    "constant": {
+      "mean_f_EE": {
+        "q2.5": 0.0024786114288092576,
+        "q16": 0.005787557221218124,
+        "q50": 0.012255079394085128,
+        "q84": 0.023527727675029548,
+        "q97.5": 0.04121486470162053
+      },
+      "mean_f_HZ": {
+        "q2.5": 0.06451363670849902,
+        "q16": 0.16005357501265838,
+        "q50": 0.3883056884517271,
+        "q84": 0.9069829183882389,
+        "q97.5": 1.996663894839248
+      },
+      "narrow_to_broad_HZ_ratio": {
+        "q2.5": 0.01910171998752548,
+        "q16": 0.02487550190260522,
+        "q50": 0.031187600386790245,
+        "q84": 0.0376443684419013,
+        "q97.5": 0.044308209291661245
+      },
+      "Lambda_EE": {
+        "q2.5": 652028.4607654538,
+        "q16": 1522486.3335499624,
+        "q50": 3223845.6020202106,
+        "q84": 6189250.918054584,
+        "q97.5": 10842064.42353256
+      }
+    },
+    "zero": {
+      "mean_f_EE": {
+        "q2.5": 0.0033771076597711243,
+        "q16": 0.007992744162414665,
+        "q50": 0.017381670273021337,
+        "q84": 0.03387835009765266,
+        "q97.5": 0.06021460735661248
+      },
+      "mean_f_HZ": {
+        "q2.5": 0.0965339228213042,
+        "q16": 0.2537282156524479,
+        "q50": 0.6590690724909568,
+        "q84": 1.6215912614902759,
+        "q97.5": 3.7502180874536095
+      },
+      "narrow_to_broad_HZ_ratio": {
+        "q2.5": 0.014928021636556363,
+        "q16": 0.020031117093545773,
+        "q50": 0.02605747593014544,
+        "q84": 0.03272421695692232,
+        "q97.5": 0.03998929694721947
+      },
+      "Lambda_EE": {
+        "q2.5": 888388.6694162593,
+        "q16": 2102587.2038421687,
+        "q50": 4572456.812682157,
+        "q84": 8912106.27478533,
+        "q97.5": 15840174.580809454
+      }
+    }
+  },
+  "local_empirical_support": {
+    "status": "FAIL_LOCAL_EMPIRICAL_SUPPORT",
+    "nominal_target_candidates": 0,
+    "nominal_target_reliability_sum": 0.0
+  },
+  "primary_sources": [
+    {
+      "key": "Bryson2021",
+      "authors": "Bryson et al.",
+      "year": 2021,
+      "journal": "The Astronomical Journal",
+      "doi": "10.3847/1538-3881/abc418",
+      "primary_url": "https://arxiv.org/abs/2010.14812",
+      "quantity": "G-star conservative-HZ source-fidelity anchor",
+      "definition": "Table 5 Model 1 hab2 Poisson result with input uncertainties: 0.5--1.5 R_earth in the conservative habitable zone around 5300--6000 K stars",
+      "reported_result": "0.38 (-0.22,+0.50) planets per star for the constant-extrapolation low bound and 0.63 (-0.38,+0.94) for the zero-extrapolation high bound. The broader 4800--6300 K eta_Earth context is 0.37 and 0.60.",
+      "comparison_role": "source_model_anchor",
+      "comparability": "The 5300--6000 K temperature range matches v4, while Bryson's radius and full conservative-HZ domains remain much broader. The v4 posterior is reconstructed from this DR25 model, so agreement tests source fidelity rather than independent replication."
+    },
+    {
+      "key": "KunimotoMatthews2020",
+      "authors": "Kunimoto and Matthews",
+      "year": 2020,
+      "journal": "The Astronomical Journal",
+      "doi": "10.3847/1538-3881/ab88b0",
+      "primary_url": "https://arxiv.org/abs/2004.05296",
+      "quantity": "G-star HZ occurrence upper limit",
+      "definition": "0.75--1.5 R_earth and 0.99--1.70 au around G stars",
+      "reported_result": "84.1% credible upper limit below 0.18 planets per star.",
+      "comparison_role": "independent_different_estimand",
+      "comparability": "Broader radius range, semimajor-axis rather than instellation bounds, and a G-star host definition; not a like-for-like numerical test."
+    },
+    {
+      "key": "Burke2015",
+      "authors": "Burke et al.",
+      "year": 2015,
+      "journal": "The Astrophysical Journal",
+      "doi": "10.1088/0004-637X/809/1/8",
+      "primary_url": "https://arxiv.org/abs/1506.04175",
+      "quantity": "zeta_1.0",
+      "definition": "planets within 20% of Earth's orbital period and radius around GK dwarfs",
+      "reported_result": "Central estimate about 0.1 planets per star, with an allowed range from 0.01 to 2 after statistical and systematic uncertainty.",
+      "comparison_role": "independent_conceptually_near",
+      "comparability": "Conceptually close narrow Earth-analog box, but period replaces instellation, the catalog is Q1--Q16 rather than DR25, and the allowed range is strongly systematics-dominated."
+    },
+    {
+      "key": "Pascucci2019",
+      "authors": "Pascucci et al.",
+      "year": 2019,
+      "journal": "The Astrophysical Journal Letters",
+      "doi": "10.3847/2041-8213/ab3dac",
+      "primary_url": "https://arxiv.org/abs/1908.06192",
+      "quantity": "eta_Earth under a stripped-core-aware occurrence model",
+      "definition": "Extrapolation from a 0.5--6 R_earth, 2--400 day occurrence fit to Earth-size planets in the habitable zone",
+      "reported_result": "Approximately 5--10% under the preferred interpretation; occurrence-model choices change the extrapolated value by factors of about 4--8.",
+      "comparison_role": "independent_model_form_warning",
+      "comparability": "Different catalog/model/domain and a broad HZ extrapolation. It is evidence that model form can dominate sparse long-period extrapolations, not a direct numerical validation of v4."
+    },
+    {
+      "key": "Bergsten2022",
+      "authors": "Bergsten et al.",
+      "year": 2022,
+      "journal": "The Astronomical Journal",
+      "doi": "10.3847/1538-3881/ac8fea",
+      "primary_url": "https://arxiv.org/abs/2209.04047",
+      "quantity": "Gamma_Earth",
+      "definition": "normalized differential occurrence density near Earth for FGK stars, inferred from a 2--100 day occurrence model and extrapolated to longer periods",
+      "reported_result": "Gamma_Earth = 15% (+6%,-4%) per natural-log period by natural-log radius area.",
+      "comparison_role": "independent_density_not_integral",
+      "comparability": "Gamma_Earth is a local density, not an integrated planets-per-star value for the v4 box. Converting it requires an explicit integration domain and model assumptions."
+    },
+    {
+      "key": "Dai2021",
+      "authors": "Dai et al.",
+      "year": 2021,
+      "journal": "The Astronomical Journal",
+      "doi": "10.3847/1538-3881/ac00ad",
+      "primary_url": "https://doi.org/10.3847/1538-3881/ac00ad",
+      "quantity": "Kepler planet occurrence conditioned on stellar tangential velocity",
+      "definition": "0.5--20 R_earth planets over branch-specific period ranges around single FGK main-sequence Kepler stars grouped by Gaia tangential velocity",
+      "reported_result": "High-velocity stars show lower 1--4 R_earth, P<100 day occurrence than low-velocity stars; the reported separation depends on the stellar-property correction and is about 1.55--2.55 sigma.",
+      "comparison_role": "empirical_kinematic_transport_warning",
+      "comparability": "The result concerns close-in, much broader-radius planets and velocity groups rather than the v4 0.9--1.1 R_earth HZ target. It motivates a transport sensitivity but supplies no correction for v4."
+    },
+    {
+      "key": "BashiZucker2022",
+      "authors": "Bashi and Zucker",
+      "year": 2022,
+      "journal": "Monthly Notices of the Royal Astronomical Society",
+      "doi": "10.1093/mnras/stab3596",
+      "primary_url": "https://doi.org/10.1093/mnras/stab3596",
+      "quantity": "Planet occurrence in thin-disc, thick-disc, and halo Kepler samples",
+      "definition": "Kepler planets around chemically and kinematically classified Galactic populations, including 1--2 R_earth planets at 1--100 days",
+      "reported_result": "Young, slow, metal-rich thin-disc stars have higher close-in super-Earth occurrence than the older thick-disc sample; the thick-disc and halo planet samples are small and stellar age, chemistry, and kinematics are correlated.",
+      "comparison_role": "empirical_galactic_population_transport_warning",
+      "comparability": "This is a direct Galactic-context occurrence comparison but not an HZ or narrow-instellation measurement. Its correlated covariates and sparse thick-disc sample prevent a transferable multiplicative factor."
+    },
+    {
+      "key": "Sayeed2025",
+      "authors": "Sayeed et al.",
+      "year": 2025,
+      "journal": "The Astronomical Journal",
+      "doi": "10.3847/1538-3881/ada8a1",
+      "primary_url": "https://doi.org/10.3847/1538-3881/ada8a1",
+      "quantity": "Kepler DR25 occurrence as a function of isochrone and gyrochronology age",
+      "definition": "0.2--20 R_earth, 0.2--100 day planets around 1.5--8 Gyr FGK stars",
+      "reported_result": "No statistically significant overall age trend; only a slight 1.5--2.5 sigma decrease appears for the low-mass, metal-rich stars dominating the sample, with conclusions limited by age precision and sample size.",
+      "comparison_role": "empirical_age_transport_counterweight",
+      "comparability": "The sample is contemporary and DR25-based but covers short periods and a very broad radius range. It cautions against assuming either a nonzero age correction or age invariance for the narrow HZ target."
+    },
+    {
+      "key": "Frankel2020",
+      "authors": "Frankel et al.",
+      "year": 2020,
+      "journal": "The Astrophysical Journal",
+      "doi": "10.3847/1538-4357/ab910c",
+      "primary_url": "https://doi.org/10.3847/1538-4357/ab910c",
+      "quantity": "Radial orbit migration in the low-alpha Milky Way disk",
+      "definition": "Action-, age-, and chemistry-based dynamical model fitted to APOGEE red-clump stars with survey selection and measurement uncertainties",
+      "reported_result": "Angular-momentum redistribution is much stronger than radial heating, so present-day Galactocentric radius can differ materially from stellar birth radius.",
+      "comparison_role": "empirical_spatial_transport_warning",
+      "comparability": "This is not an exoplanet occurrence estimate. It directly invalidates interpreting the present-day 7--9 kpc mask as a birth-environment selection unless migration is modeled."
+    }
+  ],
+  "comparison_findings": [
+    "No listed literature value has the same radius, instellation, climate-intersection, host-temperature, and catalog definition as v4.",
+    "The Bryson et al. (2021) Table 5 G-star values of 0.38 and 0.63 are the temperature-matched source-fidelity benchmark for the reconstructed v4 broad-HZ medians of 0.388 and 0.659; this is not independent validation.",
+    "The v4 mean occurrence is numerically below broad-HZ literature estimates, as expected for its much narrower integrated phase-space box.",
+    "The absence of nominal DR25 candidates in the exact v4 box prevents a direct candidate-supported interpretation.",
+    "Published literature supports treating occurrence-model form and long-period extrapolation as material epistemic uncertainty not included in the v4 posterior interval.",
+    "Modern age and kinematic studies do not establish a transferable correction: Dai et al. (2021) and Bashi and Zucker (2022) report conditional close-in trends, whereas Sayeed et al. (2025) find no significant overall FGK age trend.",
+    "Frankel et al. (2020) show that radial migration mixes present-day radius and birth radius; the 7--9 kpc mask is therefore a present-day spatial estimand, not a birth-environment selection."
+  ],
+  "prohibited_inferences": [
+    "Do not call literature values inconsistent with v4 solely because their point estimates differ.",
+    "Do not convert Gamma_Earth to an integrated eta value without specifying and applying an integration model.",
+    "Do not describe v4 as an independent reproduction of Bryson et al. (2021).",
+    "Do not treat the literature spread as a statistical confidence interval.",
+    "Do not convert close-in age or kinematic trends into an HZ correction factor without a matched occurrence model and selection function.",
+    "Do not interpret the present-day annulus as a sharply bounded stellar birth annulus."
+  ]
+}
