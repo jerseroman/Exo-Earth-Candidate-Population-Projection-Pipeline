@@ -1,5 +1,7 @@
 # ExoEarth Annulus v4 Software
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22070762.svg)](https://doi.org/10.5281/zenodo.22070762)
+
 This is the license-cleared public software and reproducibility source tree for
 the ExoEarth Annulus v4 analysis. Numerical production history is maintained
 separately; this tree contains audited source, frozen derived summaries,
