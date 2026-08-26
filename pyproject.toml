@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "exoearth-annulus-v4-software"
+name = "exo-earth-candidate-population-projection-pipeline"
 version = "4.0.2"
-description = "Standalone numerical and reproducibility software for the ExoEarth annulus v4 analysis"
+description = "Reproducible Kepler DR25 exo-Earth candidate population projection pipeline"
 requires-python = ">=3.10,<3.11"
 license = {file = "LICENSE"}
 authors = [{name = "Roman Jerše"}]

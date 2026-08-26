@@ -145,7 +145,10 @@ def main() -> None:
     verify_zip(first, files)
 
     DIST.mkdir(parents=True, exist_ok=True)
-    archive_name = f"exoearth-annulus-v4-software-{project_version()}-source.zip"
+    archive_name = (
+        "exo-earth-candidate-population-projection-pipeline-"
+        f"{project_version()}-source.zip"
+    )
     archive_path = DIST / archive_name
     archive_path.write_bytes(first)
     inventory = inventory_csv(files)

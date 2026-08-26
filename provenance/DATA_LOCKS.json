@@ -54,7 +54,7 @@
     "completeness_constant": {
       "filename": "out_sc0_hab2_insol_teff_extrap_const.fits.gz",
       "source_url": "https://stevepur.com/completenessContours/out_sc0_hab2_insol_teff_extrap_const.fits.gz",
-      "source_version": "server Last-Modified 2020-10-28T09:13:13Z; independently matched input artifact 9478278464 from run 32582964364 in jerseroman/exoearth-annulus-v4-software-private-production",
+      "source_version": "server Last-Modified 2020-10-28T09:13:13Z; independently matched input artifact 9478278464 from run 32582964364 in jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
       "expected_sha256": "80cbd492d41b16f5f24db4020c5c60f8084faf864b0bb49f22acd99c49782756",
       "expected_size_bytes": 279546043,
       "distribution_role": "fetch-only",
@@ -65,7 +65,7 @@
     "completeness_zero": {
       "filename": "out_sc0_hab2_insol_teff.fits.gz",
       "source_url": "https://stevepur.com/completenessContours/out_sc0_hab2_insol_teff.fits.gz",
-      "source_version": "server Last-Modified 2020-10-28T09:16:45Z; independently matched input artifact 9478278191 from run 32582966433 in jerseroman/exoearth-annulus-v4-software-private-production",
+      "source_version": "server Last-Modified 2020-10-28T09:16:45Z; independently matched input artifact 9478278191 from run 32582966433 in jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
       "expected_sha256": "5ce090e4edc4bf602f59d162d53bbc6095d071bf907a6df19d3b301d295a09ff",
       "expected_size_bytes": 265659493,
       "distribution_role": "fetch-only",

@@ -20,7 +20,7 @@
   "independent_audit": {
     "date_utc": "2026-08-23",
     "record": "provenance/INDEPENDENT_NUMERICAL_AUDIT_20260823.json",
-    "execution_repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+    "execution_repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
     "scientific_production_commit": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
     "constant_realizations_converged": "400/400",
     "zero_realizations_converged": "400/400",

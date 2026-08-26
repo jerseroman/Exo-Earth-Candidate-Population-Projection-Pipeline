@@ -10,14 +10,14 @@
       "role": "Historical numerical source only; not the final v4 software or reproducibility destination."
     },
     "private_production": {
-      "name": "jerseroman/exoearth-annulus-v4-software-private-production",
-      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software-private-production",
+      "name": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
+      "url": "https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
       "visibility_at_verification": "private",
       "role": "Private licensed-input production and hybrid cross-environment audit/reconstruction source; not made public."
     },
     "public_release": {
-      "name": "jerseroman/exoearth-annulus-v4-software",
-      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software",
+      "name": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline",
+      "url": "https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline",
       "visibility_at_record_creation": "private pre-publication",
       "release_visibility": "public",
       "role": "Final license-cleared public software and reproducibility destination."
@@ -79,7 +79,7 @@
       "workflow": "Bryson v4 corrected adaptive-MCMC pilot",
       "workflow_path": ".github/workflows/bryson-v4-corrected-pilot.yml",
       "head_sha": "d8d8f37ad481e33052603d42f640f74573d9b92f",
-      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software-private-production/actions/runs/32581407634",
+      "url": "https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production/actions/runs/32581407634",
       "conclusion": "success",
       "maximum_mcmc_steps": 20000,
       "role": "Independent audit control pilot"
@@ -89,7 +89,7 @@
       "workflow": "JJ G-host dR=0.5 + TAMS validation",
       "workflow_path": ".github/workflows/jj-g-host-export.yml",
       "head_sha": "f00363ec2d2dcb521b54b064388eea87dcfefcba",
-      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software-private-production/actions/runs/32581659930",
+      "url": "https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production/actions/runs/32581659930",
       "conclusion": "success",
       "maximum_mcmc_steps": null,
       "role": "Independent audit host artifact"
@@ -99,7 +99,7 @@
       "workflow": "Bryson v4 corrected constant production posterior",
       "workflow_path": ".github/workflows/bryson-v4-corrected-production.yml",
       "head_sha": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
-      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software-private-production/actions/runs/32582964364",
+      "url": "https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production/actions/runs/32582964364",
       "conclusion": "failure",
       "maximum_mcmc_steps": 20000,
       "role": "Fifteen scientific shards retained; missing shard 14 completed locally after a billing runner-start failure"
@@ -109,7 +109,7 @@
       "workflow": "Bryson v4 corrected zero extended posterior",
       "workflow_path": ".github/workflows/bryson-v4-corrected-zero-extended.yml",
       "head_sha": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
-      "url": "https://github.com/jerseroman/exoearth-annulus-v4-software-private-production/actions/runs/32582966433",
+      "url": "https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production/actions/runs/32582966433",
       "conclusion": "failure",
       "maximum_mcmc_steps": 30000,
       "role": "All sixteen scientific shards retained; aggregate completed locally after a billing runner-start failure"

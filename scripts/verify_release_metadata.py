@@ -15,10 +15,12 @@ VERSION = "4.0.2"
 RELEASE_DATE = "2026-08-23"
 DOI = "10.5281/zenodo.22070762"
 ORCID = "https://orcid.org/0009-0001-5003-5354"
-PUBLIC_REPOSITORY = "jerseroman/exoearth-annulus-v4-software"
+PUBLIC_REPOSITORY = (
+    "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline"
+)
 LEGACY_REPOSITORY = "jerseroman/are-we-alone-in-the-universe"
 PRIVATE_PRODUCTION_REPOSITORY = (
-    "jerseroman/exoearth-annulus-v4-software-private-production"
+    "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production"
 )
 EXPECTED_RUNS = {
     "31358271145": (LEGACY_REPOSITORY, None),
@@ -68,7 +70,7 @@ def main() -> None:
         f'orcid: "{ORCID}"',
         f'repository-code: "https://github.com/{PUBLIC_REPOSITORY}"',
         f"/blob/v{VERSION}/LICENSE_POLICY.md",
-        "Creator attribution applies to the assembled ExoEarth Annulus v4 software",
+        "Reproducible astrophysical analysis, validation, and archival pipeline",
     ):
         require_text(cff, token, "CITATION.cff")
     if re.search(r"(?i)(?:\.dev\d*|-dev|placeholder|x{4,})", cff):
@@ -329,6 +331,7 @@ def main() -> None:
         fail(f"release change record contains missing paths: {missing_paths}")
 
     base = changes["base_release_commit"]
+    release_ref = f"v{VERSION}"
     try:
         base_exists = subprocess.run(
             ["git", "cat-file", "-e", f"{base}^{{commit}}"],
@@ -337,21 +340,20 @@ def main() -> None:
             stderr=subprocess.DEVNULL,
             check=False,
         ).returncode == 0
+        release_exists = subprocess.run(
+            ["git", "cat-file", "-e", f"{release_ref}^{{commit}}"],
+            cwd=ROOT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        ).returncode == 0
     except FileNotFoundError:
         base_exists = False
-    if base_exists:
+        release_exists = False
+    if base_exists and release_exists:
         changed = set(
             subprocess.run(
-                ["git", "diff", "--name-only", base],
-                cwd=ROOT,
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.splitlines()
-        )
-        changed.update(
-            subprocess.run(
-                ["git", "ls-files", "--others", "--exclude-standard"],
+                ["git", "diff", "--name-only", base, release_ref],
                 cwd=ROOT,
                 check=True,
                 capture_output=True,
@@ -360,7 +362,7 @@ def main() -> None:
         )
         if changed != set(recorded_paths):
             fail(
-                "release change record path mismatch; missing="
+                "tagged release change record path mismatch; missing="
                 f"{sorted(changed.difference(recorded_paths))}, extra="
                 f"{sorted(set(recorded_paths).difference(changed))}"
             )

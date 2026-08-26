@@ -6,8 +6,8 @@ Roman Jerše confirms that the original material attributed to him in
 `provenance/LICENSE_MATRIX.csv` is offered under the MIT License in this
 repository.
 
-Roman Jerše is the creator of the assembled ExoEarth Annulus v4 software and
-reproducibility release and is identified by ORCID iD
+Roman Jerše is the creator of the assembled Exo-Earth Candidate Population
+Projection Pipeline release and is identified by ORCID iD
 `https://orcid.org/0009-0001-5003-5354`. This resource-level creator
 attribution does not assert authorship or copyright in third-party components.
 

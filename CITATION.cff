@@ -1,14 +1,14 @@
 cff-version: 1.2.0
-title: "ExoEarth Annulus v4 Software"
+title: "Exo-Earth Candidate Population Projection Pipeline"
 message: "If you use this software, cite the archived v4.0.2 release."
 type: software
 authors:
   - family-names: "Jerše"
     given-names: "Roman"
     orcid: "https://orcid.org/0009-0001-5003-5354"
-repository-code: "https://github.com/jerseroman/exoearth-annulus-v4-software"
+repository-code: "https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline"
 version: "4.0.2"
 date-released: "2026-08-23"
 doi: "10.5281/zenodo.22070762"
-abstract: "Creator attribution applies to the assembled ExoEarth Annulus v4 software and reproducibility release and to Roman-authored components. Third-party components retain their original authorship, copyright, and licenses under the path-level policy."
-license-url: "https://github.com/jerseroman/exoearth-annulus-v4-software/blob/v4.0.2/LICENSE_POLICY.md"
+abstract: "Reproducible astrophysical analysis, validation, and archival pipeline for reconstructing and propagating Kepler DR25 exoplanet-occurrence posteriors, including corrected asymmetric measurement-error propagation and a legacy source-faithful mode, catalog-reliability resampling, adaptive ensemble MCMC with convergence, autocorrelation-time, ESS and MCSE diagnostics, JJ/PARSEC/TAMS thin- and thick-disk host-star population synthesis and main-sequence selection, Kopparapu habitable-zone modelling and climate clipping, Galactic radial integration and narrow-domain exo-Earth candidate population projections, direct DR25 local empirical-support analysis, host-selector, TAMS, radial-grid, occurrence-model, climate, habitable-zone and spatial sensitivity tests, frozen posterior and derived population outputs, scientific figure-generation scripts, cryptographically locked external-data and source dependencies, SHA-256 manifests, provenance and migration records, mixed-license documentation, unit and regression tests, CI workflows, verification utilities, and reproducible public-release tooling."
+license-url: "https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline/blob/v4.0.2/LICENSE_POLICY.md"

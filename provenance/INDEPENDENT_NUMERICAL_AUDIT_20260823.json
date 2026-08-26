@@ -2,8 +2,8 @@
   "schema_version": 1,
   "audit_status": "PASS",
   "captured_at_utc": "2026-08-23T08:22:24Z",
-  "public_release_repository": "jerseroman/exoearth-annulus-v4-software",
-  "scientific_production_repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+  "public_release_repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline",
+  "scientific_production_repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
   "run_provenance_record": "provenance/RUN_PROVENANCE.json",
   "public_evidence_directory": "provenance/independent-audit-evidence",
   "evidence_boundary": "Cleared control, comparison, aggregate-summary, checksum-manifest, and representative environment records are bundled. Row-level, large-chain, absolute-path-bearing, and private-download records are retained only by hash and are not represented as publicly retrievable objects.",
@@ -31,19 +31,19 @@
   },
   "github_actions": {
     "pilot": {
-      "repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+      "repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
       "run_id": 32581407634,
       "head_sha": "d8d8f37ad481e33052603d42f640f74573d9b92f",
       "conclusion": "success"
     },
     "host_export": {
-      "repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+      "repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
       "run_id": 32581659930,
       "head_sha": "f00363ec2d2dcb521b54b064388eea87dcfefcba",
       "conclusion": "success"
     },
     "constant_production": {
-      "repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+      "repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
       "run_id": 32582964364,
       "head_sha": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
       "workflow_conclusion": "failure",
@@ -52,7 +52,7 @@
       "classification": "GitHub Actions billing/account infrastructure failure before scientific execution of shard 14; downstream jobs were skipped"
     },
     "zero_production": {
-      "repository": "jerseroman/exoearth-annulus-v4-software-private-production",
+      "repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
       "run_id": 32582966433,
       "head_sha": "522f1ed0f1ed041945f32b575e8ec24bf3a0f404",
       "workflow_conclusion": "failure",

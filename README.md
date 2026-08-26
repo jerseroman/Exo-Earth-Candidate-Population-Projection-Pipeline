@@ -1,18 +1,27 @@
-# ExoEarth Annulus v4 Software
+# Exo-Earth Candidate Population Projection Pipeline
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22070762.svg)](https://doi.org/10.5281/zenodo.22070762)
 
-This is the license-cleared public software and reproducibility source tree for
-the ExoEarth Annulus v4 analysis. Numerical production history is maintained
-separately; this tree contains audited source, frozen derived summaries,
-provenance records, and the verification suite.
+Reproducible astrophysical analysis, validation, and archival pipeline for
+reconstructing and propagating Kepler DR25 exoplanet-occurrence posteriors,
+including corrected asymmetric measurement-error propagation and a legacy
+source-faithful mode, catalog-reliability resampling, adaptive ensemble MCMC
+with convergence, autocorrelation-time, ESS and MCSE diagnostics,
+JJ/PARSEC/TAMS thin- and thick-disk host-star population synthesis and
+main-sequence selection, Kopparapu habitable-zone modelling and climate
+clipping, Galactic radial integration and narrow-domain exo-Earth candidate
+population projections, direct DR25 local empirical-support analysis,
+host-selector, TAMS, radial-grid, occurrence-model, climate, habitable-zone and
+spatial sensitivity tests, frozen posterior and derived population outputs,
+scientific figure-generation scripts, cryptographically locked external-data
+and source dependencies, SHA-256 manifests, provenance and migration records,
+mixed-license documentation, unit and regression tests, CI workflows,
+verification utilities, and reproducible public-release tooling.
 
-The software implements corrected two-sided measurement-error propagation and
-a separately tested legacy source-faithful compatibility mode, adaptive
-ensemble MCMC diagnostics, JJ/PARSEC/TAMS host selection, Kepler DR25 support
-auditing, Galactic propagation, and model-sensitivity checks. Reported
-candidate counts are conditional model projections, not observed planet counts
-or a census of inhabited worlds.
+This is the license-cleared public software and reproducibility source tree for
+the Exo-Earth Candidate Population Projection Pipeline. Numerical production
+history is maintained separately; this tree contains audited source, frozen
+derived summaries, provenance records, and the verification suite.
 
 ## What this public tree verifies
 
@@ -100,4 +109,4 @@ without direct local empirical support.
 The version-specific archival record for version 4.0.2 uses DOI
 [`10.5281/zenodo.22070762`](https://doi.org/10.5281/zenodo.22070762). The
 corresponding source tag and release are
-[`v4.0.2`](https://github.com/jerseroman/exoearth-annulus-v4-software/releases/tag/v4.0.2).
+[`v4.0.2`](https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline/releases/tag/v4.0.2).
