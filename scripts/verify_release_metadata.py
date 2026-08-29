@@ -92,11 +92,11 @@ def main() -> None:
         "separate completeness scenarios, not bounds",
         "README.md completeness interpretation",
     )
-    require_text(
+    if not re.search(
+        r"neither\s+headline value is a direct locally candidate-supported measurement",
         readme,
-        "not a direct locally candidate-supported measurement",
-        "README.md local-support limitation",
-    )
+    ):
+        fail("README.md lacks the local-support limitation")
     if "Their exact URLs" in readme:
         fail("README overstates URL availability for derived data locks")
 
