@@ -35,6 +35,7 @@ provenance/MIGRATION_RECORD.json,Original repository material by Roman Jerše,Ro
 provenance/PUBLIC_EXCLUSIONS.csv,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 provenance/RELEASE_4_0_1_CHANGE_RECORD.json,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 provenance/RELEASE_4_0_2_CHANGE_RECORD.json,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
+provenance/RELEASE_4_0_3_CHANGE_RECORD.json,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 provenance/ROMAN_MIT_PATHS.txt,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 provenance/RUN_PROVENANCE.json,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 provenance/SOURCE_LOCKS.json,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
@@ -92,6 +93,8 @@ research/jj-host-export/test_metallicity_tams_validation.py,Original repository 
 research/jj-host-export/test_tams_wording.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/jj-tams-convergence/compare_convergence.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/jj-tams-convergence/tams_radial_convergence.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
+research/rocky-composition/PHASE0_ROCKY_MODEL_AUDIT.json,Unreviewed repository path,NOASSERTION,NOASSERTION,REVIEW/BLOCK,no,Fail-closed default: an explicit audited origin and license decision is required.
+research/rocky-composition/PHASE0_ROCKY_MODEL_AUDIT.md,Unreviewed repository path,NOASSERTION,NOASSERTION,REVIEW/BLOCK,no,Fail-closed default: an explicit audited origin and license decision is required.
 research/v4-validation/PHASE3_DR25_SUPPORT_REPORT.md,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/v4-validation/PHASE3_HOST_TAMS_REPORT.md,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/v4-validation/PHASE4_PRIMARY_LITERATURE_REPORT.md,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.

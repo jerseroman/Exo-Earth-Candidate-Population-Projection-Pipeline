@@ -1,6 +1,6 @@
 # Exo-Earth Candidate Population Projection Pipeline
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22070762.svg)](https://doi.org/10.5281/zenodo.22070762)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22158798.svg)](https://doi.org/10.5281/zenodo.22158798)
 
 Reproducible astrophysical analysis, validation, and archival pipeline for
 reconstructing and propagating Kepler DR25 exoplanet-occurrence posteriors,
@@ -99,14 +99,17 @@ components. His ORCID iD is
 ## Scientific status
 
 The frozen baseline contains 400 accepted constant-completeness and 400
-accepted zero-completeness realizations, with conditional 7--9 kpc medians of
-3.224 million and 4.572 million narrow-domain candidates. The exact nominal
-DR25 target contains zero candidates, so these are separable model projections
-without direct local empirical support.
+accepted zero-completeness realizations. Their conditional 7--9 kpc medians
+are approximately 3.2 million and 4.6 million model-defined narrow-domain
+planets, respectively. These are separate completeness scenarios, not bounds
+of one uncertainty interval. Exact medians remain in the frozen reproducibility
+tables. The exact nominal DR25 target contains zero candidates, so neither
+headline value is a direct locally candidate-supported measurement; both are
+conditional separable-model projections.
 
 ## Citation and release
 
-The version-specific archival record for version 4.0.2 uses DOI
-[`10.5281/zenodo.22070762`](https://doi.org/10.5281/zenodo.22070762). The
+The version-specific archival record for version 4.0.3 uses DOI
+[`10.5281/zenodo.22158798`](https://doi.org/10.5281/zenodo.22158798). The
 corresponding source tag and release are
-[`v4.0.2`](https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline/releases/tag/v4.0.2).
+[`v4.0.3`](https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline/releases/tag/v4.0.3).

@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "status": "AUDITED_REPRODUCIBILITY_HARDENING_PATCH",
+  "release_version": "4.0.3",
+  "date_utc": "2026-08-29",
+  "base_release_version": "4.0.2",
+  "base_release_commit": "9980d0842f56523c082ea6c16766d3d3a57ce188",
+  "reserved_zenodo_doi": "10.5281/zenodo.22158798",
+  "scope": "Public-name migration, scientifically cautious headline rounding, deterministic packaging, validation hardening, secure input handling, and immutable GitHub Actions pinning.",
+  "scientific_logic_changed": false,
+  "mcmc_configuration_or_seeds_changed": false,
+  "frozen_numerical_values_changed": false,
+  "headline_reporting_precision_changed": true,
+  "change_groups": [
+    {
+      "reason": "Public project identity, version-specific DOI, ORCID-preserving citation metadata, cautious headline rounding, and release provenance.",
+      "paths": [
+        "AUTHORSHIP_AND_LICENSING_DECLARATION.md",
+        "CITATION.cff",
+        "README.md",
+        "REPRODUCIBILITY.md",
+        "provenance/DATA_LOCKS.json",
+        "provenance/INDEPENDENT_NUMERICAL_AUDIT_20260823.json",
+        "provenance/MIGRATION_RECORD.json",
+        "provenance/RUN_PROVENANCE.json",
+        "pyproject.toml",
+        "scripts/verify_release_metadata.py"
+      ]
+    },
+    {
+      "reason": "GitHub Actions dependencies pinned to reviewed immutable commit identifiers.",
+      "paths": [
+        ".github/workflows/bryson-v4-corrected-pilot.yml",
+        ".github/workflows/bryson-v4-corrected-production.yml",
+        ".github/workflows/bryson-v4-corrected-zero-extended.yml",
+        ".github/workflows/bryson-v4-measurement-tests.yml",
+        ".github/workflows/bryson-v4-propagate-constant.yml",
+        ".github/workflows/jj-g-host-export.yml",
+        ".github/workflows/jj-tams-metallicity-differential.yml",
+        ".github/workflows/jj-tams-radial-convergence.yml",
+        ".github/workflows/verify.yml"
+      ]
+    },
+    {
+      "reason": "Deterministic gzip and ZIP production, explicit runtime validation, safe TAR extraction, HTTPS-only locked-input retrieval, and normal plus optimized-mode regression coverage.",
+      "paths": [
+        "Makefile",
+        "research/bryson-joint-posterior/aggregate_hab2_joint_posterior.py",
+        "research/bryson-joint-posterior/clustered_monte_carlo.py",
+        "research/bryson-joint-posterior/propagate_hab2_joint_posterior.py",
+        "research/bryson-joint-posterior/test_clustered_monte_carlo.py",
+        "research/bryson-joint-posterior/test_propagate_host_measure.py",
+        "research/jj-host-export/assert_canonical_tams.py",
+        "research/jj-host-export/bryson_model_form_sensitivity.py",
+        "research/jj-host-export/hz_boundary_sensitivity.py",
+        "research/jj-host-export/metallicity_tams_differential_sensitivity.py",
+        "research/jj-host-export/promote_tams_provider.py",
+        "research/jj-host-export/recalc_all_branches_tams.py",
+        "research/jj-host-export/tams_ab_test.py",
+        "research/jj-host-export/test_metallicity_tams_validation.py",
+        "research/jj-tams-convergence/compare_convergence.py",
+        "research/jj-tams-convergence/tams_radial_convergence.py",
+        "research/v4-validation/test_data_locks.py",
+        "scripts/audit_repository_scope.py",
+        "scripts/build_manifest.py",
+        "scripts/build_public_package.py",
+        "scripts/fetch_locked_inputs.py",
+        "scripts/verify_license_policy.py"
+      ]
+    },
+    {
+      "reason": "Fail-closed licensing inventory, release change record, and deterministic repository manifest regenerated for v4.0.3.",
+      "paths": [
+        "MANIFEST.sha256",
+        "provenance/LICENSE_MATRIX.csv",
+        "provenance/RELEASE_4_0_3_CHANGE_RECORD.json",
+        "provenance/ROMAN_MIT_PATHS.txt"
+      ]
+    }
+  ]
+}

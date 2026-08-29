@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "exo-earth-candidate-population-projection-pipeline"
-version = "4.0.2"
+version = "4.0.3"
 description = "Reproducible Kepler DR25 exo-Earth candidate population projection pipeline"
 requires-python = ">=3.10,<3.11"
 license = {file = "LICENSE"}
