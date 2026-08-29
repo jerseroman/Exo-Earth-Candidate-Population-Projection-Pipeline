@@ -26,8 +26,16 @@ full temperature coverage. JJ row-level FeH would be treated as scaled-solar
 """
 from __future__ import annotations
 
-import argparse, csv, hashlib, json, math, tarfile
+import argparse
+import csv
+import hashlib
+import json
+import math
+import shutil
+import tarfile
+import warnings
 from pathlib import Path
+
 import numpy as np
 from astropy.io import ascii
 from tams_reference import tams_radius_rsun
@@ -48,6 +56,9 @@ ANCHORS=[
  (0.010,0.267,'Z0.01Y0.267.tar.gz'),(0.014,0.273,'Z0.014Y0.273.tar.gz'),
  (0.017,0.279,'Z0.017Y0.279.tar.gz'),(0.020,0.284,'Z0.02Y0.284.tar.gz'),
  (0.030,0.302,'Z0.03Y0.302.tar.gz'),(0.040,0.321,'Z0.04Y0.321.tar.gz')]
+
+def require(condition,message):
+ if not condition:raise RuntimeError(message)
 
 def sha256(p):
  h=hashlib.sha256()
@@ -73,7 +84,15 @@ def safe_extract(tf,d):
  for m in tf.getmembers():
   q=(d/m.name).resolve()
   if root not in q.parents and q!=root:raise RuntimeError(m.name)
- tf.extractall(d)
+  if m.isdir():
+   q.mkdir(parents=True,exist_ok=True)
+   continue
+  if not m.isfile():
+   raise RuntimeError(f'unsupported TAR member: {m.name}')
+  q.parent.mkdir(parents=True,exist_ok=True)
+  source=tf.extractfile(m)
+  if source is None:raise RuntimeError(f'unreadable TAR member: {m.name}')
+  with source, q.open('wb') as target:shutil.copyfileobj(source,target)
 
 def validate_low_mass_curve_points(points,z):
  pts=[q for q in points if 4700<=q[0]<=6400 and np.isfinite(q[2]) and q[2]<=LOW_MASS_MAX_MSUN and q[1]<MAX_TAMS_RADIUS_RSUN]
@@ -96,8 +115,11 @@ def build_curve(z,y,arcname,cache):
  # phase-7 sequence. ADD tracks are excluded.
  for p in sorted(d.rglob('*.DAT'),key=lambda q:q.name):
   if 'ADD' in p.name.upper():continue
+  t=None
   try:t=ascii.read(p)
-  except Exception:continue
+  except Exception as exc:  # noqa: BLE001 - Astropy readers raise varied errors
+   warnings.warn(f'Skipping unreadable PARSEC track {p.name}: {exc}',RuntimeWarning)
+  if t is None:continue
   if not {'PHASE','AGE','LOG_TE','LOG_L'}.issubset(t.colnames):continue
   ph=np.asarray(t['PHASE'],float); age=np.asarray(t['AGE'],float)
   u=np.where((ph==7.)&(age<TRACK_AGE_MAX_GYR*1e9))[0]
@@ -182,9 +204,9 @@ def main():
   dd={}
   for k in ['1D','2D']:
    N=trap(rad,f'N_{k}',loR,hiR);L1=trap(rad,f'L1_{k}',loR,hiR);L2=trap(rad,f'L2_{k}',loR,hiR);th=trap(rad,f'N_{k}_thick',loR,hiR);tn=trap(rad,f'N_{k}_thin',loR,hiR)
-   assert 0<=L2<=L1;dd[k]={'N_G':N,'Lambda_ESHZ':L1,'Lambda_earth10':L2,'thin_hosts':tn,'thick_hosts':th,'thick_fraction':th/N}
+   require(0<=L2<=L1,f'Invalid population ordering for {name}/{k}: {L1=}, {L2=}');dd[k]={'N_G':N,'Lambda_ESHZ':L1,'Lambda_earth10':L2,'thin_hosts':tn,'thick_hosts':th,'thick_fraction':th/N}
   dd['delta_2D_vs_1D']={x:(dd['2D'][x]-dd['1D'][x])/dd['1D'][x] for x in ['N_G','Lambda_ESHZ','Lambda_earth10']};res['domains'][name]=dd
- b=res['domains']['lineweaver_7_9']['1D'];assert abs(b['N_G']-263061992.3667424)<1e-2 and abs(b['Lambda_ESHZ']-105716685.0799756)<1e-2 and abs(b['Lambda_earth10']-3376462.6740267)<1e-2
+ b=res['domains']['lineweaver_7_9']['1D'];require(abs(b['N_G']-263061992.3667424)<1e-2 and abs(b['Lambda_ESHZ']-105716685.0799756)<1e-2 and abs(b['Lambda_earth10']-3376462.6740267)<1e-2,f'Canonical plug-in anchor mismatch: {b}')
  ch=[r for r in parent if 7<=r['R_kpc']<=9 and r['B1']!=r['B2']]
  for label,rows in [('gained',[r for r in ch if not r['B1'] and r['B2']]),('lost',[r for r in ch if r['B1'] and not r['B2']])]:
   res[label]={'rows':len(rows),'FeH_weighted_q16_q50_q84':wquant([r['FeH'] for r in rows],[r['N'] for r in rows],[.16,.5,.84]) if rows else [None,None,None]}

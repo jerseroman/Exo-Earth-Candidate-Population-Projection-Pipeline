@@ -3,21 +3,34 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import sys
 import tempfile
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
+import fetch_locked_inputs  # noqa: E402
 import verify_locked_inputs  # noqa: E402
 
 
 class DataLockTests(unittest.TestCase):
+    def test_fetch_url_is_restricted_to_credential_free_https(self) -> None:
+        valid = "https://example.org/science/input.csv"
+        self.assertEqual(fetch_locked_inputs.validate_source_url(valid), valid)
+        for invalid in (
+            "http://example.org/input.csv",
+            "file:///tmp/input.csv",
+            "https://user:secret@example.org/input.csv",
+            "not-a-url",
+        ):
+            with self.subTest(url=invalid):
+                with self.assertRaises(SystemExit):
+                    fetch_locked_inputs.validate_source_url(invalid)
+
     def test_required_inputs_and_workflow_bindings_are_declared(self) -> None:
         registry = verify_locked_inputs.verify_registry()
         locks = registry["locks"]

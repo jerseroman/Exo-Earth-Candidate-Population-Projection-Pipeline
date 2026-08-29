@@ -28,8 +28,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-
 from clustered_monte_carlo import (
+    DETERMINISTIC_GZIP_COMPRESSION,
     cluster_bootstrap_quantile_mcse,
     contiguous_batch_quantile_mcse,
 )
@@ -112,6 +112,13 @@ def collapse_host_measure(
     if set(hosts.columns) != required:
         raise RuntimeError(f"Host columns do not match {sorted(required)}")
     hosts = hosts.loc[(hosts.R_kpc >= 7.0) & (hosts.R_kpc <= 9.0)].copy()
+    numeric = hosts.loc[:, ["R_kpc", "Teff_K", "N_surface_pc-2"]].to_numpy(
+        dtype=float
+    )
+    if not np.isfinite(numeric).all():
+        raise RuntimeError("Non-finite host-measure input")
+    if np.any(hosts["N_surface_pc-2"].to_numpy(dtype=float) < 0.0):
+        raise RuntimeError("Negative host surface density")
     nodes = np.sort(hosts.R_kpc.unique())
     if not np.array_equal(nodes, np.array([7.0, 7.5, 8.0, 8.5, 9.0])):
         raise RuntimeError(f"Unexpected 7--9 kpc radial nodes: {nodes}")
@@ -180,11 +187,12 @@ def propagate_chunk(
         TEFF_COEFFICIENT[0] * teff_matrix ** TEFF_EXPONENT[0],
         TEFF_COEFFICIENT[1] * teff_matrix ** TEFF_EXPONENT[1],
     )
-    temperature_factor = (
-        geometric
-        * np.power(teff_matrix, gamma)
-        / temperature_normalization(gamma)
-    )
+    with np.errstate(all="ignore"):
+        temperature_factor = (
+            geometric
+            * np.power(teff_matrix, gamma)
+            / temperature_normalization(gamma)
+        )
 
     radius_denominator = power_integral(
         SOURCE_RADIUS[0], SOURCE_RADIUS[1], alpha
@@ -225,6 +233,13 @@ def propagate_chunk(
     )
     lambda_hz = f0[:, 0] * radius_hz[:, 0] * weighted_hz
     lambda_ee = f0[:, 0] * radius_ee[:, 0] * weighted_ee
+    if not np.isfinite(lambda_hz).all() or not np.isfinite(lambda_ee).all():
+        raise FloatingPointError("Non-finite propagated population result")
+    if np.any(lambda_hz <= 0.0) or np.any(lambda_ee < 0.0):
+        raise RuntimeError("Non-positive or negative propagated population result")
+    tolerance = 1.0e-12 * np.maximum(lambda_hz, 1.0)
+    if np.any(lambda_ee > lambda_hz + tolerance):
+        raise RuntimeError("Propagated invariant failed: Lambda_EE > Lambda_HZ")
     return lambda_hz, lambda_ee
 
 
@@ -367,7 +382,11 @@ def main() -> None:
 
     draws = pd.concat(output_frames, ignore_index=True)
     draws_path = out / f"galactic_posterior_draws_{args.branch}.csv.gz"
-    draws.to_csv(draws_path, index=False, compression="gzip")
+    draws.to_csv(
+        draws_path,
+        index=False,
+        compression=DETERMINISTIC_GZIP_COMPRESSION,
+    )
 
     quantities = (
         "mean_f_HZ",

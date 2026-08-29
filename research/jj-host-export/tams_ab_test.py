@@ -16,11 +16,18 @@ metallicity-dependent host-selection sensitivity can be evaluated on exactly the
 same weighted population. In jjmodel this FeH field is assigned from the thin/thick
 disk AMR value used to construct each stellar assembly.
 """
+import argparse
+import csv
+import json
+import math
+import os
+import sys
 from pathlib import Path
-import argparse, csv, json, math, os, sys
+
 import numpy as np
 from astropy.table import Table
-from tams_reference import tams_radius_rsun, EXPECTED_SHA256 as TAMS_REFERENCE_SHA256
+from tams_reference import EXPECTED_SHA256 as TAMS_REFERENCE_SHA256
+from tams_reference import tams_radius_rsun
 
 TMIN,TMAX=5300.0,6000.0
 AGE_MIN=4.57
@@ -32,6 +39,9 @@ F0=1.107; ALPHA=-1.082; BETA=-0.839; GAMMA=-2.671
 T0=3900.; TBREAK=5117.; T1=6300.
 RUN=(1.107,1.332e-4,1.58e-8,-8.308e-12,-1.931e-15)
 MAXG=(0.356,6.171e-5,1.698e-9,-3.198e-12,-5.575e-16)
+
+def require(condition,message):
+    if not condition:raise RuntimeError(message)
 
 def P(lo,hi,p): return (hi**(p+1)-lo**(p+1))/(p+1)
 ARFIT=P(.5,2.5,ALPHA); AIFIT=P(.2,2.2,BETA)
@@ -72,7 +82,8 @@ def main():
     ap.add_argument('--jj-root',required=True); ap.add_argument('--run-dir',required=True)
     ap.add_argument('--out',required=True); ap.add_argument('--iso',default='Padova')
     a=ap.parse_args(); sys.path.insert(0,str(Path(a.jj_root).resolve())); os.chdir(Path(a.run_dir).resolve())
-    from jjmodel.input_ import p, a as jj
+    from jjmodel.input_ import a as jj
+    from jjmodel.input_ import p
     if abs(float(p.dR)-0.5)>1e-12: raise RuntimeError(f'TAMS A/B requires dR=0.5, got {p.dR}')
     poptab=Path(jj.T['poptab']); out=Path(a.out); out.mkdir(parents=True,exist_ok=True)
     parent_path=out/'jj_g_hosts_parent_prelogg_padova.csv'
@@ -128,7 +139,10 @@ def main():
         result['domains'][name]=d
     for d in result['domains'].values():
         for sel in ['A','B']:
-            assert d[sel]['Lambda_earth10'] <= d[sel]['Lambda_ESHZ'] + 1e-9
+            require(
+                d[sel]['Lambda_earth10'] <= d[sel]['Lambda_ESHZ'] + 1e-9,
+                f"Population ordering failed for {sel}: {d[sel]}",
+            )
     (out/'tams_ab_results.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
     print(json.dumps(result,indent=2))
 

@@ -13,8 +13,12 @@ Two distinct tests are reported:
    Eq. (4), Table 1, DOI 10.1088/2041-8205/787/2/L29. The maximum-greenhouse
    outer boundary is unchanged across these mass cases, as stated in Table 1.
 """
+import argparse
+import csv
+import json
+import math
 from pathlib import Path
-import argparse, csv, json, math
+
 import numpy as np
 
 # Frozen Bryson Model 1 / hab2 / constant-completeness branch.
@@ -32,6 +36,10 @@ RUNAWAY_BY_MASS={
     5.0:(1.188,1.433e-4,1.707e-8,-8.968e-12,-2.084e-15),
 }
 PERTURBATIONS=(0.95,0.99,1.0,1.01,1.05)
+
+
+def require(condition,message):
+    if not condition:raise RuntimeError(message)
 
 
 def P(lo,hi,p):
@@ -98,7 +106,7 @@ def integrate(rows, runaway_coeff, inner_scale=1.0, loR=7.0, hiR=9.0):
     if abs(arr[0,0]-loR)>1e-9 or abs(arr[-1,0]-hiR)>1e-9:
         raise RuntimeError(f'Missing radial endpoints: {arr[:,0]}')
     vals=[float(np.trapz(arr[:,i],arr[:,0])) for i in (1,2,3)]
-    assert vals[0]>0 and vals[1]>=0 and vals[2]>=0 and vals[2]<=vals[1]
+    require(vals[0]>0 and vals[1]>=0 and vals[2]>=0 and vals[2]<=vals[1], f'Invalid population ordering: {vals}')
     return vals
 
 
@@ -125,9 +133,9 @@ def main():
     rows=load_rows(a.input)
 
     baseN,baseL1,baseL2=integrate(rows,RUNAWAY_BY_MASS[1.0])
-    assert abs(baseN-263061992.36674243)<1e-2, baseN
-    assert abs(baseL1-105716685.0799756)<1e-2, baseL1
-    assert abs(baseL2-3376462.6740267016)<1e-2, baseL2
+    require(abs(baseN-263061992.36674243)<1e-2, f'N_G anchor mismatch: {baseN}')
+    require(abs(baseL1-105716685.0799756)<1e-2, f'Lambda_ESHZ anchor mismatch: {baseL1}')
+    require(abs(baseL2-3376462.6740267016)<1e-2, f'Lambda_earth10 anchor mismatch: {baseL2}')
 
     perturb=[]
     for scale in PERTURBATIONS:

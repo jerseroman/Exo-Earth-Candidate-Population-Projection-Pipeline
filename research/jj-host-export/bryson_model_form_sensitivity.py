@@ -13,8 +13,12 @@ Uncertainty, Low Bound (constant-completeness):
 Model 2 therefore measures total Teff dependence directly rather than separating
 out the geometric g(T) factor.
 """
+import argparse
+import csv
+import json
+import math
 from pathlib import Path
-import argparse, csv, json, math
+
 import numpy as np
 
 T0,TBREAK,T1=3900.,5117.,6300.
@@ -24,6 +28,10 @@ MODELS={
     'model1':{'F0':1.107,'alpha':-1.082,'beta':-0.839,'gamma':-2.671,'use_g':True},
     'model2':{'F0':1.13,'alpha':-1.13,'beta':-0.85,'gamma':1.19,'use_g':False},
 }
+
+
+def require(condition,message):
+    if not condition:raise RuntimeError(message)
 
 
 def P(lo,hi,p):
@@ -84,7 +92,7 @@ def integrate(rows,m,loR=7.,hiR=9.):
         fac=2*math.pi*R*1e6; rr.append((R,fac*byR[R][0],fac*byR[R][1],fac*byR[R][2]))
     arr=np.array(rr,float)
     vals=[float(np.trapz(arr[:,i],arr[:,0])) for i in (1,2,3)]
-    assert vals[0]>0 and vals[1]>=vals[2]>=0
+    require(vals[0]>0 and vals[1]>=vals[2]>=0, f'Invalid population ordering: {vals}')
     return vals
 
 
@@ -105,9 +113,9 @@ def main():
             'L2_over_L1':L2/L1,
         }
     b=results['model1']
-    assert abs(b['N_G']-263061992.36674243)<1e-2
-    assert abs(b['Lambda_ESHZ']-105716685.0799756)<1e-2
-    assert abs(b['Lambda_earth10']-3376462.6740267016)<1e-2
+    require(abs(b['N_G']-263061992.36674243)<1e-2, f"N_G anchor mismatch: {b['N_G']}")
+    require(abs(b['Lambda_ESHZ']-105716685.0799756)<1e-2, f"Lambda_ESHZ anchor mismatch: {b['Lambda_ESHZ']}")
+    require(abs(b['Lambda_earth10']-3376462.6740267016)<1e-2, f"Lambda_earth10 anchor mismatch: {b['Lambda_earth10']}")
     m2=results['model2']
     comparison={
         'delta_L1_percent_model2_vs_model1':100*(m2['Lambda_ESHZ']/b['Lambda_ESHZ']-1),

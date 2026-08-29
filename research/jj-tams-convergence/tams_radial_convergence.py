@@ -33,6 +33,11 @@ LOGG_SUN = 4.438
 TSUN_RADIUS = 5772.0
 ALLOWED_DR = (1.0, 0.5, 0.25)
 
+
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise RuntimeError(message)
+
 # Public PARSEC TAMS boundary used by the Berger/Huber evolstate implementation.
 TAMS_T = np.array([
     5200.,5390.13944,5517.85139,5633.13293,5738.25706,5844.13178,
@@ -159,8 +164,8 @@ def main():
     sys.path.insert(0, str(jj_root))
     os.chdir(run_dir)
     from jjmodel.funcs import IMF
+    from jjmodel.input_ import a, inp, p
     from jjmodel.iof import dir_tree
-    from jjmodel.input_ import p, a, inp
     from jjmodel.populations import stellar_assemblies_r
 
     dr = float(p.dR)
@@ -247,7 +252,10 @@ def main():
         N = integrate(radial, "dN_dR", lo, hi)
         L1 = integrate(radial, "dL1_dR", lo, hi)
         L2 = integrate(radial, "dL2_dR", lo, hi)
-        assert N > 0 and L1 >= 0 and L2 >= 0 and L2 <= L1
+        require(
+            N > 0 and L1 >= 0 and L2 >= 0 and L2 <= L1,
+            f"Invalid integrated population ordering for {name}: {N=}, {L1=}, {L2=}",
+        )
         domains[name] = {
             "R_kpc": [lo, hi],
             "N_G": N,

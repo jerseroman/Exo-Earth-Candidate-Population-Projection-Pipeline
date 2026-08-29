@@ -8,8 +8,15 @@ pre-logg parent sample and B_TAMS_MS flag, this script:
   2. rewrites the canonical jj_g_hosts_*_padova files from B_TAMS_MS rows;
   3. rewrites the canonical summary and checksum manifest.
 """
+import argparse
+import csv
+import hashlib
+import json
+import math
+import shutil
+import sys
 from pathlib import Path
-import argparse, csv, hashlib, json, math, shutil, sys
+
 import numpy as np
 
 TMIN,TMAX=5300.0,6000.0
@@ -24,6 +31,9 @@ CANONICAL=[
     'jj_g_hosts_summary_padova.json',
     'SHA256SUMS_padova.txt',
 ]
+
+def require(condition,message):
+    if not condition:raise RuntimeError(message)
 
 def legacy_name(name):
     p=Path(name)
@@ -145,9 +155,9 @@ def main():
     mainfiles=[out/n for n in CANONICAL if n!='SHA256SUMS_padova.txt']
     (out/'SHA256SUMS_padova.txt').write_text(''.join(f'{sha256(p)}  {p.name}\n' for p in mainfiles),encoding='utf-8')
 
-    assert abs(N_full-1238302534.419577) < 1e-2, N_full
-    assert abs(N_79-263061992.36670703) < 1e-2, N_79
-    assert abs(thick_frac-0.19893903660103215) < 1e-12, thick_frac
+    require(abs(N_full-1238302534.419577) < 1e-2, f'N_G R4--14 anchor mismatch: {N_full}')
+    require(abs(N_79-263061992.36670703) < 1e-2, f'N_G R7--9 anchor mismatch: {N_79}')
+    require(abs(thick_frac-0.19893903660103215) < 1e-12, f'thick fraction anchor mismatch: {thick_frac}')
     print(json.dumps({'canonical_provider':'PARSEC-TAMS','rows':len(rows),'N_G_R4_14':N_full,'N_G_R7_9':N_79,'thick_disk_fraction_R7_9':thick_frac},indent=2))
 
 if __name__=='__main__': main()
