@@ -54,6 +54,33 @@ class WorkflowSecurityTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             workflow.main()
 
+    def test_jj_audit_workflows_pin_and_validate_runner_parallelism(self) -> None:
+        cases = {
+            ".github/workflows/jj-tams-radial-convergence.yml": (
+                '"$rundir/parameters"',
+                "python research/jj-tams-convergence/tams_radial_convergence.py",
+            ),
+            ".github/workflows/jj-tams-metallicity-differential.yml": (
+                "/tmp/jj-diff/parameters",
+                "python research/jj-host-export/run_jj_export.py",
+            ),
+        }
+        substitution_prefix = (
+            r"sed -E -i 's/^(nprocess[[:space:]]+)4([[:space:]])/\12\2/' "
+        )
+        guard_prefix = r"grep -Eq '^nprocess[[:space:]]+2[[:space:]]' "
+
+        for relative_path, (parameters, jj_command) in cases.items():
+            with self.subTest(workflow=relative_path):
+                text = (ROOT / relative_path).read_text(encoding="utf-8")
+                substitution = substitution_prefix + parameters
+                guard = guard_prefix + parameters
+                self.assertEqual(text.count(substitution), 1)
+                self.assertEqual(text.count(guard), 1)
+                self.assertLess(text.index(substitution), text.index(guard))
+                self.assertLess(text.index(guard), text.index(jj_command))
+                self.assertIn("nprocess=2", text)
+
     def test_quoted_and_flow_run_forms_are_audited(self) -> None:
         cases = (
             '"run": python -m pip install evil',

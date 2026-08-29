@@ -67,8 +67,12 @@ jobs:
             sed -E -i 's/^(Rmin[[:space:]]+)4([[:space:]])/\14.0\2/' "$rundir/parameters"
             sed -E -i 's/^(Rmax[[:space:]]+)14([[:space:]])/\114.0\2/' "$rundir/parameters"
             sed -E -i "s/^(dR[[:space:]]+)[0-9.]+([[:space:]])/\\1${dr}\\2/" "$rundir/parameters"
+            # Limit only runtime process parallelism to the two cores exposed
+            # by the hosted runner; all three science configurations are unchanged.
+            sed -E -i 's/^(nprocess[[:space:]]+)4([[:space:]])/\12\2/' "$rundir/parameters"
+            grep -Eq '^nprocess[[:space:]]+2[[:space:]]' "$rundir/parameters"
             cp "$rundir/parameters" "$outdir/parameters.runtime"
-            grep -E '^(Rmin|Rmax|dR)[[:space:]]' "$rundir/parameters"
+            grep -E '^(nprocess|Rmin|Rmax|dR)[[:space:]]' "$rundir/parameters"
             python research/jj-tams-convergence/tams_radial_convergence.py \
               --jj-root /tmp/jjmodel-src \
               --run-dir "$rundir" \
@@ -91,6 +95,7 @@ jobs:
           - Purpose: publication-gating radial convergence of the FINAL TAMS host provider, not the legacy logg proxy.
           - JJ code: `askenja/jjmodel`, commit `2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54` (v1.0.1).
           - Base science configuration: official JJ tutorial2 parameters, SFH/IMF/AMR, thin+thick disk, Padova/PARSEC multiband isochrones.
+          - Runtime process parallelism is fixed at `nprocess=2` for the hosted runner and is applied identically to every radial-resolution experiment; it does not alter the scientific configuration.
           - Only numerical resolution differs among experiments: dR = 1.0, 0.5, 0.25 kpc; Rmin=4 kpc and Rmax=14 kpc fixed.
           - Host selector in every experiment: 5300 <= Teff <= 6000 K; age >= 4.57 Gyr; Rstar <= public Berger/Huber PARSEC TAMS(Teff); logg < 7 compact-remnant veto.
           - Primary radius reconstruction: R/Rsun = sqrt(Mf * 10^(4.438-logg)).

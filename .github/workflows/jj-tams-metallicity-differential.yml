@@ -52,6 +52,11 @@ jobs:
           sed -E -i 's/^(Rmin[[:space:]]+)4([[:space:]])/\14.0\2/' /tmp/jj-diff/parameters
           sed -E -i 's/^(Rmax[[:space:]]+)14([[:space:]])/\114.0\2/' /tmp/jj-diff/parameters
           sed -E -i 's/^(dR[[:space:]]+)1([[:space:]])/\10.5\2/' /tmp/jj-diff/parameters
+          # Limit only runtime process parallelism to the two cores exposed by
+          # the hosted runner; the scientific configuration is unchanged.
+          sed -E -i 's/^(nprocess[[:space:]]+)4([[:space:]])/\12\2/' /tmp/jj-diff/parameters
+          grep -Eq '^nprocess[[:space:]]+2[[:space:]]' /tmp/jj-diff/parameters
+          grep -E '^(nprocess|Rmin|Rmax|dR)[[:space:]]' /tmp/jj-diff/parameters
           sed -i 's/float(p.dR) == 1.0/float(p.dR) == 0.5/' research/jj-host-export/run_jj_export.py
           sed -i 's/JJ 1-kpc grid/JJ 0.5-kpc grid/' research/jj-host-export/run_jj_export.py
       - name: Regenerate JJ assemblies
@@ -72,6 +77,7 @@ jobs:
         run: |
           cat > results/metallicity-differential/PROVENANCE_METALLICITY_DIFFERENTIAL.md <<'EOF'
           # Differential metallicity-dependent PARSEC-TAMS coverage audit
+          JJ runtime process parallelism is fixed at `nprocess=2` for the hosted runner; this does not alter the scientific configuration.
           The frozen Berger/Huber R_TAMS(Teff) curve is retained as the absolute Z-solar baseline.
           The proposed differential construction is R_2D(T,FeH)=R_Huber(T)*R_PARSEC(T,FeH)/R_PARSEC(T,Z=0.017).
           Only finite phase-7 anchors with M<=2 Msun and R<10 Rsun are admissible.
