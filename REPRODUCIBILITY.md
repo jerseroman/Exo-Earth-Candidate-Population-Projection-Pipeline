@@ -15,6 +15,126 @@ No workflow may change the model, seeds, priors, likelihood, measurement-error
 mode, convergence criteria, outer-realization weighting, or host selector while
 claiming to reproduce this baseline.
 
+## Local v4.0.4 hardening candidate
+
+The local v4.0.4 candidate is a software and provenance hardening pass over the
+frozen v4.0.3 scientific baseline. It does not change any scientific formula,
+prior, likelihood, model domain, input datum, seed schedule, host selector,
+integration rule, frozen posterior, frozen population result, or reported
+headline value. The hardening changes described below must therefore not be
+used to claim a new scientific result.
+
+### Hash-locked Python environment
+
+`requirements.in` is the human-maintained list of direct runtime, audit,
+installer, and build dependencies for the legacy source-faithful Python 3.10
+environment. Runtime project dependencies remain separately declared in
+`pyproject.toml`; audit-only and environment-management packages are not
+published as runtime requirements. `requirements.txt` is the generated lock: it
+fixes every direct and transitive dependency, including the active `pip`, and
+records the permitted distribution SHA-256 hashes. Regenerate it only with the
+exact `pip-compile` command recorded in its header and review the complete diff.
+
+All CI and reproduction installs use:
+
+```console
+python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
+python -m pip check
+```
+
+An unhashed distribution, a source distribution with undeclared build
+dependencies, an undeclared dependency, a dependency conflict, or
+drift between `requirements.in`, `requirements.txt`, and the direct project
+dependencies is a verification failure. `make dependencies` applies the static
+lock checks and `pip check`; `make verify` includes that gate. The lock controls
+Python packages only. A production record must still capture the exact active
+Python and `pip`, operating-system runner, and numerical-library configuration.
+
+The three JJ workflows install the checked-out local package only with
+`--no-deps --no-build-isolation -e .`; this forces the already hash-locked
+`setuptools` build backend to be used instead of creating an unverified build
+environment.
+
+### Candidate status and aggregate acceptance
+
+An individual runner can emit only `pilot_only` or the preliminary status
+`production_candidate`. Omitting `--run-status` fails safe to `pilot_only`, and
+the human-readable run label never assigns production status.
+
+`production_candidate` is not an accepted result. Acceptance exists only in a
+successful aggregate summary whose `production_acceptance_gate.accepted` value
+is `true`. Release propagation additionally requires the explicit
+`v4.0.4-production` profile, or the branch-limited
+`v4.0.4-zero-extended` profile. These profiles fix the shard/trial/walker
+scale, burn-in, minimum and maximum production lengths, thinning, adaptive-tau
+policy, seed schedule, equalized sample count, MCSE settings, and propagation
+stride; a custom quality-gate result cannot cross the release verifier. With
+`--require-all-converged`, the aggregator fails closed unless it
+receives the exact expected shard and trial sets with matching chain, summary,
+diagnostic, unique seed, branch, measurement-error-mode, and source-provenance
+records. The production command supplies the locked SHA-256 of
+`insolation/rateModels3D.py`; every shard must prove those exact source bytes.
+The runner also checks the branch-specific stellar catalog, planet-candidate
+catalog, and completeness contour before loading and rehashes all three before
+writing the summary.
+Each chain must also contain the complete, non-duplicated walker/step grid
+implied by its declared completed production length and thinning. The gate then
+requires adaptive convergence, successful optimization, valid positive
+autocorrelation times, internally consistent ESS of at least 1000 for every
+parameter in every realization, and finite outer and inner q50 MCSE fractions
+below the configured limits. Propagation must consume only the artifact emitted
+after that successful aggregate gate. Before propagation,
+`scripts/verify_accepted_aggregate.py` independently checks the aggregate file
+manifest and requires `production_acceptance_gate.required=true` and
+`accepted=true`, the canonical ESS/MCSE limits, all locked scientific-input
+hashes, the common numerical-environment hash, verified Bryson source bytes,
+the exact release profile and seed schedule, and 204800 finite propagation rows
+with equal 512-row representation of all 400 outer realizations.
+
+### Cross-workflow provenance inputs
+
+Every workflow that imports an artifact from another Actions run requires both
+the numeric run ID and its independently recorded 40-hex source commit SHA. The
+consumer queries the run in the same repository and verifies that it completed
+successfully, was started by `workflow_dispatch`, came from the expected
+workflow path, and has the supplied `head_sha` before downloading the named
+artifact. Inputs are passed through environment variables and validated before
+use rather than interpolated directly into shell commands.
+
+The standalone constant-propagation workflow additionally requires an
+independently recorded 64-hex SHA-256 of
+`SHA256SUMS_constant_aggregate.txt`. It verifies that manifest digest before
+using the manifest to verify the posterior files. The run SHA proves which code
+produced an artifact; the independent manifest SHA-256 binds the exact artifact
+contents. Neither value substitutes for the other.
+
+### Public/private licensing boundary
+
+Workflows that acquire or process excluded third-party scientific inputs retain
+the job guard `github.event.repository.private == true`. Dispatching one of
+those workflows in the public repository intentionally produces skipped jobs:
+this is a licensing no-op, not a successful reproduction and not scientific
+evidence. Run those workflows only from an authorized private copy at an exact
+immutable ref. The public `verify` workflow remains the software-only
+verification path for the license-cleared release contents.
+
+### Deferred Python and SciPy migration
+
+The source-faithful environment remains on Python 3.10 and SciPy 1.10.1 for this
+hardening release because the Bryson reconstruction still uses the legacy
+`scipy.interpolate.interp2d` convention. Python 3.10 reaches end of upstream
+support in October 2026, and SciPy removed `interp2d` in 1.14. Migration is an
+explicit v4.1 parity task, not part of v4.0.4.
+
+Before supporting a newer Python/SciPy stack, a candidate regular-grid
+interpolator must be compared with the legacy implementation on non-square
+synthetic grids, descending flux coordinates, boundaries and extrapolation,
+both locked completeness contours, fixed likelihood evaluations, and frozen
+end-to-end regression cases. Any numerical difference that exceeds the
+declared parity tolerance or changes downstream results beyond their accepted
+Monte Carlo error is a scientific change and requires a new rerun and result
+version; it must not be hidden inside a maintenance release.
+
 ## Workflow order
 
 Import the exact `v4.0.3` tag, or its exact release commit, into a private
@@ -26,18 +146,18 @@ public release repository because they fetch or process excluded inputs.
 1. `JJ G-host dR=0.5 + TAMS validation`.
 2. `Bryson v4 corrected adaptive-MCMC pilot`.
 3. `Bryson v4 corrected constant production posterior`, supplying the
-   successful host-export run ID from step 1.
+   successful host-export run ID and exact run commit SHA from step 1.
 4. `Bryson v4 corrected zero extended posterior`, supplying the same host run
-   ID. This branch retains the unchanged convergence criteria and the audited
-   30,000-step ceiling.
+   ID and SHA. This branch retains the unchanged convergence criteria and the
+   audited 30,000-step ceiling.
 5. Optional independent radial-convergence check.
 6. The differential metallicity-TAMS workflow is retained only to reproduce
    the rejected coverage diagnostic. Its result is not a valid sensitivity
    correction and must not be promoted into the baseline.
 
 The constant and zero production workflows download cross-run artifacts only
-from `${{ github.repository }}`. They verify the pinned host hashes before
-propagation.
+from `${{ github.repository }}`. They verify the producing workflow, successful
+conclusion, exact run commit SHA, and pinned host hashes before propagation.
 
 ## Numerical freeze gate
 
@@ -95,7 +215,8 @@ bundled records from checksum-only retained-private records.
 
 ## Local checks
 
-`make verify` checks the software-only boundary, every committed frozen
-manifest, all numerical regression suites, the primary-literature and source
-guards, and the deterministic repository manifest. The suite includes
-non-directional TAMS-wording and fail-closed data-lock regression guards.
+`make verify` checks the dependency lock and installed environment, workflow
+security invariants, software-only boundary, every committed frozen manifest,
+all numerical regression suites, the primary-literature and source guards, and
+the deterministic repository manifest. The suite includes non-directional
+TAMS-wording and fail-closed data-lock regression guards.

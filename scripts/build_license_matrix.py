@@ -18,6 +18,7 @@ GPL_PATHS = {
     "research/bryson-joint-posterior/run_hab2_joint_posterior.py",
     "research/bryson-joint-posterior/measurement_error.py",
     "research/bryson-joint-posterior/test_measurement_error.py",
+    "research/bryson-joint-posterior/test_run_hab2_provenance.py",
 }
 HUBER_TABLE = "research/jj-host-export/reference-data/tams_parsec_danxhuber.txt"
 BLOCKED_DR25_PATHS = {

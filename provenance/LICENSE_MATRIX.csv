@@ -50,6 +50,7 @@ provenance/independent-audit-evidence/joint_posterior_zero_aggregate_summary.jso
 provenance/independent-audit-evidence/local_vs_frozen_comparison.json,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 provenance/independent-audit-evidence/numerical_environment.txt,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 pyproject.toml,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
+requirements.in,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 requirements.txt,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/bryson-joint-posterior/IPython/__init__.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/bryson-joint-posterior/IPython/display.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
@@ -76,6 +77,7 @@ research/bryson-joint-posterior/test_clustered_monte_carlo.py,Original repositor
 research/bryson-joint-posterior/test_mcmc_convergence.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/bryson-joint-posterior/test_measurement_error.py,Modified from stevepur/DR25-occurrence-public@d200f54b6f0df49e0dae530e69983cdce5397bfb,Upstream copyright holders and Roman Jerše,GPL-2.0-only,CLEAR_WITH_NOTICE,yes,"Derivative component; preserve GPL text, source identification, and modification notice."
 research/bryson-joint-posterior/test_propagate_host_measure.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
+research/bryson-joint-posterior/test_run_hab2_provenance.py,Modified from stevepur/DR25-occurrence-public@d200f54b6f0df49e0dae530e69983cdce5397bfb,Upstream copyright holders and Roman Jerše,GPL-2.0-only,CLEAR_WITH_NOTICE,yes,"Derivative component; preserve GPL text, source identification, and modification notice."
 research/jj-host-export/TAMS_METHOD_NOTE.md,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/jj-host-export/assert_canonical_tams.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/jj-host-export/bryson_model_form_sensitivity.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
@@ -122,6 +124,7 @@ research/v4-validation/test_data_locks.py,Original repository material by Roman 
 research/v4-validation/test_dr25_support_audit.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/v4-validation/test_host_tams_audit.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/v4-validation/test_primary_literature_comparison.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
+research/v4-validation/test_security_verifiers.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/v4-validation/test_sensitivity_freeze.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/v4-validation/test_v4_statistical_baseline.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 research/v4-validation/v4_statistical_baseline_github_evidence.json,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
@@ -130,8 +133,11 @@ scripts/build_license_matrix.py,Original repository material by Roman Jerše,Rom
 scripts/build_manifest.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 scripts/build_public_package.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 scripts/fetch_locked_inputs.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
+scripts/verify_accepted_aggregate.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
+scripts/verify_dependency_lock.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 scripts/verify_frozen_manifests.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 scripts/verify_license_policy.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 scripts/verify_locked_inputs.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 scripts/verify_public_package_roundtrip.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
 scripts/verify_release_metadata.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.
+scripts/verify_workflow_security.py,Original repository material by Roman Jerše,Roman Jerše,MIT,CLEAR,yes,Author-declared original material; MIT grant recorded in the repository.

@@ -7,8 +7,20 @@ on:
         description: Successful constant-production run ID from this repository
         required: true
         type: string
+      production_run_sha:
+        description: Exact 40-hex head SHA of the constant-production run
+        required: true
+        type: string
+      posterior_manifest_sha256:
+        description: Independently recorded SHA-256 of SHA256SUMS_constant_aggregate.txt
+        required: true
+        type: string
       host_run_id:
         description: Successful JJ host-export run ID from this repository
+        required: true
+        type: string
+      host_run_sha:
+        description: Exact 40-hex head SHA of the JJ host-export run
         required: true
         type: string
 
@@ -32,23 +44,53 @@ jobs:
           python-version: '3.10'
 
       - name: Install pinned propagation environment
-        run: python -m pip install 'numpy==1.23.5' 'pandas==1.5.3'
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
+          python -m pip check
 
       - name: Download checksum-locked posterior and host artifacts
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          PRODUCTION_RUN_ID: ${{ inputs.production_run_id }}
+          PRODUCTION_RUN_SHA: ${{ inputs.production_run_sha }}
+          POSTERIOR_MANIFEST_SHA256: ${{ inputs.posterior_manifest_sha256 }}
+          HOST_RUN_ID: ${{ inputs.host_run_id }}
+          HOST_RUN_SHA: ${{ inputs.host_run_sha }}
+          EXPECTED_PRODUCTION_WORKFLOW: .github/workflows/bryson-v4-corrected-production.yml
+          EXPECTED_HOST_WORKFLOW: .github/workflows/jj-g-host-export.yml
         run: |
+          [[ "$PRODUCTION_RUN_ID" =~ ^[1-9][0-9]*$ ]] || { echo 'Invalid production run ID' >&2; exit 1; }
+          [[ "$HOST_RUN_ID" =~ ^[1-9][0-9]*$ ]] || { echo 'Invalid host run ID' >&2; exit 1; }
+          [[ "$PRODUCTION_RUN_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid production run SHA' >&2; exit 1; }
+          [[ "$HOST_RUN_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid host run SHA' >&2; exit 1; }
+          [[ "$POSTERIOR_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]] || { echo 'Invalid posterior manifest SHA-256' >&2; exit 1; }
+          gh api "repos/${GH_REPOSITORY}/actions/runs/${PRODUCTION_RUN_ID}" > /tmp/production-run.json
+          jq -e \
+            --arg workflow "$EXPECTED_PRODUCTION_WORKFLOW" \
+            --arg sha "$PRODUCTION_RUN_SHA" \
+            '.status == "completed" and .conclusion == "success" and .event == "workflow_dispatch" and .path == $workflow and .head_sha == $sha' \
+            /tmp/production-run.json > /dev/null
+          gh api "repos/${GH_REPOSITORY}/actions/runs/${HOST_RUN_ID}" > /tmp/host-run.json
+          jq -e \
+            --arg workflow "$EXPECTED_HOST_WORKFLOW" \
+            --arg sha "$HOST_RUN_SHA" \
+            '.status == "completed" and .conclusion == "success" and .event == "workflow_dispatch" and .path == $workflow and .head_sha == $sha' \
+            /tmp/host-run.json > /dev/null
           mkdir -p /tmp/bryson-v4-posterior /tmp/jj-hosts
-          gh run download "${{ inputs.production_run_id }}" \
-            --repo "${{ github.repository }}" \
+          gh run download "$PRODUCTION_RUN_ID" \
+            --repo "$GH_REPOSITORY" \
             --name bryson-v4-corrected-posterior-constant \
             --dir /tmp/bryson-v4-posterior
-          gh run download "${{ inputs.host_run_id }}" \
-            --repo "${{ github.repository }}" \
+          gh run download "$HOST_RUN_ID" \
+            --repo "$GH_REPOSITORY" \
             --name jj-g-host-export-padova-dr05-tams-canonical \
             --dir /tmp/jj-hosts
-          cd /tmp/bryson-v4-posterior
-          sha256sum --check SHA256SUMS_constant_aggregate.txt
+          echo "$POSTERIOR_MANIFEST_SHA256  /tmp/bryson-v4-posterior/SHA256SUMS_constant_aggregate.txt" | sha256sum --check
+          python "$GITHUB_WORKSPACE/scripts/verify_accepted_aggregate.py" \
+            --artifact-root /tmp/bryson-v4-posterior \
+            --branch constant \
+            --expected-bryson-source-sha256 0bb479b0c94c4f793b95e4fa1e853973805c54d3de7e2a2acc2e51c05b70a586
           echo 'a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28  /tmp/jj-hosts/jj_g_hosts_raw_eligible_padova.csv' | sha256sum --check
 
       - name: Propagate joint samples
