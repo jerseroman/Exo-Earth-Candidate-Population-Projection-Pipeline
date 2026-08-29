@@ -264,7 +264,9 @@ class RunnerInputProvenanceTests(unittest.TestCase):
             with mock.patch.object(
                 RUNNER, "locked_runner_input_sha256", return_value=expected
             ):
-                with self.assertRaisesRegex(RuntimeError, "must not be a symlink"):
+                with self.assertRaisesRegex(
+                    RuntimeError, "Symlinked runner input is not allowed"
+                ):
                     RUNNER.verify_runner_inputs(
                         "constant",
                         linked_stellar,
