@@ -4,8 +4,12 @@
 Input is tams_ab_test.py's parent export. Only rows with B_TAMS_MS=1 are used.
 The frozen L0-L1-L2 equations are unchanged; this script changes no host physics.
 """
+import argparse
+import csv
+import json
+import math
 from pathlib import Path
-import argparse, csv, json, math
+
 import numpy as np
 
 PARAMS={
@@ -25,6 +29,9 @@ MASKS=[
   ('full_JJ_4_14','Full JJ disk 4-14 kpc',4.0,14.0),
 ]
 BRANCHES=[('CHZ','constant'),('CHZ','zero'),('OHZ','constant'),('OHZ','zero')]
+
+def require(condition,message):
+    if not condition:raise RuntimeError(message)
 
 def P(lo,hi,p): return (hi**(p+1)-lo**(p+1))/(p+1)
 
@@ -95,16 +102,16 @@ def main():
         N=integrate(radial,'dN',lo,hi); m={'label':label,'R_kpc':[lo,hi],'N_G':N,'branches':{}}
         for hz,b in BRANCHES:
             L1=integrate(radial,f'{hz}_{b}_L1',lo,hi); L2=integrate(radial,f'{hz}_{b}_L2',lo,hi)
-            assert L2 <= L1 + 1e-8
+            require(L2 <= L1 + 1e-8, f"Population ordering failed for {hz}/{b}: {L1=}, {L2=}")
             u=unif[f'{hz}_{b}']; key=f'{hz}_{b}'
             m['branches'][key]={'mean_f_HZ':L1/N,'mean_f_earth10':L2/N,
                 'RT_L1':(L1/N)/u['f_HZ'],'RT_L2':(L2/N)/u['f_earth10'],
                 'Lambda_ESHZ':L1,'Lambda_earth10':L2,'L2_over_L1':L2/L1}
         results['masks'][mid]=m
     c=results['masks']['lineweaver_7_9']['branches']['CHZ_constant']
-    assert abs(results['masks']['lineweaver_7_9']['N_G']-263061992.36674243) < 1e-2
-    assert abs(c['Lambda_ESHZ']-105716685.0799756) < 1e-2
-    assert abs(c['Lambda_earth10']-3376462.6740267016) < 1e-2
+    require(abs(results['masks']['lineweaver_7_9']['N_G']-263061992.36674243) < 1e-2, 'N_G anchor mismatch')
+    require(abs(c['Lambda_ESHZ']-105716685.0799756) < 1e-2, 'Lambda_ESHZ anchor mismatch')
+    require(abs(c['Lambda_earth10']-3376462.6740267016) < 1e-2, 'Lambda_earth10 anchor mismatch')
     p=out/'tams_branches_lineweaver_7_9.csv'
     cols=['branch','N_G','mean_f_HZ','mean_f_earth10','RT_L1','RT_L2','Lambda_ESHZ','Lambda_earth10','L2_over_L1_pct']
     with p.open('w',newline='',encoding='utf-8') as f:

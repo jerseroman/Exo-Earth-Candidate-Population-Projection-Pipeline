@@ -11,7 +11,6 @@ from pathlib import Path
 
 import build_license_matrix
 
-
 ROOT = Path(__file__).resolve().parents[1]
 MATRIX = ROOT / "provenance" / "LICENSE_MATRIX.csv"
 EXCLUSIONS = ROOT / "provenance" / "PUBLIC_EXCLUSIONS.csv"
@@ -39,6 +38,12 @@ PRIVATE_GUARDS = {
     ".github/workflows/jj-g-host-export.yml": {"jj-export"},
     ".github/workflows/jj-tams-metallicity-differential.yml": {"audit"},
     ".github/workflows/jj-tams-radial-convergence.yml": {"convergence"},
+}
+PINNED_ACTIONS = {
+    "actions/checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "actions/setup-python": "5fda3b95a4ea91299a34e894583c3862153e4b97",
+    "actions/upload-artifact": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+    "actions/download-artifact": "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
 }
 EXPECTED_HASHES = {
     "LICENSES/GPL-2.0-only.txt": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
@@ -147,6 +152,37 @@ def verify() -> list[dict[str, str]]:
             guard = "if: ${{ github.event.repository.private == true }}"
             if guard not in block:
                 fail(f"private-only guard missing from {workflow}:{job}")
+
+    observed_actions: set[str] = set()
+    for workflow in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+        text = workflow.read_text(encoding="utf-8")
+        for action, ref in re.findall(
+            r"uses:\s+(actions/[^@\s]+)@([^\s#]+)", text
+        ):
+            observed_actions.add(action)
+            expected = PINNED_ACTIONS.get(action)
+            if expected is None:
+                fail(f"unreviewed GitHub Action in {workflow.name}: {action}")
+            if ref != expected:
+                fail(
+                    f"GitHub Action is not pinned to its audited SHA in "
+                    f"{workflow.name}: {action}@{ref}"
+                )
+    if observed_actions != set(PINNED_ACTIONS):
+        fail(
+            "GitHub Action pin set changed: "
+            f"observed={sorted(observed_actions)}"
+        )
+
+    for path in sorted((ROOT / "research").rglob("*.py")):
+        if path.name.startswith("test_"):
+            continue
+        text = path.read_text(encoding="utf-8")
+        if re.search(r"(?m)^\s*assert\s+", text):
+            fail(
+                "production validation must use explicit exceptions, not "
+                f"optimization-removable assert statements: {path.relative_to(ROOT)}"
+            )
 
     root_license = (ROOT / "LICENSE").read_text(encoding="utf-8").lower()
     if "mixed-license" not in root_license:

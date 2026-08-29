@@ -17,8 +17,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-
 from clustered_monte_carlo import (
+    DETERMINISTIC_GZIP_COMPRESSION,
     cluster_bootstrap_quantile_mcse,
     contiguous_batch_quantile_mcse,
     equalize_realizations,
@@ -275,7 +275,11 @@ def main() -> None:
         full_audit.sort_values(["global_trial", "source_row"], inplace=True)
         full_audit.reset_index(drop=True, inplace=True)
         full_audit_path = out / f"perturbation_audit_{args.branch}_full.csv.gz"
-        full_audit.to_csv(full_audit_path, index=False, compression="gzip")
+        full_audit.to_csv(
+            full_audit_path,
+            index=False,
+            compression=DETERMINISTIC_GZIP_COMPRESSION,
+        )
 
     fixed_samples_per_trial = args.walkers * (args.steps // args.runner_thin)
     frames: list[pd.DataFrame] = []
@@ -335,7 +339,11 @@ def main() -> None:
     if len(full) != expected_total:
         raise RuntimeError(f"Aggregate row count {len(full)} != {expected_total}")
     full_path = out / f"joint_posterior_{args.branch}_full.csv.gz"
-    full.to_csv(full_path, index=False, compression="gzip")
+    full.to_csv(
+        full_path,
+        index=False,
+        compression=DETERMINISTIC_GZIP_COMPRESSION,
+    )
 
     # Preserve equal representation from every outer realization when creating
     # the smaller sample file used by the Galactic propagation stage.
@@ -356,7 +364,11 @@ def main() -> None:
     propagation_path = out / f"joint_posterior_{args.branch}_for_galactic_propagation.csv.gz"
     propagation.loc[
         :, ["branch", "global_trial", "F0", "alpha", "beta", "gamma"]
-    ].to_csv(propagation_path, index=False, compression="gzip")
+    ].to_csv(
+        propagation_path,
+        index=False,
+        compression=DETERMINISTIC_GZIP_COMPRESSION,
+    )
 
     values = full.loc[:, PARAMETERS].to_numpy(dtype=float)
     quantiles = {

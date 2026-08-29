@@ -32,6 +32,7 @@ provenance/MIGRATION_RECORD.json
 provenance/PUBLIC_EXCLUSIONS.csv
 provenance/RELEASE_4_0_1_CHANGE_RECORD.json
 provenance/RELEASE_4_0_2_CHANGE_RECORD.json
+provenance/RELEASE_4_0_3_CHANGE_RECORD.json
 provenance/ROMAN_MIT_PATHS.txt
 provenance/RUN_PROVENANCE.json
 provenance/SOURCE_LOCKS.json

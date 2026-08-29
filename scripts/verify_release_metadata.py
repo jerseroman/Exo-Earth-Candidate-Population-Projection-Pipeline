@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed when v4.0.2 publication metadata or provenance drifts."""
+"""Fail closed when v4.0.3 publication metadata or provenance drifts."""
 
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "4.0.2"
-RELEASE_DATE = "2026-08-23"
-DOI = "10.5281/zenodo.22070762"
+VERSION = "4.0.3"
+RELEASE_DATE = "2026-08-29"
+DOI = "10.5281/zenodo.22158798"
 ORCID = "https://orcid.org/0009-0001-5003-5354"
 PUBLIC_REPOSITORY = (
     "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline"
@@ -82,6 +82,21 @@ def main() -> None:
     if "4.0.0" in readme:
         fail("README.md retains obsolete v4.0.0 metadata")
     require_text(readme, "provenance/SOURCE_LOCKS.json", "README.md")
+    require_text(
+        readme,
+        "approximately 3.2 million and 4.6 million",
+        "README.md scientific-status rounding",
+    )
+    require_text(
+        readme,
+        "separate completeness scenarios, not bounds",
+        "README.md completeness interpretation",
+    )
+    if not re.search(
+        r"neither\s+headline value is a direct locally candidate-supported measurement",
+        readme,
+    ):
+        fail("README.md lacks the local-support limitation")
     if "Their exact URLs" in readme:
         fail("README overstates URL availability for derived data locks")
 
@@ -309,10 +324,10 @@ def main() -> None:
     for token in (f"exact `v{VERSION}` tag", "must not be promoted into the baseline"):
         require_text(reproducibility, token, "REPRODUCIBILITY.md")
 
-    changes = load_json("provenance/RELEASE_4_0_2_CHANGE_RECORD.json")
+    changes = load_json("provenance/RELEASE_4_0_3_CHANGE_RECORD.json")
     if (
         changes.get("release_version") != VERSION
-        or changes.get("base_release_version") != "4.0.1"
+        or changes.get("base_release_version") != "4.0.2"
         or changes.get("reserved_zenodo_doi") != DOI
         or changes.get("scientific_logic_changed") is not False
         or changes.get("mcmc_configuration_or_seeds_changed") is not False
@@ -350,10 +365,13 @@ def main() -> None:
     except FileNotFoundError:
         base_exists = False
         release_exists = False
-    if base_exists and release_exists:
+    if base_exists:
+        diff_args = ["git", "diff", "--name-only", base]
+        if release_exists:
+            diff_args.append(release_ref)
         changed = set(
             subprocess.run(
-                ["git", "diff", "--name-only", base, release_ref],
+                diff_args,
                 cwd=ROOT,
                 check=True,
                 capture_output=True,
@@ -362,7 +380,7 @@ def main() -> None:
         )
         if changed != set(recorded_paths):
             fail(
-                "tagged release change record path mismatch; missing="
+                "release change record path mismatch; missing="
                 f"{sorted(changed.difference(recorded_paths))}, extra="
                 f"{sorted(set(recorded_paths).difference(changed))}"
             )

@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 """Compare fully regenerated TAMS runs at dR=1.0, 0.5 and 0.25 kpc."""
+import argparse
+import csv
+import json
 from pathlib import Path
-import argparse, csv, json
 
 DRS = [1.0, 0.5, 0.25]
 QUANTITIES = ["N_G", "Lambda_ESHZ", "Lambda_earth10"]
 DOMAINS = ["lineweaver_7_9", "full_JJ_4_14"]
+
+
+def require(condition, message):
+    if not condition:
+        raise RuntimeError(message)
 
 
 def tag(dr):
@@ -29,14 +36,23 @@ def main():
     for dr in DRS:
         p = root / f"dr{tag(dr)}" / f"tams_result_dr{tag(dr)}.json"
         runs[dr] = json.loads(p.read_text())
-        assert abs(float(runs[dr]['dR_kpc']) - dr) < 1e-12
+        require(
+            abs(float(runs[dr]['dR_kpc']) - dr) < 1e-12,
+            f"Radial-spacing label mismatch for {p}",
+        )
 
     # Hard cross-check: the regenerated 0.5-kpc final TAMS run must reproduce the
     # already validated canonical provider, otherwise this comparison is invalid.
     c = runs[0.5]['domains']['lineweaver_7_9']
-    assert abs(c['N_G'] - 263061992.36674243) < 1e-2, c['N_G']
-    assert abs(c['Lambda_ESHZ'] - 105716685.0799756) < 1e-2, c['Lambda_ESHZ']
-    assert abs(c['Lambda_earth10'] - 3376462.6740267016) < 1e-2, c['Lambda_earth10']
+    require(abs(c['N_G'] - 263061992.36674243) < 1e-2, f"N_G anchor mismatch: {c['N_G']}")
+    require(
+        abs(c['Lambda_ESHZ'] - 105716685.0799756) < 1e-2,
+        f"Lambda_ESHZ anchor mismatch: {c['Lambda_ESHZ']}",
+    )
+    require(
+        abs(c['Lambda_earth10'] - 3376462.6740267016) < 1e-2,
+        f"Lambda_earth10 anchor mismatch: {c['Lambda_earth10']}",
+    )
 
     result = {
         'experiment': 'final_TAMS_radial_convergence',

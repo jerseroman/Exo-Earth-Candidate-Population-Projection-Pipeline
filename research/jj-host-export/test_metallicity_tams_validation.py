@@ -1,13 +1,54 @@
 from __future__ import annotations
 
+import io
+import tarfile
+import tempfile
 import unittest
+from pathlib import Path
 
 from metallicity_tams_differential_sensitivity import (
+    safe_extract,
     validate_low_mass_curve_points,
 )
 
 
 class LowMassTamsCurveValidationTests(unittest.TestCase):
+    @staticmethod
+    def archive_with(member: tarfile.TarInfo, payload: bytes = b"") -> io.BytesIO:
+        archive = io.BytesIO()
+        with tarfile.open(fileobj=archive, mode="w") as handle:
+            if member.isfile():
+                member.size = len(payload)
+                handle.addfile(member, io.BytesIO(payload))
+            else:
+                handle.addfile(member)
+        archive.seek(0)
+        return archive
+
+    def test_safe_extract_accepts_regular_file(self) -> None:
+        archive = self.archive_with(tarfile.TarInfo("tracks/model.DAT"), b"ok\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            with tarfile.open(fileobj=archive, mode="r") as handle:
+                safe_extract(handle, Path(tmp))
+            self.assertEqual((Path(tmp) / "tracks" / "model.DAT").read_bytes(), b"ok\n")
+
+    def test_safe_extract_rejects_path_traversal(self) -> None:
+        archive = self.archive_with(tarfile.TarInfo("../escape.DAT"), b"bad")
+        with tempfile.TemporaryDirectory() as tmp:
+            with tarfile.open(fileobj=archive, mode="r") as handle:
+                with self.assertRaisesRegex(RuntimeError, "escape.DAT"):
+                    safe_extract(handle, Path(tmp))
+
+    def test_safe_extract_rejects_symbolic_link(self) -> None:
+        member = tarfile.TarInfo("tracks/link.DAT")
+        member.type = tarfile.SYMTYPE
+        member.linkname = "../outside.DAT"
+        archive = self.archive_with(member)
+        with tempfile.TemporaryDirectory() as tmp:
+            with tarfile.open(fileobj=archive, mode="r") as handle:
+                with self.assertRaisesRegex(RuntimeError, "unsupported TAR member"):
+                    safe_extract(handle, Path(tmp))
+
     def test_massive_giants_cannot_supply_temperature_coverage(self) -> None:
         points = [
             (5200.0, 100.0, 20.0, "giant-low.DAT", 0.1),

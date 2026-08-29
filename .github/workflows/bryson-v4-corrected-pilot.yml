@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 90
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Sparse-checkout pinned Bryson inputs
         run: |
@@ -92,7 +92,7 @@ jobs:
           cd "$OUT"
           find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bryson-v4-corrected-pilot-inputs-${{ matrix.branch }}
           path: results/bryson-v4-pilot-source-${{ matrix.branch }}/
@@ -113,9 +113,9 @@ jobs:
     timeout-minutes: 300
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.10'
 
@@ -130,7 +130,7 @@ jobs:
             'emcee==3.1.6'
           python -m pip freeze | sort > numerical_environment.txt
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: bryson-v4-corrected-pilot-inputs-${{ matrix.branch }}
           path: /tmp/DR25-occurrence-public
@@ -186,7 +186,7 @@ jobs:
           cd "$OUT"
           find . -maxdepth 1 -type f ! -name SHA256SUMS_complete.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS_complete.txt
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bryson-v4-corrected-pilot-${{ matrix.branch }}-${{ matrix.seed_family }}
           path: results/bryson-v4-pilot-${{ matrix.branch }}-${{ matrix.seed_family }}/
@@ -206,15 +206,15 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.10'
 
       - run: python -m pip install 'numpy==1.23.5' 'pandas==1.5.3'
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: bryson-v4-corrected-pilot-${{ matrix.branch }}-*
           path: /tmp/bryson-v4-pilots
@@ -231,7 +231,7 @@ jobs:
             --expected-families 2 \
             --max-quantile-width-fraction 0.15
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bryson-v4-seed-stability-${{ matrix.branch }}
           path: results/bryson-v4-seed-stability-${{ matrix.branch }}/

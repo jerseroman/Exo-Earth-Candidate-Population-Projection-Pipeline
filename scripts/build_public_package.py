@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 # Versioned reproducibility timestamp, not the wall-clock build time. Keeping
 # every ZIP member at the release date makes independent builds byte-identical.
-SOURCE_DATE_UTC = (2026, 8, 23, 0, 0, 0)
+SOURCE_DATE_UTC = (2026, 8, 29, 0, 0, 0)
 
 
 def sha256_bytes(data: bytes) -> str:

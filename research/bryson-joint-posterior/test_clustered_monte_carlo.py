@@ -2,12 +2,14 @@
 """Tests for equal-mixture and cluster-aware Monte Carlo diagnostics."""
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 from clustered_monte_carlo import (
+    DETERMINISTIC_GZIP_COMPRESSION,
     cluster_bootstrap_quantile_mcse,
     contiguous_batch_quantile_mcse,
     equalize_realizations,
@@ -15,6 +17,28 @@ from clustered_monte_carlo import (
 
 
 class ClusteredMonteCarloTests(unittest.TestCase):
+    def test_gzip_csv_configuration_is_byte_deterministic(self) -> None:
+        frame = pd.DataFrame({"value": [1.0, 2.0], "label": ["a", "b"]})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first = root / "first" / "output.csv.gz"
+            second = root / "second" / "output.csv.gz"
+            first.parent.mkdir()
+            second.parent.mkdir()
+            frame.to_csv(
+                first,
+                index=False,
+                compression=DETERMINISTIC_GZIP_COMPRESSION,
+            )
+            frame.to_csv(
+                second,
+                index=False,
+                compression=DETERMINISTIC_GZIP_COMPRESSION,
+            )
+            first_bytes = first.read_bytes()
+            self.assertEqual(first_bytes, second.read_bytes())
+            self.assertEqual(int.from_bytes(first_bytes[4:8], "little"), 0)
+
     def test_equalizer_uses_every_realization_with_equal_weight(self) -> None:
         frame = pd.DataFrame(
             {

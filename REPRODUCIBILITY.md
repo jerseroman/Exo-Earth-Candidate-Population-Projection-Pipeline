@@ -17,7 +17,7 @@ claiming to reproduce this baseline.
 
 ## Workflow order
 
-Import the exact `v4.0.2` tag, or its exact release commit, into a private
+Import the exact `v4.0.3` tag, or its exact release commit, into a private
 repository and dispatch the following manual workflows from that immutable
 ref, not from a moving `main`. Their production jobs are guarded by
 `github.event.repository.private == true`; they intentionally skip in the

@@ -5,14 +5,23 @@ from __future__ import annotations
 
 import argparse
 import os
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
 import verify_locked_inputs
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "local-artifacts" / "locked-inputs"
+
+
+def validate_source_url(value: str) -> str:
+    parsed = urllib.parse.urlparse(value)
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise SystemExit(f"Locked input URL must use HTTPS: {value}")
+    if parsed.username is not None or parsed.password is not None:
+        raise SystemExit("Locked input URL must not contain credentials")
+    return value
 
 
 def fetch(lock_id: str, destination: Path, accepted: set[str], locks: dict) -> None:
@@ -33,13 +42,18 @@ def fetch(lock_id: str, destination: Path, accepted: set[str], locks: dict) -> N
     destination.parent.mkdir(parents=True, exist_ok=True)
     partial = destination.with_name(destination.name + ".part")
     partial.unlink(missing_ok=True)
+    source_url = validate_source_url(record["source_url"])
     request = urllib.request.Request(
-        record["source_url"], headers={"User-Agent": "Mozilla/5.0"}
+        source_url, headers={"User-Agent": "Mozilla/5.0"}
     )
     try:
-        with urllib.request.urlopen(request, timeout=900) as response, partial.open(
+        # validate_source_url restricts this request to credential-free HTTPS.
+        with urllib.request.urlopen(  # nosec B310
+            request, timeout=900
+        ) as response, partial.open(
             "wb"
         ) as output:
+            validate_source_url(response.geturl())
             while block := response.read(1024 * 1024):
                 output.write(block)
         verify_locked_inputs.verify_file(lock_id, partial, locks)

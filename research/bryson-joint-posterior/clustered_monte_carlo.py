@@ -7,6 +7,12 @@ from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 
+DETERMINISTIC_GZIP_COMPRESSION = {
+    "method": "gzip",
+    "compresslevel": 9,
+    "mtime": 0,
+}
+
 QUANTILE_NAMES = ("q2.5", "q16", "q50", "q84", "q97.5")
 QUANTILE_PROBABILITIES = np.array([0.025, 0.16, 0.50, 0.84, 0.975])
 

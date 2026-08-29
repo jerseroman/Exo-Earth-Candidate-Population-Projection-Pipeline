@@ -1,6 +1,6 @@
-.PHONY: verify scope metadata licenses data-locks manifests tests public-package
+.PHONY: verify scope metadata licenses data-locks manifests tests optimized-tests public-package
 
-verify: scope metadata licenses data-locks manifests tests
+verify: scope metadata licenses data-locks manifests tests optimized-tests
 
 scope:
 	python scripts/audit_repository_scope.py
@@ -22,6 +22,11 @@ tests:
 	python -m unittest discover -s research/bryson-joint-posterior -p "test_*.py" -v
 	python -m unittest discover -s research/jj-host-export -p "test_*.py" -v
 	python -m unittest discover -s research/v4-validation -p "test_*.py" -v
+
+optimized-tests:
+	python -O -m unittest discover -s research/bryson-joint-posterior -p "test_*.py" -v
+	python -O -m unittest discover -s research/jj-host-export -p "test_*.py" -v
+	python -O -m unittest discover -s research/v4-validation -p "test_*.py" -v
 
 public-package: verify
 	python scripts/build_public_package.py
