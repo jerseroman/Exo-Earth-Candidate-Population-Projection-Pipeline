@@ -402,7 +402,8 @@ class DependencyLockTests(unittest.TestCase):
         runtime = {
             name: version
             for name, version in dependency.EXPECTED_DIRECT_PINS.items()
-            if name not in {"pip", "pyyaml", "setuptools", "tomli", "wheel"}
+            if name
+            not in {"flit-core", "pip", "pyyaml", "setuptools", "tomli", "wheel"}
         }
         text = (
             "[build-system]\n"

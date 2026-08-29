@@ -52,8 +52,8 @@ Python and `pip`, operating-system runner, and numerical-library configuration.
 
 The three JJ workflows install the checked-out local package only with
 `--no-deps --no-build-isolation -e .`; this forces the already hash-locked
-`setuptools` build backend to be used instead of creating an unverified build
-environment.
+`flit-core` package and its `flit_core.buildapi` backend to be used instead of
+creating an unverified build environment.
 
 ### Candidate status and aggregate acceptance
 
