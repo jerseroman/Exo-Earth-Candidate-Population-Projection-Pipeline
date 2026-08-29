@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
@@ -66,6 +68,54 @@ class DataLockTests(unittest.TestCase):
             "5cf4805d8742507ead6916dcd1f7b118b7e5a28966b9ddd5b8d09fc6e181115c",
         )
         self.assertIn("2278", pc["line_ending_note"])
+
+    def test_fetch_requests_the_complete_object_as_an_open_range(self) -> None:
+        payload = b"locked scientific input\n"
+        source_url = "https://example.org/science/input.bin"
+        observed: dict[str, object] = {}
+
+        class Response:
+            def __init__(self) -> None:
+                self.remaining = payload
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args) -> None:
+                return None
+
+            def geturl(self) -> str:
+                return source_url
+
+            def read(self, _size: int) -> bytes:
+                block, self.remaining = self.remaining, b""
+                return block
+
+        def fake_urlopen(request, timeout):
+            observed["range"] = request.get_header("Range")
+            observed["timeout"] = timeout
+            return Response()
+
+        locks = {
+            "synthetic": {
+                "source_url": source_url,
+                "expected_sha256": hashlib.sha256(payload).hexdigest(),
+                "expected_size_bytes": len(payload),
+                "distribution_role": "fetch-only",
+                "requires_terms_acceptance": False,
+            }
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "input.bin"
+            with mock.patch.object(
+                fetch_locked_inputs.urllib.request,
+                "urlopen",
+                side_effect=fake_urlopen,
+            ):
+                fetch_locked_inputs.fetch("synthetic", destination, set(), locks)
+            self.assertEqual(destination.read_bytes(), payload)
+
+        self.assertEqual(observed, {"range": "bytes=0-", "timeout": 900})
 
     def test_same_size_corruption_fails_sha256_gate(self) -> None:
         locks = verify_locked_inputs.load_registry()["locks"]
