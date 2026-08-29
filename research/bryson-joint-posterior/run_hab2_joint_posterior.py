@@ -10,8 +10,8 @@
 
 This is a clean, seeded implementation of the public notebook
 ``insolation/computeOccurrencefixedTeff_uncertainty.ipynb`` from
-``stevepur/DR25-occurrence-public`` at commit
-``d200f54b6f0df49e0dae530e69983cdce5397bfb``.
+``stevepur/DR25-occurrence-public``.  The exact source commit or source-file
+SHA-256 is verified at runtime and recorded in every summary.
 
 The source notebook pools MCMC samples over reliability/measurement-error
 realisations.  This runner can either preserve the notebook's measurement-error
@@ -44,6 +44,8 @@ import json
 import math
 import os
 import platform
+import re
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -64,7 +66,12 @@ from measurement_error import (
 )
 from mcmc_convergence import run_production_chain
 
-BRYSON_COMMIT = "d200f54b6f0df49e0dae530e69983cdce5397bfb"
+BRYSON_REPOSITORY = "stevepur/DR25-occurrence-public"
+BRYSON_SOURCE_RELATIVE_PATH = Path("insolation") / "rateModels3D.py"
+DATA_LOCKS_PATH = Path(__file__).resolve().parents[2] / "provenance" / "DATA_LOCKS.json"
+RUN_STATUSES = ("pilot_only", "production_candidate")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+GIT_COMMIT_RE = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
 PUBLISHED = {
     "constant": {
         "F0": 1.107,
@@ -87,6 +94,353 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def locked_bryson_source_sha256() -> str:
+    """Return the independently audited Bryson source hash from DATA_LOCKS."""
+
+    try:
+        registry = json.loads(DATA_LOCKS_PATH.read_text(encoding="utf-8"))
+        expected = str(
+            registry["locks"]["bryson_rate_models_3d"]["expected_sha256"]
+        ).strip().lower()
+    except (OSError, KeyError, TypeError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"Cannot load the Bryson source data lock: {error}") from error
+    if not SHA256_RE.fullmatch(expected):
+        raise RuntimeError("The Bryson source data lock has an invalid SHA-256")
+    return expected
+
+
+def locked_runner_input_sha256(branch: str) -> dict[str, str]:
+    """Return the exact branch-specific scientific-input hashes."""
+
+    lock_ids = {
+        "stellar_catalog": "bryson_stellar_catalog_extracted",
+        "pc_catalog": "bryson_pc_catalog",
+        "completeness": (
+            "completeness_constant" if branch == "constant" else "completeness_zero"
+        ),
+    }
+    try:
+        registry = json.loads(DATA_LOCKS_PATH.read_text(encoding="utf-8"))
+        locks = registry["locks"]
+        expected = {
+            key: str(locks[lock_id]["expected_sha256"]).strip().lower()
+            for key, lock_id in lock_ids.items()
+        }
+    except (OSError, KeyError, TypeError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"Cannot load runner scientific-input locks: {error}") from error
+    if any(not SHA256_RE.fullmatch(value) for value in expected.values()):
+        raise RuntimeError("A runner scientific-input lock has an invalid SHA-256")
+    return expected
+
+
+def verify_runner_inputs(
+    branch: str,
+    stellar_catalog: Path,
+    pc_catalog: Path,
+    completeness: Path,
+) -> dict[str, dict[str, str]]:
+    """Hash and lock every scientific input before any of its bytes are loaded."""
+
+    paths = {
+        "stellar_catalog": stellar_catalog,
+        "pc_catalog": pc_catalog,
+        "completeness": completeness,
+    }
+    expected = locked_runner_input_sha256(branch)
+    records: dict[str, dict[str, str]] = {}
+    for key, path in paths.items():
+        if path.is_symlink():
+            raise RuntimeError(f"Symlinked runner input is not allowed for {key}: {path}")
+        resolved = path.resolve()
+        if not resolved.is_file():
+            raise RuntimeError(f"Unsafe or missing runner input for {key}: {resolved}")
+        actual = sha256(resolved)
+        if actual != expected[key]:
+            raise RuntimeError(
+                f"Locked runner input SHA-256 mismatch for {key}: "
+                f"{actual} != {expected[key]}"
+            )
+        records[key] = {"path": str(resolved), "sha256": actual}
+    return records
+
+
+def reverify_runner_inputs(records: dict[str, dict[str, str]]) -> None:
+    """Reject input replacement between pre-flight hashing and summary writing."""
+
+    for key, record in records.items():
+        path = Path(record["path"])
+        if not path.is_file() or path.is_symlink():
+            raise RuntimeError(f"Runner input changed or disappeared for {key}: {path}")
+        actual = sha256(path)
+        if actual != record["sha256"]:
+            raise RuntimeError(
+                f"Runner input changed after use for {key}: "
+                f"{actual} != {record['sha256']}"
+            )
+
+
+def resolve_run_status(requested_status: str | None) -> tuple[str, str]:
+    """Return a conservative run status that never depends on ``run_label``."""
+
+    if requested_status is None:
+        return "pilot_only", "safe_default"
+    if requested_status not in RUN_STATUSES:
+        raise ValueError(f"Unknown run status: {requested_status!r}")
+    return requested_status, "explicit_cli"
+
+
+def add_run_metadata_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add non-scientific run-label, status, and provenance controls."""
+
+    parser.add_argument("--run-label", default="pilot")
+    parser.add_argument(
+        "--run-status",
+        choices=RUN_STATUSES,
+        default=None,
+        help=(
+            "Explicit preliminary output classification. Omission fails safe "
+            "to pilot_only; production_candidate still requires the aggregate "
+            "acceptance gate, and run-label text never determines status."
+        ),
+    )
+    parser.add_argument(
+        "--verified-bryson-source-sha256",
+        default=None,
+        metavar="SHA256",
+        help=(
+            "Independently verified SHA-256 of "
+            "BRYSON_ROOT/insolation/rateModels3D.py. Required only when the "
+            "source is neither a clean Git checkout nor covered by "
+            "BRYSON_ROOT/SHA256SUMS.txt."
+        ),
+    )
+
+
+def _normalise_sha256(value: str, description: str) -> str:
+    normalised = value.strip().lower()
+    if not SHA256_RE.fullmatch(normalised):
+        raise ValueError(f"{description} must be exactly 64 hexadecimal characters")
+    return normalised
+
+
+def _same_path(left: Path, right: Path) -> bool:
+    return os.path.normcase(str(left.resolve())) == os.path.normcase(
+        str(right.resolve())
+    )
+
+
+def _git_command(root: Path, *arguments: str, text: bool = True):
+    return subprocess.run(
+        ["git", "-C", str(root), *arguments],
+        check=False,
+        capture_output=True,
+        text=text,
+    )
+
+
+def _git_source_verification(
+    root: Path, source_path: Path, actual_sha256: str
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Verify that the executed source bytes equal the exact Git HEAD blob."""
+
+    try:
+        top_level = _git_command(root, "rev-parse", "--show-toplevel")
+    except OSError as exc:
+        return None, f"Git unavailable: {exc}"
+    if top_level.returncode != 0:
+        return None, "Bryson root is not a Git checkout"
+
+    reported_root = Path(top_level.stdout.strip())
+    if not _same_path(reported_root, root):
+        return None, "Bryson root is nested inside a different Git checkout"
+
+    origin = _git_command(root, "remote", "get-url", "origin")
+    if origin.returncode != 0:
+        return None, "Bryson Git checkout has no origin remote"
+    remote_url = origin.stdout.strip()
+    normalized_remote = remote_url.lower().rstrip("/")
+    if normalized_remote.endswith(".git"):
+        normalized_remote = normalized_remote[:-4]
+    if normalized_remote != "https://github.com/stevepur/dr25-occurrence-public":
+        return None, f"Unexpected Bryson Git origin URL: {remote_url!r}"
+
+    head = _git_command(root, "rev-parse", "HEAD")
+    commit = head.stdout.strip().lower()
+    if head.returncode != 0 or not GIT_COMMIT_RE.fullmatch(commit):
+        return None, "Git HEAD could not be resolved to a full commit identifier"
+
+    relative = BRYSON_SOURCE_RELATIVE_PATH.as_posix()
+    head_source = _git_command(root, "show", f"{commit}:{relative}", text=False)
+    if head_source.returncode != 0:
+        return None, f"{relative} is not available from Git HEAD"
+    head_sha256 = hashlib.sha256(head_source.stdout).hexdigest()
+    if head_sha256 != actual_sha256:
+        return None, (
+            f"working source SHA-256 {actual_sha256} differs from Git HEAD "
+            f"source SHA-256 {head_sha256}"
+        )
+
+    return (
+        {
+            "verified": True,
+            "verification_method": "git_head_source_bytes",
+            "source_repository": BRYSON_REPOSITORY,
+            "source_remote_url": remote_url,
+            "source_commit": commit,
+            "source_root": str(root),
+            "source_file": {
+                "path": str(source_path),
+                "relative_path": relative,
+                "sha256": actual_sha256,
+            },
+        },
+        None,
+    )
+
+
+def _manifest_sha256(manifest_path: Path, relative_path: Path) -> str | None:
+    """Return the unique SHA-256 entry for ``relative_path`` from sha256sum output."""
+
+    target = relative_path.as_posix()
+    matches: list[str] = []
+    try:
+        lines = manifest_path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError) as exc:
+        raise RuntimeError(f"Cannot read Bryson SHA-256 manifest: {exc}") from exc
+    for line in lines:
+        match = re.fullmatch(r"([0-9A-Fa-f]{64}) [ *](.+)", line)
+        if match is None:
+            continue
+        manifest_name = match.group(2).replace("\\", "/")
+        while manifest_name.startswith("./"):
+            manifest_name = manifest_name[2:]
+        if manifest_name == target:
+            matches.append(match.group(1).lower())
+    if not matches:
+        return None
+    if len(set(matches)) != 1:
+        raise RuntimeError(
+            f"Conflicting SHA-256 entries for {target} in {manifest_path}"
+        )
+    return matches[0]
+
+
+def verify_bryson_source(
+    bryson_root: Path, explicitly_verified_sha256: str | None = None
+) -> dict[str, Any]:
+    """Fail closed unless the executed Bryson source has verifiable provenance."""
+
+    root = bryson_root.resolve()
+    if not root.is_dir():
+        raise RuntimeError(f"Bryson root is not a directory: {root}")
+
+    source_path = root / BRYSON_SOURCE_RELATIVE_PATH
+    if not source_path.is_file() or source_path.is_symlink():
+        raise RuntimeError(f"Missing or unsafe Bryson source file: {source_path}")
+    if not _same_path(source_path.resolve().parent.parent, root):
+        raise RuntimeError(f"Bryson source escapes the declared root: {source_path}")
+
+    actual_sha256 = sha256(source_path)
+    locked_sha256 = locked_bryson_source_sha256()
+    if actual_sha256 != locked_sha256:
+        raise RuntimeError(
+            "Bryson source does not match the repository data lock: expected "
+            f"{locked_sha256}, got {actual_sha256}"
+        )
+    relative = BRYSON_SOURCE_RELATIVE_PATH.as_posix()
+
+    if explicitly_verified_sha256 is not None:
+        expected_sha256 = _normalise_sha256(
+            explicitly_verified_sha256, "--verified-bryson-source-sha256"
+        )
+        if expected_sha256 != locked_sha256:
+            raise RuntimeError(
+                "--verified-bryson-source-sha256 does not match the repository "
+                f"data lock {locked_sha256}"
+            )
+        if actual_sha256 != expected_sha256:
+            raise RuntimeError(
+                "Bryson source SHA-256 mismatch: expected "
+                f"{expected_sha256}, got {actual_sha256}"
+            )
+        return {
+            "verified": True,
+            "verification_method": "explicit_cli_sha256",
+            "source_repository": BRYSON_REPOSITORY,
+            "source_commit": None,
+            "source_root": str(root),
+            "source_file": {
+                "path": str(source_path),
+                "relative_path": relative,
+                "sha256": actual_sha256,
+            },
+        }
+
+    git_provenance, git_failure = _git_source_verification(
+        root, source_path, actual_sha256
+    )
+    if git_provenance is not None:
+        return git_provenance
+
+    manifest_path = root / "SHA256SUMS.txt"
+    if manifest_path.is_file() and not manifest_path.is_symlink():
+        expected_sha256 = _manifest_sha256(
+            manifest_path, BRYSON_SOURCE_RELATIVE_PATH
+        )
+        if expected_sha256 is None:
+            raise RuntimeError(
+                f"Bryson SHA-256 manifest has no entry for {relative}: "
+                f"{manifest_path}"
+            )
+        if actual_sha256 != expected_sha256:
+            raise RuntimeError(
+                "Bryson source SHA-256 mismatch against manifest: expected "
+                f"{expected_sha256}, got {actual_sha256}"
+            )
+        return {
+            "verified": True,
+            "verification_method": "artifact_sha256_manifest",
+            "verification_manifest": str(manifest_path),
+            "source_repository": BRYSON_REPOSITORY,
+            "source_commit": None,
+            "source_root": str(root),
+            "source_file": {
+                "path": str(source_path),
+                "relative_path": relative,
+                "sha256": actual_sha256,
+            },
+        }
+
+    reason = git_failure or "no Git provenance was available"
+    raise RuntimeError(
+        "Bryson source provenance could not be verified fail-closed: "
+        f"{reason}; provide a clean exact Git checkout, a matching "
+        "BRYSON_ROOT/SHA256SUMS.txt entry, or "
+        "--verified-bryson-source-sha256"
+    )
+
+
+def verify_loaded_bryson_module(module: Any, provenance: dict[str, Any]) -> None:
+    """Ensure Python imported the same source file whose bytes were verified."""
+
+    module_file = getattr(module, "__file__", None)
+    if not module_file:
+        raise RuntimeError("Imported rateModels3D module does not expose __file__")
+    expected_path = Path(provenance["source_file"]["path"])
+    if not _same_path(Path(module_file), expected_path):
+        raise RuntimeError(
+            "Imported rateModels3D module does not match verified source: "
+            f"loaded {Path(module_file).resolve()}, expected {expected_path.resolve()}"
+        )
+    expected_sha256 = str(provenance["source_file"]["sha256"])
+    actual_sha256 = sha256(Path(module_file))
+    if actual_sha256 != expected_sha256:
+        raise RuntimeError(
+            "Imported rateModels3D source bytes changed after provenance "
+            f"verification: {actual_sha256} != {expected_sha256}"
+        )
 
 
 def jsonable(value: Any) -> Any:
@@ -267,7 +621,7 @@ def main() -> None:
         default=None,
         help="Optional source-period cutoff. Omit to reproduce the no-suffix archived run.",
     )
-    parser.add_argument("--run-label", default="pilot")
+    add_run_metadata_arguments(parser)
     parser.add_argument(
         "--measurement-error-mode",
         choices=MEASUREMENT_ERROR_MODES,
@@ -298,16 +652,31 @@ def main() -> None:
         if args.max_steps < args.steps:
             parser.error("max-steps must be at least steps")
     maximum_steps = args.max_steps if args.max_steps is not None else args.steps
+    run_status, run_status_source = resolve_run_status(args.run_status)
 
     started = time.time()
     root = args.bryson_root.resolve()
+    try:
+        input_file_provenance = verify_runner_inputs(
+            args.branch,
+            args.stellar_catalog,
+            args.pc_catalog,
+            args.completeness,
+        )
+        bryson_source_provenance = verify_bryson_source(
+            root, args.verified_bryson_source_sha256
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        parser.error(str(exc))
     out = args.out.resolve()
-    out.mkdir(parents=True, exist_ok=True)
 
     sys.path.insert(0, str(root / "completenessContours"))
     sys.path.insert(0, str(root))
     sys.path.insert(0, str(root / "insolation"))
     import rateModels3D as rm3d  # type: ignore  # noqa: E402
+
+    verify_loaded_bryson_module(rm3d, bryson_source_provenance)
+    out.mkdir(parents=True, exist_ok=True)
 
     cs = rm3d.compSpace(
         periodName="Instellation",
@@ -325,8 +694,12 @@ def main() -> None:
     )
     model = rm3d.triplePowerLawTeffAvg(cs)
 
-    stellar = pd.read_csv(args.stellar_catalog)
-    base_kois = pd.read_csv(args.pc_catalog)
+    reverify_runner_inputs(input_file_provenance)
+    stellar_path = Path(input_file_provenance["stellar_catalog"]["path"])
+    pc_path = Path(input_file_provenance["pc_catalog"]["path"])
+    completeness_path = Path(input_file_provenance["completeness"]["path"])
+    stellar = pd.read_csv(stellar_path)
+    base_kois = pd.read_csv(pc_path)
     base_kois = pd.merge(
         base_kois,
         stellar[["kepid", "logg"]],
@@ -336,7 +709,7 @@ def main() -> None:
     ).reset_index(drop=True)
     base_kois["source_row"] = np.arange(len(base_kois), dtype=int)
 
-    summed_teff, mean_teff = load_completeness(args.completeness, cs)
+    summed_teff, mean_teff = load_completeness(completeness_path, cs)
 
     chain_rows: list[list[Any]] = []
     planet_rows: list[list[Any]] = []
@@ -590,8 +963,14 @@ def main() -> None:
         json.dumps(diagnostics, indent=2, default=jsonable), encoding="utf-8"
     )
 
+    reverify_runner_inputs(input_file_provenance)
+
     summary = {
-        "status": "pilot_only" if "pilot" in args.run_label else "production",
+        "status": run_status,
+        "status_assignment": {
+            "method": run_status_source,
+            "run_label_used_for_status": False,
+        },
         "scientific_interpretation": (
             "A source-faithful newly seeded rerun of the public Bryson likelihood; "
             "not the missing historical chain or a bitwise reproduction of the "
@@ -603,8 +982,9 @@ def main() -> None:
             "three post-perturbation source-domain filters; not the missing "
             "historical chain."
         ),
-        "source_repository": "stevepur/DR25-occurrence-public",
-        "source_commit": BRYSON_COMMIT,
+        "source_repository": BRYSON_REPOSITORY,
+        "source_commit": bryson_source_provenance["source_commit"],
+        "source_provenance": bryson_source_provenance,
         "branch": args.branch,
         "run_label": args.run_label,
         "parameter_order_source": ["F0", "beta_inst", "alpha_radius", "gamma"],
@@ -640,20 +1020,7 @@ def main() -> None:
         "comparison_with_archived_published_marginal_medians": comparison,
         "trial_diagnostics_file": diagnostics_path.name,
         "perturbation_audit_file": audit_path.name,
-        "input_files": {
-            "stellar_catalog": {
-                "path": str(args.stellar_catalog),
-                "sha256": sha256(args.stellar_catalog),
-            },
-            "pc_catalog": {
-                "path": str(args.pc_catalog),
-                "sha256": sha256(args.pc_catalog),
-            },
-            "completeness": {
-                "path": str(args.completeness),
-                "sha256": sha256(args.completeness),
-            },
-        },
+        "input_files": input_file_provenance,
         "runtime_seconds": float(time.time() - started),
         "software": {
             "python": sys.version,
@@ -664,8 +1031,11 @@ def main() -> None:
         },
         "limitations": [
             *(
-                ["Pilot settings are for code and data-path validation, not publication inference."]
-                if "pilot" in args.run_label
+                [
+                    "The run is classified pilot_only; run-label text and "
+                    "numerical settings do not promote it to production."
+                ]
+                if run_status == "pilot_only"
                 else []
             ),
             "The public snapshot contains no serialized historical posterior chain.",

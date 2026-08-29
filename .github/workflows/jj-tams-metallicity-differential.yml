@@ -18,7 +18,9 @@ jobs:
           python scripts/verify_locked_inputs.py \
             --check huber_parsec_tams_table=research/jj-host-export/reference-data/tams_parsec_danxhuber.txt
       - name: Install dependencies
-        run: python -m pip install 'numpy==1.23.5' 'scipy==1.10.1' 'astropy==5.3.4' 'matplotlib==3.7.5' 'fast-histogram==0.14' 'requests>=2.28'
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
+          python -m pip check
       - name: Test low-mass TAMS coverage guard
         run: python -m unittest discover -s research/jj-host-export -p 'test_*.py' -v
       - name: Checkout pinned JJ
@@ -26,7 +28,7 @@ jobs:
           git clone https://github.com/askenja/jjmodel.git /tmp/jjmodel-src
           cd /tmp/jjmodel-src
           git checkout 2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54
-          python -m pip install -e .
+          python -m pip install --no-deps --no-build-isolation -e .
       - name: Download JJ Padova isochrones
         run: |
           python scripts/fetch_locked_inputs.py \

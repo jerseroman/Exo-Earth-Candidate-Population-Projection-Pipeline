@@ -268,6 +268,7 @@ class MeasurementErrorTests(unittest.TestCase):
                     "run_label": [label, label],
                     "trial": [0, 0],
                     "trial_seed": [11, 11],
+                    "mcmc_seed": [22, 22],
                     "production_step": [0, 1],
                     "walker": [0, 0],
                     "F0": [1.0, 1.1],
@@ -283,6 +284,9 @@ class MeasurementErrorTests(unittest.TestCase):
                     [
                         {
                             "trial": 0,
+                            "seed": 11,
+                            "perturbation_seed": 11,
+                            "mcmc_seed": 22,
                             "measurement_error_mode": QUANTILE_MATCHED_TWO_SIDED,
                             "mean_acceptance_fraction": 0.4,
                             "runtime_seconds": 1.0,
@@ -298,8 +302,16 @@ class MeasurementErrorTests(unittest.TestCase):
                 json.dumps(
                     {
                         "branch": "constant",
+                        "run_label": label,
                         "period_cutoff_days": None,
+                        "trials": 1,
+                        "walkers": 1,
                         "burnin_steps": 1,
+                        "production_steps_requested_minimum": 2,
+                        "thin": 1,
+                        "trial_diagnostics_file": (
+                            f"trial_diagnostics_constant_{label}.json"
+                        ),
                         "measurement_error": {
                             "mode": QUANTILE_MATCHED_TWO_SIDED
                         },

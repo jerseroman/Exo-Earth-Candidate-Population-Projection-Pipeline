@@ -47,6 +47,7 @@ provenance/independent-audit-evidence/joint_posterior_zero_aggregate_summary.jso
 provenance/independent-audit-evidence/local_vs_frozen_comparison.json
 provenance/independent-audit-evidence/numerical_environment.txt
 pyproject.toml
+requirements.in
 requirements.txt
 research/bryson-joint-posterior/IPython/__init__.py
 research/bryson-joint-posterior/IPython/display.py
@@ -115,6 +116,7 @@ research/v4-validation/test_data_locks.py
 research/v4-validation/test_dr25_support_audit.py
 research/v4-validation/test_host_tams_audit.py
 research/v4-validation/test_primary_literature_comparison.py
+research/v4-validation/test_security_verifiers.py
 research/v4-validation/test_sensitivity_freeze.py
 research/v4-validation/test_v4_statistical_baseline.py
 research/v4-validation/v4_statistical_baseline_github_evidence.json
@@ -123,8 +125,11 @@ scripts/build_license_matrix.py
 scripts/build_manifest.py
 scripts/build_public_package.py
 scripts/fetch_locked_inputs.py
+scripts/verify_accepted_aggregate.py
+scripts/verify_dependency_lock.py
 scripts/verify_frozen_manifests.py
 scripts/verify_license_policy.py
 scripts/verify_locked_inputs.py
 scripts/verify_public_package_roundtrip.py
 scripts/verify_release_metadata.py
+scripts/verify_workflow_security.py

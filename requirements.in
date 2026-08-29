@@ -1,0 +1,18 @@
+# Direct runtime dependencies for the legacy, source-faithful Python 3.10 environment.
+numpy==1.23.5
+scipy==1.10.1
+pandas==1.5.3
+astropy==5.3.4
+emcee==3.1.6
+matplotlib==3.7.5
+fast-histogram==0.14
+requests==2.34.2
+
+# Parsers used by fail-closed repository/workflow audit utilities.
+PyYAML==6.0.3
+tomli==2.4.1
+
+# Exact build tools needed by the pinned editable JJModel checkout.
+pip==26.2.1
+setuptools==83.0.0
+wheel==0.46.2
