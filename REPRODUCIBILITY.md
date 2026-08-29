@@ -50,6 +50,12 @@ lock checks and `pip check`; `make verify` includes that gate. The lock controls
 Python packages only. A production record must still capture the exact active
 Python and `pip`, operating-system runner, and numerical-library configuration.
 
+The four comment lines at the start of `requirements.txt` are a
+policy-normalized generation record: they identify the audited Python and
+`pip-tools` policy and the approved resolution command, but are not claimed to
+be an untouched copy of terminal output. The verifier binds the complete
+normalized lock file by SHA-256.
+
 The three JJ workflows install the checked-out local package only with
 `--no-deps --no-build-isolation -e .`; this forces the already hash-locked
 `flit-core` package and its `flit_core.buildapi` backend to be used instead of
