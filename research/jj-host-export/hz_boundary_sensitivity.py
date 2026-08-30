@@ -203,8 +203,10 @@ def main():
                 'delta_L1_percent_vs_1Mearth':r['delta_L1_percent_vs_1Mearth'],'delta_L2_percent_vs_1Mearth':r['delta_L2_percent_vs_1Mearth'],
                 'L2_over_L1':r['L2_over_L1'],'crossing_status':c['status'],'T_cross_K':c['T_cross_K'],
             })
-    (out/'hz_sensitivity_results.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
-    print(json.dumps(result,indent=2))
+    (out/'hz_sensitivity_results.json').write_text(
+        json.dumps(result,indent=2,allow_nan=False)+'\n',encoding='utf-8',newline='\n'
+    )
+    print(json.dumps(result,indent=2,allow_nan=False))
 
 if __name__=='__main__':
     main()

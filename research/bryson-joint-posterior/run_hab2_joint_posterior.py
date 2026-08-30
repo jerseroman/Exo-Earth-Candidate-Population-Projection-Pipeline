@@ -40,16 +40,19 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import math
 import os
 import platform
 import re
+import stat
 import subprocess
 import sys
 import time
+import types
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import emcee
 import numpy as np
@@ -65,6 +68,12 @@ from measurement_error import (
     perturb_planets,
 )
 from mcmc_convergence import run_production_chain
+from raw_chain_evidence import (
+    RawChainEvidenceError,
+    finalize_raw_chain_bundle,
+    initialize_private_raw_chain_directory,
+    write_raw_chain,
+)
 
 BRYSON_REPOSITORY = "stevepur/DR25-occurrence-public"
 BRYSON_SOURCE_RELATIVE_PATH = Path("insolation") / "rateModels3D.py"
@@ -94,6 +103,102 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+class StableInputSnapshot(NamedTuple):
+    """One regular input captured through one non-following descriptor."""
+
+    path: Path
+    data: bytes
+    sha256: str
+    size_bytes: int
+    identity: tuple[int, int, int, int, int]
+
+
+def _has_reparse_point(value: os.stat_result) -> bool:
+    return bool(getattr(value, "st_file_attributes", 0) & 0x400)
+
+
+def _file_identity(value: os.stat_result) -> tuple[int, int, int, int, int]:
+    return (
+        int(value.st_dev),
+        int(value.st_ino),
+        int(value.st_size),
+        int(value.st_mtime_ns),
+        int(value.st_ctime_ns),
+    )
+
+
+def stable_input_snapshot(path: Path, label: str) -> StableInputSnapshot:
+    """Capture exact bytes once and reject links, swaps, and special files."""
+
+    candidate = Path(path)
+    try:
+        before = candidate.lstat()
+    except OSError as error:
+        raise RuntimeError(f"Cannot inspect {label}: {candidate}") from error
+    if (
+        stat.S_ISLNK(before.st_mode)
+        or _has_reparse_point(before)
+        or not stat.S_ISREG(before.st_mode)
+    ):
+        raise RuntimeError(f"Unsafe or missing {label}: {candidate}")
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = -1
+    try:
+        descriptor = os.open(candidate, flags)
+        opened_before = os.fstat(descriptor)
+        chunks: list[bytes] = []
+        digest = hashlib.sha256()
+        size = 0
+        while True:
+            block = os.read(descriptor, 1024 * 1024)
+            if not block:
+                break
+            chunks.append(block)
+            digest.update(block)
+            size += len(block)
+        opened_after = os.fstat(descriptor)
+    except OSError as error:
+        raise RuntimeError(f"Cannot read {label}: {candidate}") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+    try:
+        after = candidate.lstat()
+    except OSError as error:
+        raise RuntimeError(f"Cannot re-inspect {label}: {candidate}") from error
+    observed = _file_identity(opened_before)
+    if (
+        observed != _file_identity(opened_after)
+        or observed != _file_identity(before)
+        or observed != _file_identity(after)
+        or stat.S_ISLNK(after.st_mode)
+        or _has_reparse_point(after)
+        or not stat.S_ISREG(after.st_mode)
+        or size != opened_before.st_size
+    ):
+        raise RuntimeError(f"{label} changed during its stable snapshot")
+    return StableInputSnapshot(
+        path=candidate.resolve(),
+        data=b"".join(chunks),
+        sha256=digest.hexdigest(),
+        size_bytes=size,
+        identity=observed,
+    )
+
+
+def recheck_input_snapshot(snapshot: StableInputSnapshot, label: str) -> None:
+    """Require a captured input path to retain the exact captured bytes."""
+
+    current = stable_input_snapshot(snapshot.path, label)
+    if (
+        current.identity != snapshot.identity
+        or current.sha256 != snapshot.sha256
+        or current.size_bytes != snapshot.size_bytes
+        or current.data != snapshot.data
+    ):
+        raise RuntimeError(f"{label} changed after its validated snapshot")
 
 
 def locked_bryson_source_sha256() -> str:
@@ -140,7 +245,7 @@ def verify_runner_inputs(
     stellar_catalog: Path,
     pc_catalog: Path,
     completeness: Path,
-) -> dict[str, dict[str, str]]:
+) -> dict[str, dict[str, Any]]:
     """Hash and lock every scientific input before any of its bytes are loaded."""
 
     paths = {
@@ -149,36 +254,60 @@ def verify_runner_inputs(
         "completeness": completeness,
     }
     expected = locked_runner_input_sha256(branch)
-    records: dict[str, dict[str, str]] = {}
+    records: dict[str, dict[str, Any]] = {}
     for key, path in paths.items():
-        if path.is_symlink():
-            raise RuntimeError(f"Symlinked runner input is not allowed for {key}: {path}")
-        resolved = path.resolve()
-        if not resolved.is_file():
-            raise RuntimeError(f"Unsafe or missing runner input for {key}: {resolved}")
-        actual = sha256(resolved)
+        snapshot = stable_input_snapshot(path, f"runner input for {key}")
+        actual = snapshot.sha256
         if actual != expected[key]:
             raise RuntimeError(
                 f"Locked runner input SHA-256 mismatch for {key}: "
                 f"{actual} != {expected[key]}"
             )
-        records[key] = {"path": str(resolved), "sha256": actual}
+        records[key] = {
+            "path": str(snapshot.path),
+            "sha256": actual,
+            "size_bytes": snapshot.size_bytes,
+            "_snapshot": snapshot,
+        }
     return records
 
 
-def reverify_runner_inputs(records: dict[str, dict[str, str]]) -> None:
+def reverify_runner_inputs(records: dict[str, dict[str, Any]]) -> None:
     """Reject input replacement between pre-flight hashing and summary writing."""
 
     for key, record in records.items():
-        path = Path(record["path"])
-        if not path.is_file() or path.is_symlink():
-            raise RuntimeError(f"Runner input changed or disappeared for {key}: {path}")
-        actual = sha256(path)
-        if actual != record["sha256"]:
-            raise RuntimeError(
-                f"Runner input changed after use for {key}: "
-                f"{actual} != {record['sha256']}"
-            )
+        snapshot = record.get("_snapshot")
+        if not isinstance(snapshot, StableInputSnapshot):
+            raise RuntimeError(f"Runner input snapshot is missing for {key}")
+        try:
+            recheck_input_snapshot(snapshot, f"runner input for {key}")
+        except RuntimeError as error:
+            raise RuntimeError(f"Runner input changed after use for {key}") from error
+
+
+def public_runner_input_provenance(
+    records: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Project internal byte snapshots onto JSON-safe public provenance."""
+
+    public: dict[str, dict[str, Any]] = {}
+    for key, record in records.items():
+        public[key] = {
+            "path": str(record["path"]),
+            "sha256": str(record["sha256"]),
+            "size_bytes": int(record["size_bytes"]),
+        }
+    return public
+
+
+def public_bryson_source_provenance(provenance: dict[str, Any]) -> dict[str, Any]:
+    """Remove the in-memory source snapshot from serialized provenance."""
+
+    return {
+        key: value
+        for key, value in provenance.items()
+        if key != "_source_snapshot"
+    }
 
 
 def resolve_run_status(requested_status: str | None) -> tuple[str, str]:
@@ -337,12 +466,11 @@ def verify_bryson_source(
         raise RuntimeError(f"Bryson root is not a directory: {root}")
 
     source_path = root / BRYSON_SOURCE_RELATIVE_PATH
-    if not source_path.is_file() or source_path.is_symlink():
-        raise RuntimeError(f"Missing or unsafe Bryson source file: {source_path}")
-    if not _same_path(source_path.resolve().parent.parent, root):
+    source_snapshot = stable_input_snapshot(source_path, "Bryson rate-model source")
+    if not _same_path(source_snapshot.path.parent.parent, root):
         raise RuntimeError(f"Bryson source escapes the declared root: {source_path}")
 
-    actual_sha256 = sha256(source_path)
+    actual_sha256 = source_snapshot.sha256
     locked_sha256 = locked_bryson_source_sha256()
     if actual_sha256 != locked_sha256:
         raise RuntimeError(
@@ -376,12 +504,14 @@ def verify_bryson_source(
                 "relative_path": relative,
                 "sha256": actual_sha256,
             },
+            "_source_snapshot": source_snapshot,
         }
 
     git_provenance, git_failure = _git_source_verification(
-        root, source_path, actual_sha256
+        root, source_snapshot.path, actual_sha256
     )
     if git_provenance is not None:
+        git_provenance["_source_snapshot"] = source_snapshot
         return git_provenance
 
     manifest_path = root / "SHA256SUMS.txt"
@@ -411,6 +541,7 @@ def verify_bryson_source(
                 "relative_path": relative,
                 "sha256": actual_sha256,
             },
+            "_source_snapshot": source_snapshot,
         }
 
     reason = git_failure or "no Git provenance was available"
@@ -435,12 +566,37 @@ def verify_loaded_bryson_module(module: Any, provenance: dict[str, Any]) -> None
             f"loaded {Path(module_file).resolve()}, expected {expected_path.resolve()}"
         )
     expected_sha256 = str(provenance["source_file"]["sha256"])
-    actual_sha256 = sha256(Path(module_file))
-    if actual_sha256 != expected_sha256:
+    if getattr(module, "__verified_source_sha256__", None) != expected_sha256:
+        raise RuntimeError("Loaded rateModels3D module lacks its verified byte binding")
+    snapshot = provenance.get("_source_snapshot")
+    if not isinstance(snapshot, StableInputSnapshot):
+        raise RuntimeError("Verified Bryson source snapshot is missing")
+    try:
+        recheck_input_snapshot(snapshot, "Bryson rate-model source")
+    except RuntimeError as error:
         raise RuntimeError(
-            "Imported rateModels3D source bytes changed after provenance "
-            f"verification: {actual_sha256} != {expected_sha256}"
-        )
+            "Imported rateModels3D source bytes changed after provenance verification"
+        ) from error
+
+
+def load_verified_bryson_module(provenance: dict[str, Any]) -> Any:
+    """Execute only the stable source bytes captured by provenance verification."""
+
+    snapshot = provenance.get("_source_snapshot")
+    if not isinstance(snapshot, StableInputSnapshot):
+        raise RuntimeError("Verified Bryson source snapshot is missing")
+    module = types.ModuleType("rateModels3D")
+    module.__file__ = str(snapshot.path)
+    module.__package__ = ""
+    try:
+        code = compile(snapshot.data, str(snapshot.path), "exec")
+        sys.modules["rateModels3D"] = module
+        exec(code, module.__dict__)
+    except Exception as error:
+        raise RuntimeError("Verified Bryson rate-model bytes could not be loaded") from error
+    module.__verified_source_sha256__ = snapshot.sha256
+    verify_loaded_bryson_module(module, provenance)
+    return module
 
 
 def jsonable(value: Any) -> Any:
@@ -509,8 +665,10 @@ def nll(theta, cs, koi_flux, koi_radius, koi_teff, sum_comp, teff_means, model):
     return -value if np.isfinite(value) else 1.0e15
 
 
-def load_completeness(path: Path, cs):
-    with fits.open(path, memmap=False) as hdulist:
+def load_completeness(data: bytes, cs):
+    """Load completeness only from the preflight-captured immutable bytes."""
+
+    with fits.open(io.BytesIO(data), memmap=False) as hdulist:
         cumulative = np.asarray(hdulist[0].data)
         header = hdulist[0].header
         prob_teff = cumulative[3:, :, :]
@@ -598,6 +756,15 @@ def main() -> None:
     parser.add_argument("--thin", type=int, default=2)
     parser.add_argument("--walkers", type=int, default=8)
     parser.add_argument(
+        "--private-raw-chain-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Separate private directory for deterministic unthinned production "
+            "chains. Required for production_candidate and forbidden inside --out."
+        ),
+    )
+    parser.add_argument(
         "--adaptive-production",
         action="store_true",
         help=(
@@ -653,6 +820,11 @@ def main() -> None:
             parser.error("max-steps must be at least steps")
     maximum_steps = args.max_steps if args.max_steps is not None else args.steps
     run_status, run_status_source = resolve_run_status(args.run_status)
+    if run_status == "production_candidate" and args.private_raw_chain_dir is None:
+        parser.error(
+            "production_candidate requires --private-raw-chain-dir for auditable "
+            "unthinned-chain evidence"
+        )
 
     started = time.time()
     root = args.bryson_root.resolve()
@@ -669,13 +841,19 @@ def main() -> None:
     except (OSError, RuntimeError, ValueError) as exc:
         parser.error(str(exc))
     out = args.out.resolve()
+    private_raw_chain_dir: Path | None = None
+    if args.private_raw_chain_dir is not None:
+        try:
+            private_raw_chain_dir = initialize_private_raw_chain_directory(
+                args.private_raw_chain_dir, out
+            )
+        except RawChainEvidenceError as error:
+            parser.error(str(error))
 
     sys.path.insert(0, str(root / "completenessContours"))
     sys.path.insert(0, str(root))
     sys.path.insert(0, str(root / "insolation"))
-    import rateModels3D as rm3d  # type: ignore  # noqa: E402
-
-    verify_loaded_bryson_module(rm3d, bryson_source_provenance)
+    rm3d = load_verified_bryson_module(bryson_source_provenance)
     out.mkdir(parents=True, exist_ok=True)
 
     cs = rm3d.compSpace(
@@ -695,11 +873,23 @@ def main() -> None:
     model = rm3d.triplePowerLawTeffAvg(cs)
 
     reverify_runner_inputs(input_file_provenance)
-    stellar_path = Path(input_file_provenance["stellar_catalog"]["path"])
-    pc_path = Path(input_file_provenance["pc_catalog"]["path"])
-    completeness_path = Path(input_file_provenance["completeness"]["path"])
-    stellar = pd.read_csv(stellar_path)
-    base_kois = pd.read_csv(pc_path)
+    verify_loaded_bryson_module(rm3d, bryson_source_provenance)
+    public_input_file_provenance = public_runner_input_provenance(
+        input_file_provenance
+    )
+    public_source_provenance = public_bryson_source_provenance(
+        bryson_source_provenance
+    )
+    stellar_snapshot = input_file_provenance["stellar_catalog"].get("_snapshot")
+    pc_snapshot = input_file_provenance["pc_catalog"].get("_snapshot")
+    completeness_snapshot = input_file_provenance["completeness"].get("_snapshot")
+    if not all(
+        isinstance(snapshot, StableInputSnapshot)
+        for snapshot in (stellar_snapshot, pc_snapshot, completeness_snapshot)
+    ):
+        raise RuntimeError("A stable scientific-input snapshot is missing")
+    stellar = pd.read_csv(io.BytesIO(stellar_snapshot.data))
+    base_kois = pd.read_csv(io.BytesIO(pc_snapshot.data))
     base_kois = pd.merge(
         base_kois,
         stellar[["kepid", "logg"]],
@@ -709,12 +899,13 @@ def main() -> None:
     ).reset_index(drop=True)
     base_kois["source_row"] = np.arange(len(base_kois), dtype=int)
 
-    summed_teff, mean_teff = load_completeness(completeness_path, cs)
+    summed_teff, mean_teff = load_completeness(completeness_snapshot.data, cs)
 
     chain_rows: list[list[Any]] = []
     planet_rows: list[list[Any]] = []
     audit_frames: list[pd.DataFrame] = []
     diagnostics: list[dict[str, Any]] = []
+    raw_chain_records: list[dict[str, Any]] = []
     pooled: list[np.ndarray] = []
 
     for trial in range(args.trials):
@@ -803,6 +994,19 @@ def main() -> None:
 
         chain = sampler.get_chain(thin=args.thin)
         log_probability = sampler.get_log_prob(thin=args.thin)
+        raw_chain_record: dict[str, Any] | None = None
+        if private_raw_chain_dir is not None:
+            raw_chain_record = write_raw_chain(
+                private_raw_chain_dir,
+                branch=args.branch,
+                run_label=args.run_label,
+                trial=trial,
+                trial_seed=trial_seed,
+                mcmc_seed=mcmc_seed,
+                chain_source_order=sampler.get_chain(thin=1),
+                log_probability=sampler.get_log_prob(thin=1),
+            )
+            raw_chain_records.append(raw_chain_record)
         flat = chain.reshape((-1, ndim))
         pooled.append(flat)
 
@@ -855,8 +1059,7 @@ def main() -> None:
                 ]
             )
 
-        diagnostics.append(
-            {
+        diagnostic = {
                 "trial": trial,
                 "seed": trial_seed,
                 "perturbation_seed": trial_seed,
@@ -881,7 +1084,9 @@ def main() -> None:
                 "convergence_checks": convergence_checks,
                 "runtime_seconds": float(time.time() - trial_start),
             }
-        )
+        if raw_chain_record is not None:
+            diagnostic["private_raw_chain"] = raw_chain_record
+        diagnostics.append(diagnostic)
         print(
             json.dumps(
                 {
@@ -898,6 +1103,15 @@ def main() -> None:
                 }
             ),
             flush=True,
+        )
+
+    raw_chain_bundle = None
+    if private_raw_chain_dir is not None:
+        raw_chain_bundle = finalize_raw_chain_bundle(
+            private_raw_chain_dir,
+            branch=args.branch,
+            run_label=args.run_label,
+            records=raw_chain_records,
         )
 
     pooled_samples = np.concatenate(pooled, axis=0)
@@ -984,7 +1198,7 @@ def main() -> None:
         ),
         "source_repository": BRYSON_REPOSITORY,
         "source_commit": bryson_source_provenance["source_commit"],
-        "source_provenance": bryson_source_provenance,
+        "source_provenance": public_source_provenance,
         "branch": args.branch,
         "run_label": args.run_label,
         "parameter_order_source": ["F0", "beta_inst", "alpha_radius", "gamma"],
@@ -1020,7 +1234,8 @@ def main() -> None:
         "comparison_with_archived_published_marginal_medians": comparison,
         "trial_diagnostics_file": diagnostics_path.name,
         "perturbation_audit_file": audit_path.name,
-        "input_files": input_file_provenance,
+        "private_raw_chain_bundle": raw_chain_bundle,
+        "input_files": public_input_file_provenance,
         "runtime_seconds": float(time.time() - started),
         "software": {
             "python": sys.version,

@@ -13,7 +13,9 @@ branches are separate model scenarios. They are never pooled into a credible
 interval or assigned implicit model probabilities.
 
 The v4 primary analysis uses `quantile_matched_two_sided` catalog perturbations.
-`legacy_source_mixture` remains available only for source-faithful regression.
+`legacy_source_mixture` remains available only for source-faithful regression
+and the separately labelled, constant-branch
+`v4.0.4-legacy-measurement-sensitivity` acceptance profile.
 
 ## Random streams
 
@@ -43,6 +45,46 @@ parameter in every accepted realization. The numerical-freeze audit also
 enforces `ESS >= 1,000` as a separate, weaker sanity gate on the serialized
 diagnostics. It does not replace or relax the online `N_steps >= 100 tau`
 adaptive condition; it catches missing or inconsistent ESS evidence.
+
+## Private raw-chain audit evidence
+
+A `production_candidate` runner must receive `--private-raw-chain-dir`. The
+directory must be absent or empty and must be outside `--out`. For every trial,
+the runner writes the complete post-burn, unthinned ensemble chain and log
+probability in deterministic little-endian float64 format. A strict JSON index
+binds the branch, shard label, trial, outer seed, MCMC seed, dimensions, byte
+size and SHA-256; an exact manifest binds the index and all trial files.
+
+Production aggregation must receive `--private-raw-chain-root`. It requires an
+exact 16-shard by 25-trial identity map, reads each metadata and binary file as
+a stable single-file-descriptor snapshot, and independently recomputes every
+autocorrelation-time checkpoint, stability streak, first stopping decision and
+ESS from the raw bytes. It also requires the public thinned shard CSV to equal
+the prescribed thinning of those bytes. Missing, changed, extra, symlinked or
+misidentified evidence fails the aggregate even if surrounding manifests were
+regenerated.
+
+The accepted aggregate contains only
+`raw_unthinned_chain_audit_<branch>.json`, the raw identity/hash map, and the
+SHA-256 of the audit helper. It never contains a raw binary, private index or
+private manifest. Raw chains must not be added to Git, `dist/`, a release, or a
+Zenodo deposit.
+
+For a local private production run:
+
+1. Create one separate private evidence directory per shard, for example
+   `/private/evidence/constant-00`, and pass it to the runner with
+   `--private-raw-chain-dir`.
+2. Keep all 16 directories below one private root, without renaming or adding
+   files.
+3. Run the aggregator with the ordinary public shard root plus
+   `--private-raw-chain-root /private/evidence`.
+4. Run `scripts/verify_accepted_aggregate.py` on the resulting public aggregate,
+   supplying the locked `PCs_dr25_hab2.csv` and
+   `dr25_stellar_berger2020_clean_hab2.txt` paths. Acceptance independently
+   replays all 400 catalog perturbations before propagation.
+5. Retain or securely remove the private evidence according to the local data
+   policy; publish only the manifest-bound aggregate output.
 
 ## Outer-realization mixture
 

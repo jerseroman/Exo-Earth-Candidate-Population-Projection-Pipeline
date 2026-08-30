@@ -15,14 +15,22 @@ No workflow may change the model, seeds, priors, likelihood, measurement-error
 mode, convergence criteria, outer-realization weighting, or host selector while
 claiming to reproduce this baseline.
 
-## Local v4.0.4 hardening candidate
+## v4.0.4 full requalification candidate
 
-The local v4.0.4 candidate is a software and provenance hardening pass over the
-frozen v4.0.3 scientific baseline. It does not change any scientific formula,
-prior, likelihood, model domain, input datum, seed schedule, host selector,
-integration rule, frozen posterior, frozen population result, or reported
-headline value. The hardening changes described below must therefore not be
-used to claim a new scientific result.
+Version 4.0.4 starts from the v4.0.3 scientific model but requires a complete
+fresh production calculation. The primary occurrence formula, priors,
+likelihood, model domains, locked data, seed schedules, host selector and
+integration rule remain scientifically unchanged. The evidentiary boundary is
+stronger: raw-chain diagnostics, source-catalog perturbations, JJ SSP inputs,
+host artifacts, radial grids and local execution provenance must be independently
+rederived or cryptographically qualified before a result can be frozen.
+
+No v4.0.3 headline value is used as a v4.0.4 computational input. Old frozen
+values may be compared only as explicitly labelled regression evidence. The
+v4.0.4 reported values must come from the newly accepted constant, zero and
+legacy-sensitivity aggregates and their fresh Galactic propagations.
+Final publication is valid only from the exact `v4.0.4` tag whose commit passes
+the release-acceptance, repository-manifest, license, and public-package gates.
 
 ### Hash-locked Python environment
 
@@ -71,7 +79,10 @@ the human-readable run label never assigns production status.
 successful aggregate summary whose `production_acceptance_gate.accepted` value
 is `true`. Release propagation additionally requires the explicit
 `v4.0.4-production` profile, or the branch-limited
-`v4.0.4-zero-extended` profile. These profiles fix the shard/trial/walker
+`v4.0.4-zero-extended` profile. The separately labelled constant-branch
+`v4.0.4-legacy-measurement-sensitivity` profile uses the same scale, seed
+schedule and quality gates as the primary constant profile but requires
+`legacy_source_mixture`. These profiles fix the shard/trial/walker
 scale, burn-in, minimum and maximum production lengths, thinning, adaptive-tau
 policy, seed schedule, equalized sample count, MCSE settings, and propagation
 stride; a custom quality-gate result cannot cross the release verifier. With
@@ -83,6 +94,13 @@ records. The production command supplies the locked SHA-256 of
 The runner also checks the branch-specific stellar catalog, planet-candidate
 catalog, and completeness contour before loading and rehashes all three before
 writing the summary.
+Every production runner also writes its complete unthinned post-burn chain to a
+separate private directory. The aggregate gate requires all 400 raw-chain
+identities and stable byte snapshots, independently recomputes the full
+checkpoint tau/stability/ESS decision, and verifies that each public shard CSV
+is the exact prescribed thinning. The public aggregate retains only a
+manifest-bound audit report and audit-helper SHA-256; raw binaries, their
+private indexes and their private manifests are excluded.
 Each chain must also contain the complete, non-duplicated walker/step grid
 implied by its declared completed production length and thinning. The gate then
 requires adaptive convergence, successful optimization, valid positive
@@ -96,6 +114,11 @@ manifest and requires `production_acceptance_gate.required=true` and
 hashes, the common numerical-environment hash, verified Bryson source bytes,
 the exact release profile and seed schedule, and 204800 finite propagation rows
 with equal 512-row representation of all 400 outer realizations.
+It also requires the locked planet-candidate and stellar catalogs. A
+stable-snapshot copy of the independent catalog verifier replays all 400
+reliability and asymmetric-measurement realizations and binds the aggregate
+audit, diagnostics, `DATA_LOCKS.json`, verifier source, counts and seeds before
+propagation is permitted.
 
 ### Cross-workflow provenance inputs
 
@@ -143,9 +166,10 @@ version; it must not be hidden inside a maintenance release.
 
 ## Workflow order
 
-Import the exact `v4.0.3` tag, or its exact release commit, into a private
-repository and dispatch the following manual workflows from that immutable
-ref, not from a moving `main`. Their production jobs are guarded by
+Synchronize the exact reviewed v4.0.4 candidate commit and Git tree into the
+private production repository, record exact `git archive HEAD` bytes for both
+repositories, and execute from that immutable ref, not from a moving `main`.
+Production workflow jobs are guarded by
 `github.event.repository.private == true`; they intentionally skip in the
 public release repository because they fetch or process excluded inputs.
 
@@ -156,8 +180,11 @@ public release repository because they fetch or process excluded inputs.
 4. `Bryson v4 corrected zero extended posterior`, supplying the same host run
    ID and SHA. This branch retains the unchanged convergence criteria and the
    audited 30,000-step ceiling.
-5. Optional independent radial-convergence check.
-6. The differential metallicity-TAMS workflow is retained only to reproduce
+5. Run the constant-branch `legacy_source_mixture` sensitivity with the exact
+   `v4.0.4-legacy-measurement-sensitivity` profile and the same 16 by 25 seed
+   schedule and acceptance thresholds as the primary constant calculation.
+6. Run the independently qualified radial-convergence triplets.
+7. The differential metallicity-TAMS workflow is retained only to reproduce
    the rejected coverage diagnostic. Its result is not a valid sensitivity
    correction and must not be promoted into the baseline.
 
@@ -169,7 +196,8 @@ conclusion, exact run commit SHA, and pinned host hashes before propagation.
 
 A replacement baseline is accepted only when:
 
-- exactly 400 constant and 400 zero outer realizations are selected;
+- exactly 400 corrected-constant, 400 corrected-zero and 400 legacy-constant
+  outer realizations are selected into their separately labelled aggregates;
 - every selected realization passes the adaptive convergence gate;
 - no optimizer failure is recorded;
 - every parameter has minimum per-realization ESS at least 1000;

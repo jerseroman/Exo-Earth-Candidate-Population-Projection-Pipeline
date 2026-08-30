@@ -18,6 +18,21 @@ if str(SCRIPTS) not in sys.path:
 import fetch_locked_inputs  # noqa: E402
 import verify_locked_inputs  # noqa: E402
 
+PARSEC_TRACK_LOCK_IDS = {
+    "parsec_tracks_z00005",
+    "parsec_tracks_z0001",
+    "parsec_tracks_z0002",
+    "parsec_tracks_z0004",
+    "parsec_tracks_z0006",
+    "parsec_tracks_z0008",
+    "parsec_tracks_z001",
+    "parsec_tracks_z0014",
+    "parsec_tracks_z0017",
+    "parsec_tracks_z002",
+    "parsec_tracks_z003",
+    "parsec_tracks_z004",
+}
+
 
 class DataLockTests(unittest.TestCase):
     def test_fetch_url_is_restricted_to_credential_free_https(self) -> None:
@@ -46,7 +61,8 @@ class DataLockTests(unittest.TestCase):
                 "completeness_zero",
                 "jj_padova_multiband_archive",
                 "huber_parsec_tams_table",
-            },
+            }
+            | PARSEC_TRACK_LOCK_IDS,
             set(locks),
         )
         for workflow in (
@@ -58,6 +74,17 @@ class DataLockTests(unittest.TestCase):
                 "huber_parsec_tams_table",
                 registry["workflow_requirements"][workflow],
             )
+        metallicity_requirements = set(
+            registry["workflow_requirements"][
+                ".github/workflows/jj-tams-metallicity-differential.yml"
+            ]
+        )
+        self.assertTrue(PARSEC_TRACK_LOCK_IDS <= metallicity_requirements)
+        for lock_id in PARSEC_TRACK_LOCK_IDS:
+            record = locks[lock_id]
+            self.assertEqual(record["distribution_role"], "fetch-only")
+            self.assertEqual(record["license"], "NOASSERTION")
+            self.assertTrue(record["source_url"].startswith("https://people.sissa.it/"))
         pc = locks["bryson_pc_catalog"]
         self.assertEqual(
             pc["expected_sha256"],

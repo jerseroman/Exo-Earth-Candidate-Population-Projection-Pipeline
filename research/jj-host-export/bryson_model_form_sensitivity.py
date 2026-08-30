@@ -129,13 +129,15 @@ def main():
         'models':results,'comparison':comparison,
         'source':'Bryson et al. 2021 AJ 161:36, Eq. 5, Table 1; Poisson, hab2, With Uncertainty, Low Bound',
     }
-    (out/'bryson_model_form_sensitivity.json').write_text(json.dumps(final,indent=2),encoding='utf-8')
+    (out/'bryson_model_form_sensitivity.json').write_text(
+        json.dumps(final,indent=2,allow_nan=False)+'\n',encoding='utf-8',newline='\n'
+    )
     with (out/'bryson_model_form_sensitivity.csv').open('w',newline='',encoding='utf-8') as f:
         cols=['model','F0','alpha','beta','gamma','uses_gT','C','N_G','Lambda_ESHZ','Lambda_earth10','mean_f_HZ','mean_f_earth10','L2_over_L1']
         w=csv.DictWriter(f,fieldnames=cols); w.writeheader()
         for name,m in results.items():
             p=m['parameters']; w.writerow({'model':name,'F0':p['F0'],'alpha':p['alpha'],'beta':p['beta'],'gamma':p['gamma'],'uses_gT':p['use_g'],'C':m['C'],'N_G':m['N_G'],'Lambda_ESHZ':m['Lambda_ESHZ'],'Lambda_earth10':m['Lambda_earth10'],'mean_f_HZ':m['mean_f_HZ'],'mean_f_earth10':m['mean_f_earth10'],'L2_over_L1':m['L2_over_L1']})
-    print(json.dumps(final,indent=2))
+    print(json.dumps(final,indent=2,allow_nan=False))
 
 if __name__=='__main__':
     main()

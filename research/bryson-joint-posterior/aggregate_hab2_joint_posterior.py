@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
+import math
 import re
 from pathlib import Path
 from typing import Any
@@ -29,6 +31,20 @@ from measurement_error import (
     MEASUREMENT_ERROR_MODES,
     QUANTILE_MATCHED_TWO_SIDED,
 )
+from raw_chain_evidence import (
+    RAW_CHAIN_FIELD_ORDER,
+    RAW_CHAIN_FORMAT,
+    RAW_CHAIN_PARAMETER_ORDER,
+    RAW_CHAIN_SCHEMA_VERSION,
+    RAW_CHAIN_STORAGE_POLICY,
+    RawChainEvidenceError,
+    compare_recomputed_diagnostic,
+    read_raw_chain,
+    read_stable_file_bytes,
+    recompute_adaptive_evidence,
+    sha256 as raw_evidence_sha256,
+    verify_raw_chain_bundle,
+)
 
 PARAMETERS = ("F0", "alpha", "beta", "gamma")
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -45,7 +61,13 @@ PRODUCTION_MINIMUM_INNER_BATCHES = 8
 CUSTOM_ACCEPTANCE_PROFILE = "custom-quality-gate"
 V404_ACCEPTANCE_PROFILE = "v4.0.4-production"
 V404_ZERO_EXTENDED_PROFILE = "v4.0.4-zero-extended"
-V404_RELEASE_PROFILES = {V404_ACCEPTANCE_PROFILE, V404_ZERO_EXTENDED_PROFILE}
+V404_LEGACY_SENSITIVITY_PROFILE = "v4.0.4-legacy-measurement-sensitivity"
+V404_RELEASE_PROFILES = {
+    V404_ACCEPTANCE_PROFILE,
+    V404_ZERO_EXTENDED_PROFILE,
+    V404_LEGACY_SENSITIVITY_PROFILE,
+}
+RAW_CHAIN_HELPER_PATH = Path(__file__).with_name("raw_chain_evidence.py")
 V404_PROFILE_VALUES = {
     "expected_shards": 16,
     "trials_per_shard": 25,
@@ -78,6 +100,58 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+class StrictJSONError(ValueError):
+    """Raised when an input is not strict, finite, duplicate-free JSON."""
+
+
+def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise StrictJSONError(f"duplicate object key {key!r}")
+        result[key] = value
+    return result
+
+
+def _reject_nonstandard_json_constant(token: str) -> Any:
+    raise StrictJSONError(f"non-standard numeric constant {token!r}")
+
+
+def _finite_json_float(token: str) -> float:
+    value = float(token)
+    if not math.isfinite(value):
+        raise StrictJSONError(f"non-finite or overflowing number {token!r}")
+    return value
+
+
+def load_strict_json_bytes(data: bytes, context: str) -> Any:
+    """Parse one captured JSON byte string with strict finite semantics."""
+
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise StrictJSONError(f"cannot decode UTF-8 JSON {context}: {error}") from error
+    try:
+        return json.loads(
+            text,
+            object_pairs_hook=_reject_duplicate_json_keys,
+            parse_constant=_reject_nonstandard_json_constant,
+            parse_float=_finite_json_float,
+        )
+    except (json.JSONDecodeError, StrictJSONError) as error:
+        raise StrictJSONError(f"invalid strict JSON in {context}: {error}") from error
+
+
+def load_strict_json(path: Path) -> Any:
+    """Load one UTF-8 JSON file, rejecting ambiguous or non-finite input."""
+
+    try:
+        data = path.read_bytes()
+    except OSError as error:
+        raise StrictJSONError(f"cannot read UTF-8 JSON {path}: {error}") from error
+    return load_strict_json_bytes(data, str(path))
 
 
 def parse_args() -> argparse.Namespace:
@@ -116,10 +190,11 @@ def parse_args() -> argparse.Namespace:
             CUSTOM_ACCEPTANCE_PROFILE,
             V404_ACCEPTANCE_PROFILE,
             V404_ZERO_EXTENDED_PROFILE,
+            V404_LEGACY_SENSITIVITY_PROFILE,
         ),
         default=CUSTOM_ACCEPTANCE_PROFILE,
         help=(
-            "Name the acceptance contract. The two v4.0.4 release profiles "
+            "Name the acceptance contract. The three v4.0.4 release profiles "
             "additionally fix the complete release-scale aggregation setup; "
             "the default custom-quality-gate cannot pass the downstream release verifier."
         ),
@@ -175,6 +250,15 @@ def parse_args() -> argparse.Namespace:
         default=5,
         help="Additional within-realization thinning for Galactic propagation only.",
     )
+    parser.add_argument(
+        "--private-raw-chain-root",
+        type=Path,
+        default=None,
+        help=(
+            "Private root containing exact unthinned-chain bundles for every "
+            "production shard. Required by --require-all-converged."
+        ),
+    )
     args = parser.parse_args()
     if args.expected_shards <= 0 or args.trials_per_shard <= 0:
         parser.error("expected-shards and trials-per-shard must be positive")
@@ -195,6 +279,10 @@ def parse_args() -> argparse.Namespace:
         if not np.isfinite(value) or value < 0.0:
             parser.error(f"{name.replace('_', '-')} must be finite and non-negative")
     if args.require_all_converged:
+        if args.private_raw_chain_root is None:
+            parser.error(
+                "--require-all-converged requires --private-raw-chain-root"
+            )
         if args.minimum_ess_per_realization < PRODUCTION_MINIMUM_ESS:
             parser.error(
                 "the production gate requires minimum-ess-per-realization "
@@ -247,7 +335,7 @@ def parse_args() -> argparse.Namespace:
     if args.acceptance_profile in V404_RELEASE_PROFILES:
         if not args.require_all_converged:
             parser.error(
-                f"--acceptance-profile {V404_ACCEPTANCE_PROFILE} requires "
+                f"--acceptance-profile {args.acceptance_profile} requires "
                 "--require-all-converged"
             )
         if (
@@ -257,6 +345,14 @@ def parse_args() -> argparse.Namespace:
             parser.error(
                 f"--acceptance-profile {V404_ZERO_EXTENDED_PROFILE} is valid "
                 "only for the zero-completeness branch"
+            )
+        if (
+            args.acceptance_profile == V404_LEGACY_SENSITIVITY_PROFILE
+            and args.branch != "constant"
+        ):
+            parser.error(
+                f"--acceptance-profile {V404_LEGACY_SENSITIVITY_PROFILE} is valid "
+                "only for the constant-completeness branch"
             )
         mismatches = {
             key: (expected, getattr(args, key))
@@ -277,7 +373,11 @@ def parse_args() -> argparse.Namespace:
             "maximum_inner_q50_mcse_fraction": (
                 PRODUCTION_MAXIMUM_INNER_MCSE_FRACTION
             ),
-            "expected_measurement_error_mode": QUANTILE_MATCHED_TWO_SIDED,
+            "expected_measurement_error_mode": (
+                LEGACY_SOURCE_MIXTURE
+                if args.acceptance_profile == V404_LEGACY_SENSITIVITY_PROFILE
+                else QUANTILE_MATCHED_TWO_SIDED
+            ),
         }
         mismatches.update(
             {
@@ -288,7 +388,7 @@ def parse_args() -> argparse.Namespace:
         )
         if mismatches:
             parser.error(
-                f"{V404_ACCEPTANCE_PROFILE} profile mismatch: {mismatches}"
+                f"{args.acceptance_profile} profile mismatch: {mismatches}"
             )
     return args
 
@@ -705,7 +805,7 @@ def expected_input_sha256(branch: str) -> dict[str, str]:
     """Load branch-specific locked runner input hashes from DATA_LOCKS.json."""
 
     try:
-        registry = json.loads(DATA_LOCKS_PATH.read_text(encoding="utf-8"))
+        registry = load_strict_json(DATA_LOCKS_PATH)
         locks = registry["locks"]
         lock_ids = {
             "stellar_catalog": "bryson_stellar_catalog_extracted",
@@ -718,7 +818,7 @@ def expected_input_sha256(branch: str) -> dict[str, str]:
             key: str(locks[lock_id]["expected_sha256"]).lower()
             for key, lock_id in lock_ids.items()
         }
-    except (OSError, KeyError, TypeError, json.JSONDecodeError) as error:
+    except (OSError, KeyError, TypeError, StrictJSONError) as error:
         raise RuntimeError(f"Cannot load production input locks: {error}") from error
     if any(not SHA256_RE.fullmatch(value) for value in expected.values()):
         raise RuntimeError("Invalid SHA-256 in the production input-lock registry")
@@ -729,11 +829,11 @@ def expected_bryson_source_sha256() -> str:
     """Load the independently locked Bryson likelihood-source hash."""
 
     try:
-        registry = json.loads(DATA_LOCKS_PATH.read_text(encoding="utf-8"))
+        registry = load_strict_json(DATA_LOCKS_PATH)
         expected = str(
             registry["locks"]["bryson_rate_models_3d"]["expected_sha256"]
         ).lower()
-    except (OSError, KeyError, TypeError, json.JSONDecodeError) as error:
+    except (OSError, KeyError, TypeError, StrictJSONError) as error:
         raise RuntimeError(f"Cannot load the Bryson source lock: {error}") from error
     if not SHA256_RE.fullmatch(expected):
         raise RuntimeError("Invalid Bryson source SHA-256 in the data-lock registry")
@@ -760,16 +860,27 @@ def validate_summary_input_locks(
             )
 
 
-def verify_complete_shard_manifest(directory: Path, required_names: set[str]) -> str:
-    """Verify a shard's complete file manifest and return its environment hash."""
+def verify_complete_shard_manifest(
+    directory: Path,
+    required_names: set[str],
+    capture_names: set[str] | None = None,
+) -> tuple[str, dict[str, bytes]]:
+    """Verify one exact flat shard tree and capture selected bytes once."""
 
     manifest = directory / "SHA256SUMS_complete.txt"
     if not manifest.is_file() or manifest.is_symlink():
         raise RuntimeError(f"Missing safe complete shard manifest in {directory}")
+    try:
+        manifest_bytes, _manifest_sha256 = read_stable_file_bytes(
+            manifest, "complete shard manifest"
+        )
+        manifest_lines = manifest_bytes.decode("utf-8").splitlines()
+    except (RawChainEvidenceError, UnicodeDecodeError) as error:
+        raise RuntimeError(
+            f"Cannot read stable UTF-8 complete shard manifest {manifest}: {error}"
+        ) from error
     entries: dict[str, str] = {}
-    for line_number, line in enumerate(
-        manifest.read_text(encoding="utf-8").splitlines(), 1
-    ):
+    for line_number, line in enumerate(manifest_lines, 1):
         match = re.fullmatch(r"([0-9a-f]{64}) [ *](.+)", line)
         if match is None:
             raise RuntimeError(f"Invalid complete-manifest line {line_number} in {manifest}")
@@ -780,26 +891,54 @@ def verify_complete_shard_manifest(directory: Path, required_names: set[str]) ->
             raise RuntimeError(f"Unsafe or duplicate manifest path {name!r} in {manifest}")
         entries[name] = match.group(1)
 
-    actual_files = {
+    children = list(directory.iterdir())
+    unsafe_children = [
         path.name
-        for path in directory.iterdir()
-        if path.is_file() and not path.is_symlink() and path.name != manifest.name
+        for path in children
+        if path.is_symlink() or not path.is_file()
+    ]
+    if unsafe_children:
+        raise RuntimeError(
+            f"Complete shard must be an exact flat tree in {directory}: "
+            f"unsafe or nested entries={sorted(unsafe_children)}"
+        )
+    actual_files = {
+        path.name for path in children if path.name != manifest.name
     }
-    if set(entries) != actual_files or not required_names.issubset(actual_files):
+    if set(entries) != actual_files or set(entries) != required_names:
         raise RuntimeError(
             f"Complete shard manifest file-set mismatch in {directory}: "
-            f"manifest={sorted(entries)}, files={sorted(actual_files)}"
+            f"expected={sorted(required_names)}, manifest={sorted(entries)}, "
+            f"files={sorted(actual_files)}"
         )
+    requested_captures = set() if capture_names is None else set(capture_names)
+    if not requested_captures.issubset(entries):
+        raise RuntimeError(
+            f"Requested shard captures are absent from {manifest}: "
+            f"{sorted(requested_captures - set(entries))}"
+        )
+    captured: dict[str, bytes] = {}
+    environment_sha256: str | None = None
     for name, expected_sha in entries.items():
-        actual_sha = sha256(directory / name)
+        try:
+            data, actual_sha = read_stable_file_bytes(
+                directory / name, f"complete shard file {name}"
+            )
+        except RawChainEvidenceError as error:
+            raise RuntimeError(
+                f"Cannot read stable complete shard file {directory / name}: {error}"
+            ) from error
         if actual_sha != expected_sha:
             raise RuntimeError(
                 f"Complete shard manifest SHA-256 mismatch for {directory / name}"
             )
-    environment = directory / "numerical_environment.txt"
-    if not environment.is_file():
+        if name in requested_captures:
+            captured[name] = data
+        if name == "numerical_environment.txt":
+            environment_sha256 = actual_sha
+    if environment_sha256 is None:
         raise RuntimeError(f"Missing numerical_environment.txt in {directory}")
-    return sha256(environment)
+    return environment_sha256, captured
 
 
 def require_unique_diagnostic_seeds(diagnostics: list[dict[str, Any]]) -> None:
@@ -1120,6 +1259,299 @@ def validate_diagnostic_modes(
         )
 
 
+def audit_private_raw_chains(
+    *,
+    raw_root: Path,
+    branch: str,
+    shard_summaries: list[dict[str, Any]],
+    diagnostic_trials_by_shard: dict[int, dict[int, dict[str, Any]]],
+    chain_frames_by_shard: dict[int, pd.DataFrame],
+    expected_shards: int,
+    trials_per_shard: int,
+    walkers: int,
+    runner_thin: int,
+    adaptive_policy: dict[str, Any],
+) -> dict[str, Any]:
+    """Recompute production acceptance from every private raw-chain byte."""
+
+    supplied_root = Path(raw_root)
+    if supplied_root.is_symlink() or not supplied_root.is_dir():
+        raise RuntimeError(f"Missing safe private raw-chain root: {supplied_root}")
+    root = supplied_root.resolve()
+    escaped_branch = re.escape(branch)
+    index_paths = sorted(
+        root.rglob(f"raw_chain_index_{branch}_production-shard-*.json")
+    )
+    manifest_paths = sorted(
+        root.rglob(f"SHA256SUMS_raw_chain_{branch}_production-shard-*.txt")
+    )
+    indexes = index_shard_artifacts(
+        index_paths,
+        rf"raw_chain_index_{escaped_branch}_production-shard-(\d+)\.json",
+        "private raw-chain index",
+    )
+    manifests = index_shard_artifacts(
+        manifest_paths,
+        rf"SHA256SUMS_raw_chain_{escaped_branch}_production-shard-(\d+)\.txt",
+        "private raw-chain manifest",
+    )
+    require_exact_shard_ids(indexes, expected_shards, "Private raw-chain index")
+    require_exact_shard_ids(
+        manifests, expected_shards, "Private raw-chain manifest"
+    )
+
+    allowed_files: set[Path] = set()
+    bundle_audits: list[dict[str, Any]] = []
+    trial_audits: list[dict[str, Any]] = []
+    observed_global_trials: set[int] = set()
+    for shard in range(expected_shards):
+        index_path = indexes[shard]
+        manifest_path = manifests[shard]
+        if index_path.parent.resolve() != manifest_path.parent.resolve():
+            raise RuntimeError(f"Raw-chain bundle files are not co-located for shard {shard}")
+        label = f"production-shard-{shard}"
+        summary = shard_summaries[shard]
+        binding = summary.get("private_raw_chain_bundle")
+        expected_trials = {
+            trial: (
+                diagnostic_integer(
+                    diagnostic_trials_by_shard[shard][trial],
+                    (
+                        "perturbation_seed"
+                        if "perturbation_seed"
+                        in diagnostic_trials_by_shard[shard][trial]
+                        else "seed"
+                    ),
+                    f"diagnostic shard {shard}:trial {trial}",
+                ),
+                diagnostic_integer(
+                    diagnostic_trials_by_shard[shard][trial],
+                    "mcmc_seed",
+                    f"diagnostic shard {shard}:trial {trial}",
+                ),
+            )
+            for trial in range(trials_per_shard)
+        }
+        try:
+            records = verify_raw_chain_bundle(
+                index_path.parent,
+                branch=branch,
+                run_label=label,
+                expected_trials=expected_trials,
+                binding=binding,
+            )
+        except (OSError, RawChainEvidenceError) as error:
+            raise RuntimeError(
+                f"Private raw-chain bundle verification failed for shard {shard}: {error}"
+            ) from error
+        allowed_files.update(
+            path.resolve()
+            for path in index_path.parent.iterdir()
+            if path.is_file() and not path.is_symlink()
+        )
+        bundle_audits.append(
+            {
+                "shard": shard,
+                "run_label": label,
+                "index_file": index_path.name,
+                "index_sha256": binding["index_sha256"],
+                "manifest_file": manifest_path.name,
+                "manifest_sha256": binding["manifest_sha256"],
+                "trial_count": trials_per_shard,
+            }
+        )
+
+        chain_frame = chain_frames_by_shard[shard]
+        for trial in range(trials_per_shard):
+            diagnostic = diagnostic_trials_by_shard[shard][trial]
+            record = records[trial]
+            if diagnostic.get("private_raw_chain") != record:
+                raise RuntimeError(
+                    f"Diagnostic/raw-chain index binding mismatch for shard {shard}, "
+                    f"trial {trial}"
+                )
+            if record["walkers"] != walkers:
+                raise RuntimeError(
+                    f"Raw-chain walker count mismatch for shard {shard}, trial {trial}"
+                )
+            try:
+                raw_chain, raw_log_probability = read_raw_chain(
+                    index_path.parent / record["file"],
+                    branch=branch,
+                    run_label=label,
+                    record=record,
+                )
+                recomputed = recompute_adaptive_evidence(
+                    raw_chain,
+                    minimum_steps=adaptive_policy["requested_minimum_steps"],
+                    maximum_steps=adaptive_policy["requested_maximum_steps"],
+                    check_interval=adaptive_policy["check_interval"],
+                    tau_multiple=adaptive_policy["tau_multiple"],
+                    relative_tolerance=adaptive_policy["tau_relative_tolerance"],
+                    required_stable_checks=adaptive_policy[
+                        "required_consecutive_stable_checks"
+                    ],
+                )
+                compare_recomputed_diagnostic(
+                    recomputed,
+                    diagnostic,
+                    f"shard {shard}, trial {trial}",
+                )
+            except RawChainEvidenceError as error:
+                raise RuntimeError(
+                    f"Raw-chain tau/ESS audit failed for shard {shard}, "
+                    f"trial {trial}: {error}"
+                ) from error
+
+            group = chain_frame.loc[
+                pd.to_numeric(chain_frame["trial"], errors="coerce") == trial
+            ].copy()
+            group.sort_values(["production_step", "walker"], inplace=True)
+            raw_indices = np.arange(
+                runner_thin - 1, raw_chain.shape[0], runner_thin, dtype=int
+            )
+            expected_rows = len(raw_indices) * walkers
+            if len(group) != expected_rows:
+                raise RuntimeError(
+                    f"Serialized/raw-chain row count mismatch for shard {shard}, "
+                    f"trial {trial}"
+                )
+            expected_steps = np.repeat(
+                np.arange(len(raw_indices), dtype=int) * runner_thin, walkers
+            )
+            expected_walkers = np.tile(np.arange(walkers, dtype=int), len(raw_indices))
+            observed_steps = pd.to_numeric(
+                group["production_step"], errors="raise"
+            ).to_numpy(dtype=int)
+            observed_walkers = pd.to_numeric(
+                group["walker"], errors="raise"
+            ).to_numpy(dtype=int)
+            if not np.array_equal(observed_steps, expected_steps) or not np.array_equal(
+                observed_walkers, expected_walkers
+            ):
+                raise RuntimeError(
+                    f"Serialized/raw-chain coordinate mismatch for shard {shard}, "
+                    f"trial {trial}"
+                )
+            expected_source = raw_chain[raw_indices].reshape(-1, 4)
+            observed_source = group.loc[
+                :, ["F0", "beta", "alpha", "gamma"]
+            ].to_numpy(dtype=float)
+            expected_log_probability = raw_log_probability[raw_indices].reshape(-1)
+            observed_log_probability = pd.to_numeric(
+                group["log_probability"], errors="raise"
+            ).to_numpy(dtype=float)
+            if not np.array_equal(observed_source, expected_source) or not np.array_equal(
+                observed_log_probability, expected_log_probability
+            ):
+                raise RuntimeError(
+                    f"Serialized posterior is not the exact emcee-thinned raw chain "
+                    f"for shard {shard}, trial {trial}"
+                )
+
+            global_trial = shard * trials_per_shard + trial
+            if global_trial in observed_global_trials:
+                raise RuntimeError(f"Duplicate private raw-chain global_trial {global_trial}")
+            observed_global_trials.add(global_trial)
+            trial_audits.append(
+                {
+                    "global_trial": global_trial,
+                    "shard": shard,
+                    "run_label": label,
+                    "trial": trial,
+                    "trial_seed": record["trial_seed"],
+                    "mcmc_seed": record["mcmc_seed"],
+                    "raw_chain_file": record["file"],
+                    "raw_chain_sha256": record["sha256"],
+                    "raw_chain_size_bytes": record["size_bytes"],
+                    "production_steps": record["production_steps"],
+                    "walkers": record["walkers"],
+                    "recomputed_autocorrelation_time_source_order": recomputed[
+                        "autocorrelation_time"
+                    ],
+                    "recomputed_effective_sample_size_source_order": recomputed[
+                        "effective_sample_size_source_order"
+                    ],
+                    "recomputed_convergence_checks": recomputed[
+                        "convergence_checks"
+                    ],
+                    "first_accepted_steps": recomputed["first_accepted_steps"],
+                    "converged": recomputed["converged"],
+                    "serialized_thinned_chain_match": True,
+                }
+            )
+
+    expected_global_trials = set(range(expected_shards * trials_per_shard))
+    if observed_global_trials != expected_global_trials:
+        raise RuntimeError("Private raw-chain global_trial identity map is incomplete")
+    actual_files: set[Path] = set()
+    actual_directories: set[Path] = set()
+    for path in root.rglob("*"):
+        if path.is_symlink():
+            raise RuntimeError(f"Symlink is forbidden in private raw-chain root: {path}")
+        if path.is_file():
+            actual_files.add(path.resolve())
+        elif path.is_dir():
+            actual_directories.add(path.resolve())
+    if actual_files != allowed_files:
+        raise RuntimeError("Private raw-chain root contains extra or missing files")
+    allowed_directories: set[Path] = set()
+    for path in allowed_files:
+        parent = path.parent
+        while parent != root:
+            allowed_directories.add(parent)
+            parent = parent.parent
+    if actual_directories != allowed_directories:
+        raise RuntimeError("Private raw-chain root contains extra directories")
+
+    identity_projection = [
+        {
+            key: record[key]
+            for key in (
+                "global_trial",
+                "shard",
+                "trial",
+                "run_label",
+                "trial_seed",
+                "mcmc_seed",
+                "raw_chain_sha256",
+            )
+        }
+        for record in trial_audits
+    ]
+    identity_sha256 = hashlib.sha256(
+        json.dumps(
+            identity_projection,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    helper_sha256 = raw_evidence_sha256(RAW_CHAIN_HELPER_PATH)
+    return {
+        "schema_version": RAW_CHAIN_SCHEMA_VERSION,
+        "status": "PASS",
+        "branch": branch,
+        "format": RAW_CHAIN_FORMAT,
+        "storage_policy": RAW_CHAIN_STORAGE_POLICY,
+        "parameter_order_source": list(RAW_CHAIN_PARAMETER_ORDER),
+        "payload_field_order": list(RAW_CHAIN_FIELD_ORDER),
+        "audit_algorithm": (
+            "Independent source-faithful reproduction of emcee 3.1.6 "
+            "integrated_time(tol=0), recomputed at every adaptive checkpoint"
+        ),
+        "audit_helper_file": RAW_CHAIN_HELPER_PATH.name,
+        "audit_helper_sha256": helper_sha256,
+        "adaptive_production_policy": adaptive_policy,
+        "trials_verified": len(trial_audits),
+        "expected_global_trials": expected_shards * trials_per_shard,
+        "global_trial_identity_sha256": identity_sha256,
+        "bundles": bundle_audits,
+        "trials": trial_audits,
+        "raw_files_copied_to_public_artifact": False,
+    }
+
+
 def main() -> None:
     args = parse_args()
     root = args.root.resolve()
@@ -1165,6 +1597,71 @@ def main() -> None:
     )
     require_exact_shard_ids(summaries_by_shard, args.expected_shards, "Summary")
 
+    numerical_environment_hashes: list[str] = []
+    chain_frames_by_shard: dict[int, pd.DataFrame] = {}
+    audit_frames_by_shard: dict[int, pd.DataFrame] = {}
+    summary_bytes_by_shard: dict[int, bytes] = {}
+    diagnostic_bytes_by_shard: dict[int, bytes] = {}
+    if args.require_all_converged:
+        require_exact_shard_ids(
+            audits_by_shard, args.expected_shards, "Perturbation-audit"
+        )
+        for shard in range(args.expected_shards):
+            label = f"production-shard-{shard}"
+            paths = {
+                chains_by_shard[shard],
+                diagnostics_by_shard[shard],
+                summaries_by_shard[shard],
+                audits_by_shard[shard],
+            }
+            parents = {path.parent.resolve() for path in paths}
+            if len(parents) != 1:
+                raise RuntimeError(f"Shard {shard} artifacts are not co-located")
+            directory = next(iter(parents))
+            expected_names = {
+                f"joint_posterior_{args.branch}_{label}.csv",
+                f"perturbed_planets_{args.branch}_{label}.csv",
+                f"perturbation_audit_{args.branch}_{label}.csv",
+                f"trial_diagnostics_{args.branch}_{label}.json",
+                f"posterior_summary_{args.branch}_{label}.json",
+                f"SHA256SUMS_{args.branch}_{label}.txt",
+                "numerical_environment.txt",
+            }
+            capture_names = {
+                chains_by_shard[shard].name,
+                diagnostics_by_shard[shard].name,
+                summaries_by_shard[shard].name,
+                audits_by_shard[shard].name,
+            }
+            environment_sha256, captured = verify_complete_shard_manifest(
+                directory, expected_names, capture_names
+            )
+            numerical_environment_hashes.append(environment_sha256)
+            summary_bytes_by_shard[shard] = captured[
+                summaries_by_shard[shard].name
+            ]
+            diagnostic_bytes_by_shard[shard] = captured[
+                diagnostics_by_shard[shard].name
+            ]
+            try:
+                chain_frames_by_shard[shard] = pd.read_csv(
+                    io.BytesIO(captured[chains_by_shard[shard].name]),
+                    float_precision="round_trip",
+                )
+                audit_frames_by_shard[shard] = pd.read_csv(
+                    io.BytesIO(captured[audits_by_shard[shard].name]),
+                    float_precision="round_trip",
+                )
+            except (KeyError, OSError, UnicodeError, pd.errors.ParserError) as error:
+                raise RuntimeError(
+                    f"Cannot parse the manifest-bound CSV snapshot for shard {shard}: "
+                    f"{error}"
+                ) from error
+        if len(set(numerical_environment_hashes)) != 1:
+            raise RuntimeError(
+                "Numerical environment differs across production shards"
+            )
+
     locked_input_hashes = (
         expected_input_sha256(args.branch) if args.require_all_converged else None
     )
@@ -1172,7 +1669,12 @@ def main() -> None:
     validated_source_provenance: list[dict[str, Any]] = []
     for shard in range(args.expected_shards):
         path = summaries_by_shard[shard]
-        summary = json.loads(path.read_text(encoding="utf-8"))
+        if args.require_all_converged:
+            summary = load_strict_json_bytes(
+                summary_bytes_by_shard[shard], str(path)
+            )
+        else:
+            summary = load_strict_json(path)
         if summary.get("branch") != args.branch:
             raise RuntimeError(f"Summary branch mismatch in {path}")
         expected_label = f"production-shard-{shard}"
@@ -1268,7 +1770,12 @@ def main() -> None:
     diagnostic_trials_by_shard: dict[int, dict[int, dict[str, Any]]] = {}
     for shard in range(args.expected_shards):
         path = diagnostics_by_shard[shard]
-        entries = json.loads(path.read_text(encoding="utf-8"))
+        if args.require_all_converged:
+            entries = load_strict_json_bytes(
+                diagnostic_bytes_by_shard[shard], str(path)
+            )
+        else:
+            entries = load_strict_json(path)
         if not isinstance(entries, list):
             raise RuntimeError(f"Diagnostic shard is not a list in {path}")
         if len(entries) != args.trials_per_shard:
@@ -1407,36 +1914,50 @@ def main() -> None:
             "Perturbation-audit CSVs are present but shard summaries do not declare them"
         )
 
-    numerical_environment_hashes: list[str] = []
+    raw_chain_audit: dict[str, Any] | None = None
+    raw_chain_audit_path: Path | None = None
     if args.require_all_converged:
-        for shard in range(args.expected_shards):
-            paths = {
-                chains_by_shard[shard],
-                diagnostics_by_shard[shard],
-                summaries_by_shard[shard],
-                audits_by_shard[shard],
-            }
-            parents = {path.parent.resolve() for path in paths}
-            if len(parents) != 1:
-                raise RuntimeError(f"Shard {shard} artifacts are not co-located")
-            directory = next(iter(parents))
-            numerical_environment_hashes.append(
-                verify_complete_shard_manifest(
-                    directory,
-                    {path.name for path in paths} | {"numerical_environment.txt"},
-                )
-            )
-        if len(set(numerical_environment_hashes)) != 1:
+        if args.private_raw_chain_root is None or adaptive_policy is None:
+            raise RuntimeError("Missing private raw-chain production evidence")
+        raw_root = args.private_raw_chain_root.resolve()
+        if raw_root == out or raw_root in out.parents or out in raw_root.parents:
             raise RuntimeError(
-                "Numerical environment differs across production shards"
+                "Private raw-chain root and public aggregate output must be disjoint"
             )
+        raw_chain_audit = audit_private_raw_chains(
+            raw_root=args.private_raw_chain_root,
+            branch=args.branch,
+            shard_summaries=shard_summaries,
+            diagnostic_trials_by_shard=diagnostic_trials_by_shard,
+            chain_frames_by_shard=chain_frames_by_shard,
+            expected_shards=args.expected_shards,
+            trials_per_shard=args.trials_per_shard,
+            walkers=args.walkers,
+            runner_thin=args.runner_thin,
+            adaptive_policy=adaptive_policy,
+        )
+        raw_chain_audit_path = (
+            out / f"raw_unthinned_chain_audit_{args.branch}.json"
+        )
+        raw_chain_audit_path.write_text(
+            json.dumps(
+                raw_chain_audit,
+                indent=2,
+                sort_keys=True,
+                allow_nan=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
     full_audit_path: Path | None = None
     if summaries_require_audit:
         audit_frames: list[pd.DataFrame] = []
         for expected_shard in range(args.expected_shards):
             path = audits_by_shard[expected_shard]
-            frame = pd.read_csv(path)
+            frame = audit_frames_by_shard.get(expected_shard)
+            if frame is None:
+                frame = pd.read_csv(path, float_precision="round_trip")
             if set(frame.branch.astype(str)) != {args.branch}:
                 raise RuntimeError(f"Audit branch mismatch in {path}")
             modes = set(frame.measurement_error_mode.astype(str))
@@ -1492,7 +2013,9 @@ def main() -> None:
 
     for expected_shard in range(args.expected_shards):
         path = chains_by_shard[expected_shard]
-        frame = pd.read_csv(path)
+        frame = chain_frames_by_shard.get(expected_shard)
+        if frame is None:
+            frame = pd.read_csv(path, float_precision="round_trip")
         if (
             args.samples_per_realization is None
             and len(frame) != args.trials_per_shard * fixed_samples_per_trial
@@ -1627,6 +2150,11 @@ def main() -> None:
         name: qsummary(values[:, index])
         for index, name in enumerate(PARAMETERS)
     }
+    propagation_values = propagation.loc[:, PARAMETERS].to_numpy(dtype=float)
+    propagation_quantiles = {
+        name: qsummary(propagation_values[:, index])
+        for index, name in enumerate(PARAMETERS)
+    }
     cluster_bootstrap_mcse = None
     if args.cluster_bootstrap_replicates:
         cluster_bootstrap_mcse = cluster_bootstrap_quantile_mcse(
@@ -1728,7 +2256,11 @@ def main() -> None:
     diagnostics_path = out / f"trial_diagnostics_{args.branch}_full.jsonl"
     with diagnostics_path.open("w", encoding="utf-8") as handle:
         for entry in diagnostics:
-            handle.write(json.dumps(entry, sort_keys=True) + "\n")
+            public_entry = dict(entry)
+            public_entry.pop("private_raw_chain", None)
+            handle.write(
+                json.dumps(public_entry, sort_keys=True, allow_nan=False) + "\n"
+            )
 
     source_commits = [
         record["source_commit"] for record in validated_source_provenance
@@ -1771,7 +2303,10 @@ def main() -> None:
             "profile": args.acceptance_profile,
             "required": bool(args.require_all_converged),
             "accepted": bool(
-                args.require_all_converged and mcse_acceptance is not None
+                args.require_all_converged
+                and mcse_acceptance is not None
+                and raw_chain_audit is not None
+                and raw_chain_audit.get("status") == "PASS"
             ),
             "expected_bryson_source_sha256": (
                 args.expected_bryson_source_sha256
@@ -1785,6 +2320,48 @@ def main() -> None:
             ),
             "q50_mcse_by_parameter": mcse_acceptance,
             "adaptive_production_policy": adaptive_policy,
+        },
+        "raw_unthinned_chain_acceptance_gate": {
+            "required": bool(args.require_all_converged),
+            "verified": bool(
+                raw_chain_audit is not None
+                and raw_chain_audit.get("status") == "PASS"
+            ),
+            "schema_version": (
+                RAW_CHAIN_SCHEMA_VERSION if raw_chain_audit is not None else None
+            ),
+            "format": RAW_CHAIN_FORMAT if raw_chain_audit is not None else None,
+            "trials_verified": (
+                raw_chain_audit.get("trials_verified")
+                if raw_chain_audit is not None
+                else 0
+            ),
+            "global_trial_identity_sha256": (
+                raw_chain_audit.get("global_trial_identity_sha256")
+                if raw_chain_audit is not None
+                else None
+            ),
+            "evidence_report_file": (
+                raw_chain_audit_path.name
+                if raw_chain_audit_path is not None
+                else None
+            ),
+            "evidence_report_sha256": (
+                sha256(raw_chain_audit_path)
+                if raw_chain_audit_path is not None
+                else None
+            ),
+            "audit_helper_file": (
+                raw_chain_audit.get("audit_helper_file")
+                if raw_chain_audit is not None
+                else None
+            ),
+            "audit_helper_sha256": (
+                raw_chain_audit.get("audit_helper_sha256")
+                if raw_chain_audit is not None
+                else None
+            ),
+            "raw_files_copied_to_public_artifact": False,
         },
         "mixture_definition": (
             "equal number of deterministically spaced post-burn ensemble "
@@ -1826,6 +2403,7 @@ def main() -> None:
             full_audit_path.name if full_audit_path is not None else None
         ),
         "posterior_quantiles": quantiles,
+        "galactic_propagation_posterior_quantiles": propagation_quantiles,
         "posterior_quantile_monte_carlo_error": {
             "outer_realization_cluster_bootstrap": cluster_bootstrap_mcse,
             "outer_realization_cluster_bootstrap_replicates": (
@@ -1872,7 +2450,7 @@ def main() -> None:
     }
     summary_path = out / f"joint_posterior_{args.branch}_aggregate_summary.json"
     summary_path.write_text(
-        json.dumps(aggregate_summary, indent=2), encoding="utf-8"
+        json.dumps(aggregate_summary, indent=2, allow_nan=False), encoding="utf-8"
     )
 
     manifest_targets = [
@@ -1884,12 +2462,14 @@ def main() -> None:
     ]
     if full_audit_path is not None:
         manifest_targets.append(full_audit_path)
+    if raw_chain_audit_path is not None:
+        manifest_targets.append(raw_chain_audit_path)
     manifest_path = out / f"SHA256SUMS_{args.branch}_aggregate.txt"
     manifest_path.write_text(
         "".join(f"{sha256(path)}  {path.name}\n" for path in manifest_targets),
         encoding="utf-8",
     )
-    print(json.dumps(aggregate_summary, indent=2), flush=True)
+    print(json.dumps(aggregate_summary, indent=2, allow_nan=False), flush=True)
 
 
 if __name__ == "__main__":

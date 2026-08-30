@@ -1,4 +1,4 @@
-.PHONY: verify dependencies workflows scope metadata licenses data-locks manifests tests optimized-tests public-package
+.PHONY: verify dependencies workflows scope metadata licenses data-locks manifests tests optimized-tests release-acceptance public-package
 
 PYTHON ?= python
 
@@ -30,12 +30,17 @@ manifests:
 tests:
 	$(PYTHON) -m unittest discover -s research/bryson-joint-posterior -p "test_*.py" -v
 	$(PYTHON) -m unittest discover -s research/jj-host-export -p "test_*.py" -v
+	$(PYTHON) -m unittest discover -s research/jj-tams-convergence -p "test_*.py" -v
 	$(PYTHON) -m unittest discover -s research/v4-validation -p "test_*.py" -v
 
 optimized-tests:
 	$(PYTHON) -O -m unittest discover -s research/bryson-joint-posterior -p "test_*.py" -v
 	$(PYTHON) -O -m unittest discover -s research/jj-host-export -p "test_*.py" -v
+	$(PYTHON) -O -m unittest discover -s research/jj-tams-convergence -p "test_*.py" -v
 	$(PYTHON) -O -m unittest discover -s research/v4-validation -p "test_*.py" -v
 
-public-package: verify
+release-acceptance:
+	$(PYTHON) scripts/verify_v404_release_acceptance.py
+
+public-package: verify release-acceptance
 	$(PYTHON) scripts/build_public_package.py

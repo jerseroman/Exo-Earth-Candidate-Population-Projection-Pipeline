@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
+from aggregate_hab2_joint_posterior import load_strict_json
 from clustered_monte_carlo import equalize_realizations, quantile_summary
 
 PARAMETERS = ("F0", "alpha", "beta", "gamma")
@@ -40,6 +42,8 @@ def main() -> None:
 
     root = args.root.resolve()
     out = args.out.resolve()
+    if out.exists() and (not out.is_dir() or any(out.iterdir())):
+        raise RuntimeError("Seed-stability output directory must be absent or empty")
     out.mkdir(parents=True, exist_ok=True)
     chain_paths = sorted(
         root.rglob(f"joint_posterior_{args.branch}_corrected-pilot-seed-*.csv")
@@ -59,6 +63,7 @@ def main() -> None:
     planet_reference: pd.DataFrame | None = None
     audit_reference: pd.DataFrame | None = None
     all_chains: list[pd.DataFrame] = []
+    manifest_targets: list[Path] = []
 
     for chain_path in chain_paths:
         chain = pd.read_csv(chain_path)
@@ -85,6 +90,19 @@ def main() -> None:
         if not (len(planet_paths) == len(audit_paths) == len(diagnostic_paths) == 1):
             raise RuntimeError(f"Incomplete pilot artifacts for {label}")
 
+        copied_chain = out / chain_path.name
+        copied_planets = out / planet_paths[0].name
+        copied_audit = out / audit_paths[0].name
+        copied_diagnostics = out / diagnostic_paths[0].name
+        for source, destination in (
+            (chain_path, copied_chain),
+            (planet_paths[0], copied_planets),
+            (audit_paths[0], copied_audit),
+            (diagnostic_paths[0], copied_diagnostics),
+        ):
+            shutil.copyfile(source, destination)
+            manifest_targets.append(destination)
+
         planets = comparable_frame(planet_paths[0], ["trial", "source_row"])
         audit = comparable_frame(audit_paths[0], ["trial", "source_row"])
         if planet_reference is None:
@@ -94,13 +112,19 @@ def main() -> None:
             pd.testing.assert_frame_equal(planets, planet_reference, check_exact=True)
             pd.testing.assert_frame_equal(audit, audit_reference, check_exact=True)
 
-        diagnostics = json.loads(diagnostic_paths[0].read_text(encoding="utf-8"))
+        diagnostics = load_strict_json(diagnostic_paths[0])
         failed = [entry["trial"] for entry in diagnostics if not entry.get("converged")]
         if failed:
             raise RuntimeError(f"Non-converged trials in {label}: {failed}")
         families[label] = {
-            "chain_file": str(chain_path),
-            "chain_sha256": sha256(chain_path),
+            "chain_file": copied_chain.name,
+            "chain_sha256": sha256(copied_chain),
+            "diagnostics_file": copied_diagnostics.name,
+            "diagnostics_sha256": sha256(copied_diagnostics),
+            "planets_file": copied_planets.name,
+            "planets_sha256": sha256(copied_planets),
+            "perturbation_audit_file": copied_audit.name,
+            "perturbation_audit_sha256": sha256(copied_audit),
             "mcmc_seeds": sorted(int(value) for value in chain.mcmc_seed.unique()),
             "production_steps": [
                 int(entry["production_steps_completed"]) for entry in diagnostics
@@ -147,6 +171,7 @@ def main() -> None:
         }
 
     report = {
+        "schema_version": 2,
         "status": "pass" if not gate_failures else "fail",
         "branch": args.branch,
         "outer_realizations_identical_across_families": True,
@@ -154,13 +179,31 @@ def main() -> None:
         "all_trials_converged": True,
         "equalized_samples_per_outer_realization": samples_per_outer_realization,
         "maximum_allowed_quantile_width_fraction": args.max_quantile_width_fraction,
+        "adaptive_production_policy": {
+            "requested_minimum_steps": 3000,
+            "requested_maximum_steps": 20000,
+            "check_interval": 1000,
+            "tau_multiple": 100.0,
+            "tau_relative_tolerance": 0.05,
+            "required_consecutive_stable_checks": 2,
+            "walkers": 16,
+            "runner_thin": 20,
+        },
         "families": families,
         "stability": stability,
         "gate_failures": gate_failures,
     }
     report_path = out / f"mcmc_seed_stability_{args.branch}.json"
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    print(json.dumps(report, indent=2))
+    report_path.write_text(
+        json.dumps(report, indent=2, allow_nan=False), encoding="utf-8"
+    )
+    manifest_targets.append(report_path)
+    manifest_path = out / f"SHA256SUMS_mcmc_seed_stability_{args.branch}.txt"
+    manifest_path.write_text(
+        "".join(f"{sha256(path)}  {path.name}\n" for path in manifest_targets),
+        encoding="utf-8",
+    )
+    print(json.dumps(report, indent=2, allow_nan=False))
     if gate_failures:
         raise RuntimeError(
             f"MCMC seed-family stability failed for {gate_failures}"

@@ -24,6 +24,7 @@ import os
 import platform
 import subprocess
 import sys
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import numpy as np
@@ -33,8 +34,23 @@ JJ_SHA = "2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54"
 TMIN, TMAX = 5300.0, 6000.0
 LOGG_MIN, LOGG_MAX = 4.3, 7.0
 AGE_MIN = 4.57
+RMIN_KPC, RMAX_KPC, DR_KPC = 4.0, 14.0, 0.5
 T_EDGES = np.arange(5300.0, 6000.0 + 100.0, 100.0)
 AGE_EDGES = np.arange(4.50, 13.25 + 0.25, 0.25)
+
+
+def exact_radial_step(value: str) -> Decimal:
+    """Parse the workflow assertion for the single audited production grid."""
+
+    try:
+        parsed = Decimal(value)
+    except InvalidOperation as exc:
+        raise argparse.ArgumentTypeError("radial step must be a decimal number") from exc
+    if not parsed.is_finite() or parsed != Decimal("0.5"):
+        raise argparse.ArgumentTypeError(
+            "the audited production radial step must be exactly 0.5 kpc"
+        )
+    return parsed
 
 
 def sha256(path: Path) -> str:
@@ -47,6 +63,26 @@ def sha256(path: Path) -> str:
 
 def git(args, cwd=None):
     return subprocess.check_output(["git", *args], cwd=cwd, text=True).strip()
+
+
+def verify_jj_worktree(jj_root):
+    """Reject source edits and any untracked files outside locked isochrones."""
+    for arguments in (["diff", "--quiet", "HEAD", "--"],
+                      ["diff", "--cached", "--quiet", "HEAD", "--"]):
+        result = subprocess.run(["git", *arguments], cwd=jj_root, check=False)
+        if result.returncode != 0:
+            raise RuntimeError("JJ tracked source differs from the pinned commit")
+    untracked = git(["ls-files", "--others", "--exclude-standard"], cwd=jj_root)
+    allowed_prefix = "jjmodel/input/isochrones/Padova/"
+    unexpected = [
+        item for item in untracked.splitlines()
+        if item and not item.startswith(allowed_prefix)
+    ]
+    if unexpected:
+        raise RuntimeError(
+            "JJ checkout contains untracked files outside the locked Padova "
+            f"input tree: {unexpected[:5]!r}"
+        )
 
 
 def write_csv(path: Path, header: list[str], rows: list[list[object]]) -> None:
@@ -70,12 +106,44 @@ def select_rows(tab: Table):
     return teff[keep], age[keep], n[keep]
 
 
+def validate_radial_grid(
+    rmin: float, rmax: float, dr: float, grid: np.ndarray
+) -> np.ndarray:
+    """Fail closed unless the configured and realized JJ grid is exactly pinned."""
+
+    observed = np.asarray(grid, dtype=float)
+    configured = np.asarray([rmin, rmax, dr], dtype=float)
+    if not np.all(np.isfinite(configured)) or not np.all(np.isfinite(observed)):
+        raise RuntimeError("JJ radial configuration contains a non-finite value")
+    if (rmin, rmax, dr) != (RMIN_KPC, RMAX_KPC, DR_KPC):
+        raise RuntimeError(
+            "Unexpected JJ radial config: "
+            f"Rmin={rmin}, Rmax={rmax}, dR={dr}; expected "
+            f"{RMIN_KPC}, {RMAX_KPC}, {DR_KPC} kpc"
+        )
+    expected = np.arange(RMIN_KPC, RMAX_KPC + DR_KPC / 2.0, DR_KPC)
+    if observed.ndim != 1 or observed.shape != expected.shape or not np.allclose(
+        observed, expected, rtol=0.0, atol=1.0e-12
+    ):
+        raise RuntimeError(
+            "Realized JJ radial grid differs from the pinned inclusive "
+            f"{RMIN_KPC:g}--{RMAX_KPC:g} kpc grid at dR={DR_KPC:g} kpc"
+        )
+    return observed
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--jj-root", required=True, help="Pinned askenja/jjmodel checkout")
     ap.add_argument("--run-dir", required=True, help="Working dir containing official tutorial2 parameters")
     ap.add_argument("--out", required=True)
     ap.add_argument("--iso", default="Padova", choices=["Padova", "MIST", "BaSTI"])
+    ap.add_argument(
+        "--expected-radial-step-kpc",
+        required=True,
+        type=exact_radial_step,
+        help="Fail-closed assertion for the audited 0.5-kpc production grid",
+    )
     args = ap.parse_args()
 
     jj_root = Path(args.jj_root).resolve()
@@ -86,6 +154,7 @@ def main():
     actual_sha = git(["rev-parse", "HEAD"], cwd=jj_root)
     if actual_sha != JJ_SHA:
         raise RuntimeError(f"JJ commit mismatch: {actual_sha} != {JJ_SHA}")
+    verify_jj_worktree(jj_root)
 
     os.chdir(run_dir)
     sys.path.insert(0, str(jj_root))
@@ -95,8 +164,17 @@ def main():
     from jjmodel.input_ import p, a, inp
     from jjmodel.populations import stellar_assemblies_r
 
-    if not (float(p.Rmin) == 4.0 and float(p.Rmax) == 14.0 and float(p.dR) == 1.0):
-        raise RuntimeError(f"Unexpected JJ radial config: Rmin={p.Rmin}, Rmax={p.Rmax}, dR={p.dR}")
+    radial_grid = validate_radial_grid(
+        float(p.Rmin),
+        float(p.Rmax),
+        float(args.expected_radial_step_kpc),
+        np.asarray(a.R, dtype=float),
+    )
+    if float(p.dR) != float(args.expected_radial_step_kpc):
+        raise RuntimeError(
+            f"JJ parameter dR={p.dR} differs from the explicit workflow assertion "
+            f"{args.expected_radial_step_kpc} kpc"
+        )
 
     dir_tree(p, make=True)
 
@@ -106,7 +184,7 @@ def main():
     imf_obj.BPL_4slopes(p.a0, p.a1, p.a2, p.a3, p.m0, p.m1, p.m2)
     imf = imf_obj.number_stars
 
-    for i, R in enumerate(np.asarray(a.R, dtype=float)):
+    for i, R in enumerate(radial_grid):
         sigmash_R = float(inp["SigmaR"][5][i])
         stellar_assemblies_r(
             float(R), p, a,
@@ -120,7 +198,7 @@ def main():
     detail_rows = []
     age_rows = []
 
-    for R in np.asarray(a.R, dtype=float):
+    for R in radial_grid:
         sigmas = {}
         combined_teff, combined_age, combined_n = [], [], []
         for comp, label in [("d", "thin"), ("t", "thick")]:
@@ -190,7 +268,16 @@ def main():
             "components": ["thin_disk", "thick_disk"],
             "R_kpc_integrated": [float(R.min()), float(R.max())]
         },
-        "integration": "N = integral_4^14 [2*pi*R*1e6*Sigma_G(R)] dR; trapezoidal on JJ 1-kpc grid",
+        "radial_grid_kpc": {
+            "minimum": RMIN_KPC,
+            "maximum": RMAX_KPC,
+            "spacing": DR_KPC,
+            "node_count": int(radial_grid.size),
+        },
+        "integration": (
+            "N = integral_4^14 [2*pi*R*1e6*Sigma_G(R)] dR; "
+            "trapezoidal on the pinned JJ 0.5-kpc grid"
+        ),
         "N_G_hosts_age_ge_4p57_R4_14": N_total,
         "no_GHZ_SN_mask": True,
         "no_planet_occurrence_metallicity_correction": True,

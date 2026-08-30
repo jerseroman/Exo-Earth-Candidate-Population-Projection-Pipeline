@@ -18,6 +18,14 @@ on:
 permissions:
   contents: read
 
+env:
+  NPY_DISABLE_CPU_FEATURES: AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL
+  OPENBLAS_NUM_THREADS: "1"
+  OMP_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  NUMEXPR_NUM_THREADS: "1"
+  PYTHONHASHSEED: "0"
+
 jobs:
   measurement-model:
     name: Legacy regression and corrected quantiles
@@ -35,21 +43,21 @@ jobs:
         run: |
           python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
           python -m pip check
+          python "$GITHUB_WORKSPACE/scripts/verify_numerical_runtime.py"
           python --version
           python -m pip --version
           python -m pip freeze --all | sort
 
-      - name: Compile measurement and aggregation code
+      - name: Compile measurement and freeze code
         run: |
           python -m py_compile \
             research/bryson-joint-posterior/measurement_error.py \
             research/bryson-joint-posterior/mcmc_convergence.py \
             research/bryson-joint-posterior/clustered_monte_carlo.py \
             research/bryson-joint-posterior/compare_mcmc_seed_families.py \
+            research/bryson-joint-posterior/likelihood_grid_convergence.py \
             research/bryson-joint-posterior/freeze_v4_numerical_results.py \
-            research/bryson-joint-posterior/propagate_hab2_joint_posterior.py \
-            research/v4-validation/host_tams_audit.py \
-            research/bryson-joint-posterior/aggregate_hab2_joint_posterior.py
+            research/v4-validation/host_tams_audit.py
 
       - name: Run measurement and MCMC-control regression suites
         working-directory: research/bryson-joint-posterior
@@ -59,7 +67,9 @@ jobs:
           test_mcmc_convergence.py
           test_clustered_monte_carlo.py
           test_adaptive_aggregation.py
+          test_likelihood_grid_convergence.py
           test_propagate_host_measure.py
+          test_freeze_v4_numerical_results.py
 
       - name: Run host and TAMS audit regression suite
         working-directory: research/v4-validation

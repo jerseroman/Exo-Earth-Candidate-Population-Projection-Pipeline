@@ -1,6 +1,6 @@
 # Exo-Earth Candidate Population Projection Pipeline
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22158798.svg)](https://doi.org/10.5281/zenodo.22158798)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22168215.svg)](https://doi.org/10.5281/zenodo.22168215)
 
 Reproducible astrophysical analysis, validation, and archival pipeline for
 reconstructing and propagating Kepler DR25 exoplanet-occurrence posteriors,
@@ -36,6 +36,11 @@ make verify
 
 This works in an ordinary directory unpacked from the public ZIP; no `.git`
 directory or Git initialization is required.
+
+Before unpacking, verify the source ZIP against `PUBLIC_SHA256SUMS` and the
+SHA-256 digest reported for that exact asset by the immutable GitHub release.
+The outer digest authenticates the downloaded archive; `make verify` then
+checks the internal consistency of the unpacked no-Git tree.
 
 The public tree verifies the cryptographic integrity and internal consistency
 of the committed frozen summaries, runs the unit tests, inspects every
@@ -98,18 +103,20 @@ components. His ORCID iD is
 
 ## Scientific status
 
-The frozen baseline contains 400 accepted constant-completeness and 400
-accepted zero-completeness realizations. Their conditional 7--9 kpc medians
-are approximately 3.2 million and 4.6 million model-defined narrow-domain
-planets, respectively. These are separate completeness scenarios, not bounds
-of one uncertainty interval. Exact medians remain in the frozen reproducibility
-tables. The exact nominal DR25 target contains zero candidates, so neither
-headline value is a direct locally candidate-supported measurement; both are
+Version 4.0.4 is released only after a fresh, source-locked production rerun
+passes the optimizer, convergence, autocorrelation-time, ESS, MCSE, catalog
+replay, likelihood-grid, host-artifact, age-cut, radial-grid, local-run, and
+cross-artifact acceptance gates. Constant-completeness and zero-completeness
+remain separate completeness scenarios, not bounds of one uncertainty
+interval. Exact
+accepted values and their signed provenance are distributed with the release.
+The exact nominal DR25 target contains zero candidates, so neither headline
+value is a direct locally candidate-supported measurement; both are
 conditional separable-model projections.
 
 ## Citation and release
 
-The version-specific archival record for version 4.0.3 uses DOI
-[`10.5281/zenodo.22158798`](https://doi.org/10.5281/zenodo.22158798). The
+The version-specific archival record for version 4.0.4 uses DOI
+[`10.5281/zenodo.22168215`](https://doi.org/10.5281/zenodo.22168215). The
 corresponding source tag and release are
-[`v4.0.3`](https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline/releases/tag/v4.0.3).
+[`v4.0.4`](https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline/releases/tag/v4.0.4).

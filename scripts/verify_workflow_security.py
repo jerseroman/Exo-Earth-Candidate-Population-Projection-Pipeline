@@ -29,6 +29,13 @@ DATA_LOCKS = json.loads(
 BRYSON_SOURCE_SHA256 = DATA_LOCKS["locks"]["bryson_rate_models_3d"][
     "expected_sha256"
 ]
+BRYSON_PC_CATALOG = (
+    "/tmp/DR25-occurrence-public/insolation/koiCatalogs/PCs_dr25_hab2.csv"
+)
+BRYSON_STELLAR_CATALOG = (
+    "/tmp/DR25-occurrence-public/stellarCatalogs/"
+    "dr25_stellar_berger2020_clean_hab2.txt"
+)
 MAX_WORKFLOW_BYTES = 1_000_000
 
 PINNED_ACTIONS = {
@@ -41,15 +48,200 @@ PINNED_ACTIONS = {
 PROTECTED_PYTHON_SCRIPTS = frozenset(
     {
         "scripts/verify_accepted_aggregate.py",
+        "scripts/verify_age_cut_sensitivity.py",
+        "scripts/verify_host_artifact_contract.py",
+        "scripts/verify_metallicity_tams_audit.py",
+        "scripts/verify_numerical_runtime.py",
         "research/bryson-joint-posterior/aggregate_hab2_joint_posterior.py",
         "research/bryson-joint-posterior/propagate_hab2_joint_posterior.py",
         "research/bryson-joint-posterior/run_hab2_joint_posterior.py",
+        "research/jj-host-export/assert_canonical_tams.py",
+        "research/jj-host-export/age_cut_sensitivity.py",
+        "research/jj-host-export/bryson_model_form_sensitivity.py",
+        "research/jj-host-export/export_raw_eligible.py",
+        "research/jj-host-export/hz_boundary_sensitivity.py",
+        "research/jj-host-export/occurrence_reference.py",
+        "research/jj-host-export/promote_tams_provider.py",
+        "research/jj-host-export/recalc_all_branches_tams.py",
+        "research/jj-host-export/run_jj_export.py",
+        "research/jj-host-export/metallicity_tams_differential_sensitivity.py",
+        "research/jj-host-export/tams_ab_test.py",
+        "research/jj-host-export/tams_reference.py",
     }
+)
+JJ_EXPORT_SCRIPT = "research/jj-host-export/run_jj_export.py"
+JJ_EXPORT_INTEGRITY_LINES = (
+    'JJ_EXPORT_WORKING_BLOB="$(git hash-object '
+    '"$GITHUB_WORKSPACE/research/jj-host-export/run_jj_export.py")"',
+    'JJ_EXPORT_TRACKED_BLOB="$(git rev-parse '
+    'HEAD:research/jj-host-export/run_jj_export.py)"',
+    '[[ "$JJ_EXPORT_WORKING_BLOB" =~ ^[0-9a-f]{40}$ ]]',
+    '[[ "$JJ_EXPORT_TRACKED_BLOB" =~ ^[0-9a-f]{40}$ ]]',
+    '[[ "$JJ_EXPORT_WORKING_BLOB" == "$JJ_EXPORT_TRACKED_BLOB" ]]',
+)
+EXPECTED_JJ_EXPORT_ARGV = {
+    "jj-g-host-export.yml": (
+        "python",
+        f"$GITHUB_WORKSPACE/{JJ_EXPORT_SCRIPT}",
+        "--jj-root",
+        "/tmp/jjmodel-src",
+        "--run-dir",
+        "/tmp/jj-run",
+        "--out",
+        "$GITHUB_WORKSPACE/results/jj",
+        "--iso",
+        "Padova",
+        "--expected-radial-step-kpc",
+        "0.5",
+    ),
+    "jj-tams-metallicity-differential.yml": (
+        "python",
+        f"$GITHUB_WORKSPACE/{JJ_EXPORT_SCRIPT}",
+        "--jj-root",
+        "/tmp/jjmodel-src",
+        "--run-dir",
+        "/tmp/jj-diff",
+        "--out",
+        "/tmp/metallicity-host",
+        "--iso",
+        "Padova",
+        "--expected-radial-step-kpc",
+        "0.5",
+    ),
+}
+AGE_CUT_PRODUCER_SCRIPT = "research/jj-host-export/age_cut_sensitivity.py"
+AGE_CUT_VERIFIER_SCRIPT = "scripts/verify_age_cut_sensitivity.py"
+AGE_CUT_ARTIFACT_FILES = (
+    "AGE_CUT_SENSITIVITY.json",
+    "age_cut_radial.csv",
+    "JJ_SSP_INPUT_SHA256SUMS.txt",
+    "SHA256SUMS_age_cut_sensitivity.txt",
 )
 APPROVED_EXPLICIT_SHELLS = frozenset(
     {"bash --noprofile --norc -e -o pipefail {0}"}
 )
 FORBIDDEN_SHELL_ENV_KEYS = frozenset({"BASH_ENV", "ENV", "SHELLOPTS"})
+PROTECTED_EXECUTION_ENV_KEYS = frozenset(
+    {
+        "PATH",
+        "PYTHONPATH",
+        "PYTHONHOME",
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "LD_AUDIT",
+        "LD_ORIGIN_PATH",
+        "GITHUB_WORKSPACE",
+        "GITHUB_ENV",
+        "GITHUB_PATH",
+    }
+)
+PROTECTED_EXECUTION_ENV_PREFIXES = ("BASH_FUNC_", "LD_")
+SHELL_COMMAND_REBINDERS = frozenset(
+    {"alias", "unalias", "hash", "enable", "shopt"}
+)
+SHELL_COMMAND_WRAPPERS = frozenset({"command", "builtin"})
+SHELL_COMMAND_INTRODUCERS = frozenset(
+    {"if", "elif", "while", "until", "then", "else", "do", "!", "time"}
+)
+
+EXPECTED_NUMERICAL_ENV = {
+    "NPY_DISABLE_CPU_FEATURES": (
+        "AVX512F,AVX512CD,AVX512_SKX,"
+        "AVX512_CLX,AVX512_CNL,AVX512_ICL"
+    ),
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+    "PYTHONHASHSEED": "0",
+}
+EXPECTED_NUMERICAL_RUNTIME_OUTPUTS: dict[str, tuple[str | None, ...]] = {
+    "bryson-v4-corrected-pilot.yml": ("numerical_runtime.json", None),
+    "bryson-v4-corrected-production.yml": (
+        "numerical_runtime.json",
+        None,
+        None,
+    ),
+    "bryson-v4-corrected-zero-extended.yml": (
+        "numerical_runtime.json",
+        None,
+        None,
+    ),
+    "bryson-v4-measurement-tests.yml": (None,),
+    "bryson-v4-propagate-constant.yml": (None,),
+    "jj-g-host-export.yml": (
+        "results/jj/NUMERICAL_RUNTIME_POLICY.json",
+    ),
+    "jj-tams-metallicity-differential.yml": (
+        "results/metallicity-audit/NUMERICAL_RUNTIME_POLICY.json",
+    ),
+    "jj-tams-radial-convergence.yml": (
+        "results/tams-convergence/NUMERICAL_RUNTIME_POLICY.json",
+    ),
+    "verify.yml": (None, None),
+}
+PRIVATE_REPOSITORY_JOB_IF = "${{ github.event.repository.private == true }}"
+EXPECTED_WORKFLOW_JOBS: dict[str, tuple[str, ...]] = {
+    "bryson-v4-corrected-pilot.yml": (
+        "prepare-inputs",
+        "pilot",
+        "seed-stability",
+    ),
+    "bryson-v4-corrected-production.yml": (
+        "prepare-inputs",
+        "prepare-hosts",
+        "reconstruct-shards",
+        "aggregate",
+        "propagate",
+    ),
+    "bryson-v4-corrected-zero-extended.yml": (
+        "prepare-inputs",
+        "prepare-hosts",
+        "reconstruct-shards",
+        "aggregate",
+        "propagate",
+    ),
+    "bryson-v4-measurement-tests.yml": ("measurement-model",),
+    "bryson-v4-propagate-constant.yml": ("propagate",),
+    "jj-g-host-export.yml": ("jj-export",),
+    "jj-tams-metallicity-differential.yml": ("audit",),
+    "jj-tams-radial-convergence.yml": ("convergence",),
+    "verify.yml": ("verify", "publish-source-release-assets"),
+}
+PUBLIC_JOB_WORKFLOWS = frozenset(
+    {"bryson-v4-measurement-tests.yml", "verify.yml"}
+)
+RELEASE_PACKAGE_STEP_NAME = "Build deterministic license-cleared source package"
+RELEASE_LINEAGE_STEP_NAME = "Bind v4.0.4 tag to exact main lineage"
+RELEASE_PREPARE_STAGE_STEP_NAME = (
+    "Prepare fresh exact v4.0.4 four-file release envelope"
+)
+RELEASE_STAGE_STEP_NAME = "Stage exact v4.0.4 four-file release envelope"
+RELEASE_PUBLISH_LINEAGE_STEP_NAME = (
+    "Rebind v4.0.4 tag to exact main lineage before publication"
+)
+RELEASE_FRESH_DESTINATION_STEP_NAME = (
+    "Require a fresh four-file release envelope destination"
+)
+RELEASE_INVENTORY_STEP_NAME = (
+    "Verify exact four-file release envelope inventory"
+)
+RELEASE_FULL_ROUNDTRIP_STEP_NAME = (
+    "Reverify full v4.0.4 package roundtrip without write credentials"
+)
+RELEASE_PUBLISH_STEP_NAME = (
+    "Attach and recheck exact v4.0.4 source release assets"
+)
+RELEASE_PUBLISH_INSTALL_STEP_NAME = (
+    "Install locked dependencies for publisher verification"
+)
+RELEASE_PACKAGE_TAG_IF = (
+    "github.event_name == 'push' && "
+    "github.repository == "
+    "'jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline' && "
+    "github.ref == 'refs/tags/v4.0.4' && "
+    "github.ref_type == 'tag' && github.ref_name == 'v4.0.4'"
+)
 
 GITHUB_EXPRESSION_RE = re.compile(r"\$\{\{")
 PIP_INSTALL_RE = re.compile(
@@ -96,6 +288,14 @@ INPUT_EXPRESSION_RE = re.compile(
 )
 EXACT_INPUT_BINDING_RE = re.compile(
     r"^\$\{\{\s*inputs\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}$"
+)
+ENV_MUTATION_COMMAND_RE = re.compile(
+    r"(?i)^(?:(?:command|builtin)\s+)?"
+    r"(?:export|unset|env|declare|typeset|readonly|source|eval|read|printf\s+-v)\b"
+    r"|^\.\s+"
+)
+CWD_MUTATION_COMMAND_RE = re.compile(
+    r"(?i)^(?:(?:command|builtin)\s+)?(?:cd|pushd|popd)\b"
 )
 
 
@@ -487,6 +687,122 @@ def _shell_tokens(arguments: str) -> list[str] | None:
         return None
 
 
+def _shell_syntax_tokens(text: str) -> list[str] | None:
+    """Tokenize shell syntax sufficiently to detect command rebinding."""
+
+    lexer = shlex.shlex(text, posix=True, punctuation_chars=";&|(){}")
+    lexer.whitespace_split = True
+    lexer.commenters = "#"
+    try:
+        return list(lexer)
+    except ValueError:
+        return None
+
+
+def _forbidden_shell_command_rebinding(text: str) -> str | None:
+    """Return the forbidden rebinding construct present in one shell line."""
+
+    tokens = _shell_syntax_tokens(text)
+    if tokens is None:
+        return "unparseable shell syntax"
+
+    command_expected = True
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token and all(character in ";&|(){}" for character in token):
+            command_expected = True
+            index += 1
+            continue
+        if token in SHELL_COMMAND_INTRODUCERS:
+            command_expected = True
+            index += 1
+            continue
+        if not command_expected:
+            index += 1
+            continue
+
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(?:\[[^]]+\])?\+?=.*", token):
+            index += 1
+            continue
+
+        command_index = index
+        while (
+            command_index < len(tokens)
+            and tokens[command_index] in SHELL_COMMAND_WRAPPERS
+        ):
+            command_index += 1
+            while (
+                command_index < len(tokens)
+                and tokens[command_index].startswith("-")
+            ):
+                command_index += 1
+        if command_index >= len(tokens):
+            return None
+
+        command_name = tokens[command_index]
+        if command_name == "function":
+            return "shell function definition"
+        if command_name in SHELL_COMMAND_REBINDERS:
+            return f"shell command rebinder {command_name!r}"
+
+        next_index = command_index + 1
+        if (
+            next_index < len(tokens)
+            and tokens[next_index].startswith("()")
+        ):
+            return "shell function definition"
+
+        command_expected = False
+        index = command_index + 1
+    return None
+
+
+def _protected_python_path_violation(line: LogicalShellLine) -> str | None:
+    """Reject protected-source mentions except canonical execution/integrity forms."""
+
+    syntax_tokens = _shell_syntax_tokens(line.text)
+    if syntax_tokens is None:
+        return "unparseable shell syntax around a protected Python path"
+
+    references: list[tuple[str, str]] = []
+    for token in syntax_tokens:
+        for script_path in PROTECTED_PYTHON_SCRIPTS:
+            protected_name = script_path.rsplit("/", 1)[-1]
+            basename_mention = re.search(
+                rf"(?<![A-Za-z0-9_.-]){re.escape(protected_name)}"
+                r"(?![A-Za-z0-9_.-])",
+                token,
+            )
+            if script_path in token or basename_mention is not None:
+                references.append((script_path, token))
+
+    if not references:
+        return None
+    if line.text in JJ_EXPORT_INTEGRITY_LINES[:2]:
+        return None
+    if len(references) != 1:
+        return "multiple or ambiguous protected Python path references"
+
+    script_path, reference_token = references[0]
+    expected_path = f"$GITHUB_WORKSPACE/{script_path}"
+    argv = _argv(line)
+    if (
+        argv is None
+        or len(argv) < 2
+        or not re.fullmatch(
+            r"(?:python(?:3(?:\.\d+)*)?|py)(?:\.exe)?", argv[0]
+        )
+        or argv[1] != expected_path
+        or reference_token != expected_path
+    ):
+        return (
+            f"non-canonical reference to protected Python source {script_path!r}; "
+            f"only an absolute interpreter invocation of {expected_path!r} is allowed"
+        )
+    return None
+
+
 def _locked_pip_install(
     arguments: str, global_options: str = ""
 ) -> tuple[bool, str]:
@@ -546,6 +862,50 @@ def audit_shell_command(path: Path, command: ShellCommand) -> int:
 
     logical_lines = _logical_shell_lines(command)
     for line in logical_lines:
+        normalized = _normalized_line(line)
+        protected_path_violation = _protected_python_path_violation(line)
+        if protected_path_violation is not None:
+            fail(
+                f"{path.name}:{line.line_number} uses {protected_path_violation}"
+            )
+        rebinding = _forbidden_shell_command_rebinding(line.text)
+        if rebinding is not None:
+            fail(
+                f"{path.name}:{line.line_number} uses forbidden {rebinding}; "
+                "the Python command path is immutable"
+            )
+        if ENV_MUTATION_COMMAND_RE.search(normalized):
+            fail(
+                f"{path.name}:{line.line_number} uses a shell environment-"
+                "mutation command; workflow runtime policy is immutable"
+            )
+        forbidden_shell_environment_names = {
+            *EXPECTED_NUMERICAL_ENV,
+            "NPY_ENABLE_CPU_FEATURES",
+            *(PROTECTED_EXECUTION_ENV_KEYS - {"GITHUB_WORKSPACE"}),
+        }
+        for name in forbidden_shell_environment_names:
+            if re.search(rf"(?<![A-Za-z0-9_]){re.escape(name)}(?![A-Za-z0-9_])", line.text):
+                fail(
+                    f"{path.name}:{line.line_number} references protected runtime "
+                    f"environment name {name!r} from shell"
+                )
+        for prefix in PROTECTED_EXECUTION_ENV_PREFIXES:
+            if re.search(
+                rf"(?<![A-Za-z0-9_]){re.escape(prefix)}",
+                line.text,
+            ):
+                fail(
+                    f"{path.name}:{line.line_number} references protected runtime "
+                    f"environment prefix {prefix!r} from shell"
+                )
+        if re.search(
+            r"(?<![A-Za-z0-9_])GITHUB_WORKSPACE\s*=", line.text
+        ):
+            fail(
+                f"{path.name}:{line.line_number} attempts to overwrite "
+                "GITHUB_WORKSPACE from shell"
+            )
         if SET_PLUS_RE.search(line.text):
             fail(
                 f"{path.name}:{line.line_number} disables shell options with "
@@ -687,6 +1047,547 @@ def validate_workflow_environment(
             f"observed={sorted(observed_input_bindings)}, "
             f"expected={sorted(allowed_input_bindings)}"
         )
+
+
+def require_numerical_runtime_environment(
+    path: Path, data: dict[str, Any]
+) -> None:
+    """Require one immutable workflow-level numerical environment."""
+
+    expected_env = dict(EXPECTED_NUMERICAL_ENV)
+    if path.name == "verify.yml":
+        expected_env["PYTHONDONTWRITEBYTECODE"] = "1"
+    top_level_env = data.get("env")
+    if top_level_env != expected_env:
+        fail(
+            f"{path.name} numerical runtime environment changed: "
+            f"observed={top_level_env!r}, expected={expected_env!r}"
+        )
+
+    protected_names = {
+        *EXPECTED_NUMERICAL_ENV,
+        "PYTHONDONTWRITEBYTECODE",
+        "NPY_ENABLE_CPU_FEATURES",
+        *PROTECTED_EXECUTION_ENV_KEYS,
+    }
+    for mapping in _walk_mappings(data):
+        if mapping is top_level_env:
+            continue
+        overlap = protected_names.intersection(mapping)
+        if overlap:
+            fail(
+                f"{path.name} overrides or rebinds protected numerical runtime "
+                f"keys below workflow scope: {sorted(overlap)!r}"
+            )
+        prefixed = sorted(
+            key
+            for key in mapping
+            if isinstance(key, str)
+            and key.startswith(PROTECTED_EXECUTION_ENV_PREFIXES)
+        )
+        if prefixed:
+            fail(
+                f"{path.name} defines protected execution-environment prefixes "
+                f"below workflow scope: {prefixed!r}"
+            )
+
+
+def require_workflow_execution_conditions(
+    path: Path, data: dict[str, Any]
+) -> None:
+    """Pin audited job identity and forbid suppression of individual steps."""
+
+    jobs = data.get("jobs")
+    if not isinstance(jobs, dict):
+        fail(f"{path.name} has no jobs mapping")
+    expected_jobs = EXPECTED_WORKFLOW_JOBS.get(path.name)
+    if expected_jobs is None or tuple(jobs) != expected_jobs:
+        fail(
+            f"{path.name} audited job set/order changed: observed={tuple(jobs)!r}, "
+            f"expected={expected_jobs!r}"
+        )
+
+    public_jobs = path.name in PUBLIC_JOB_WORKFLOWS
+    for job_name, job in jobs.items():
+        if not isinstance(job, dict):
+            fail(f"{path.name} job {job_name!r} is not a mapping")
+        if public_jobs:
+            expected_job_condition = (
+                RELEASE_PACKAGE_TAG_IF
+                if path.name == "verify.yml"
+                and job_name == "publish-source-release-assets"
+                else None
+            )
+            if expected_job_condition is None and "if" in job:
+                fail(
+                    f"{path.name} public audit job {job_name!r} must not define if"
+                )
+            if expected_job_condition is not None and job.get("if") != expected_job_condition:
+                fail(
+                    f"{path.name} release publisher job must use the exact tag gate"
+                )
+        elif job.get("if") != PRIVATE_REPOSITORY_JOB_IF:
+            fail(
+                f"{path.name} job {job_name!r} must use the exact private-"
+                "repository execution condition"
+            )
+        steps = job.get("steps")
+        if not isinstance(steps, list):
+            fail(f"{path.name} job {job_name!r} has no explicit steps list")
+        conditional_steps = 0
+        for step_index, step in enumerate(steps, 1):
+            if not isinstance(step, dict):
+                fail(
+                    f"{path.name} job {job_name!r} step {step_index} is not a mapping"
+                )
+            if "if" in step:
+                if (
+                    path.name != "verify.yml"
+                    or job_name != "verify"
+                    or step.get("name")
+                    not in {
+                        RELEASE_LINEAGE_STEP_NAME,
+                        RELEASE_PACKAGE_STEP_NAME,
+                        RELEASE_PREPARE_STAGE_STEP_NAME,
+                        RELEASE_STAGE_STEP_NAME,
+                    }
+                    or step.get("if") != RELEASE_PACKAGE_TAG_IF
+                ):
+                    fail(
+                        f"{path.name} job {job_name!r} step {step_index} uses an "
+                        "unapproved conditional execution gate"
+                    )
+                conditional_steps += 1
+        expected_conditional_steps = (
+            4 if path.name == "verify.yml" and job_name == "verify" else 0
+        )
+        if conditional_steps != expected_conditional_steps:
+            fail(
+                f"{path.name} job {job_name!r} release-condition count changed"
+            )
+
+
+def require_release_package_tag_gate(path: Path, data: dict[str, Any]) -> None:
+    """Keep ordinary PR/push verification green and release packaging fail-closed."""
+
+    if path.name != "verify.yml":
+        return
+    trigger = data.get("on")
+    expected_trigger = {
+        "push": {"branches": ["main"], "tags": ["v4.0.4"]},
+        "pull_request": "",
+        "workflow_dispatch": "",
+    }
+    if trigger != expected_trigger:
+        fail(
+            f"{path.name} trigger set changed: observed={trigger!r}, "
+            f"expected={expected_trigger!r}"
+        )
+    if data.get("permissions") != {"contents": "read"}:
+        fail(f"{path.name} workflow-level permissions must be contents: read")
+    jobs = data.get("jobs")
+    verify_job = jobs.get("verify") if isinstance(jobs, dict) else None
+    if (
+        not isinstance(verify_job, dict)
+        or set(verify_job) != {"permissions", "runs-on", "timeout-minutes", "steps"}
+        or verify_job.get("permissions") != {"contents": "read"}
+        or verify_job.get("runs-on") != "ubuntu-22.04"
+        or verify_job.get("timeout-minutes") != "30"
+    ):
+        fail(
+            f"{path.name} verify job must have the exact read-only Ubuntu 22.04 "
+            "schema and 30-minute timeout"
+        )
+    steps = verify_job.get("steps") if isinstance(verify_job, dict) else None
+    if not isinstance(steps, list) or len(steps) != 8:
+        fail(f"{path.name} exact verify step set/order changed")
+
+    def exact_body(raw: Any, expected_lines: tuple[str, ...], name: str) -> None:
+        expected = "\n".join(expected_lines) + "\n"
+        if raw != expected:
+            fail(f"{path.name} {name} exact shell body changed")
+
+    checkout_ref = "actions/checkout@" + PINNED_ACTIONS["actions/checkout"]
+    verify_checkout = {
+        "uses": checkout_ref,
+        "with": {"fetch-depth": "0"},
+    }
+    checkout_steps = [
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("uses") == checkout_ref
+    ]
+    if (
+        len(checkout_steps) != 1
+        or checkout_steps[0] != verify_checkout
+        or steps[0] != verify_checkout
+    ):
+        fail(
+            f"{path.name} release lineage requires one full-history checkout"
+        )
+    lineage_step = steps[1]
+    if (
+        not isinstance(lineage_step, dict)
+        or set(lineage_step) != {"name", "if", "run"}
+        or lineage_step.get("name") != RELEASE_LINEAGE_STEP_NAME
+        or lineage_step.get("if") != RELEASE_PACKAGE_TAG_IF
+    ):
+        fail(f"{path.name} exact release-lineage preflight changed")
+    lineage_body = (
+        'test "$GITHUB_EVENT_NAME" = "push"',
+        'test "$GITHUB_SERVER_URL" = "https://github.com"',
+        'test "$GITHUB_REPOSITORY" = "jerseroman/'
+        'Exo-Earth-Candidate-Population-Projection-Pipeline"',
+        'test "$GITHUB_REF" = "refs/tags/v4.0.4"',
+        'test "$GITHUB_REF_TYPE" = "tag"',
+        'test "$GITHUB_REF_NAME" = "v4.0.4"',
+        '[[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]',
+        'test "$(git remote get-url origin)" = "https://github.com/jerseroman/'
+        'Exo-Earth-Candidate-Population-Projection-Pipeline.git"',
+        "git fetch --force --no-tags origin \\",
+        "  '+refs/tags/v4.0.4:refs/tags/v4.0.4' \\",
+        "  '+refs/heads/main:refs/remotes/origin/main'",
+        'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
+        'test "$(git rev-parse --verify \'refs/tags/v4.0.4^{commit}\')" = "$GITHUB_SHA"',
+        'git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main',
+    )
+    exact_body(lineage_step.get("run"), lineage_body, RELEASE_LINEAGE_STEP_NAME)
+
+    setup_ref = "actions/setup-python@" + PINNED_ACTIONS["actions/setup-python"]
+    if steps[2] != {
+        "uses": setup_ref,
+        "with": {"python-version": "3.10", "cache": "pip"},
+    }:
+        fail(f"{path.name} exact setup-python step changed")
+    if (
+        not isinstance(steps[3], dict)
+        or set(steps[3]) != {"name", "run"}
+        or steps[3].get("name") != "Install declared compatible dependencies"
+    ):
+        fail(f"{path.name} exact dependency-install step schema changed")
+    exact_body(
+        steps[3].get("run"),
+        (
+            "python -m pip install --require-hashes --only-binary=:all: -r requirements.txt",
+            "python -m pip check",
+            'python "$GITHUB_WORKSPACE/scripts/verify_numerical_runtime.py"',
+        ),
+        "dependency-install step",
+    )
+    if steps[4] != {
+        "name": "Run software-only acceptance suite",
+        "run": "make verify",
+    }:
+        fail(f"{path.name} exact acceptance-suite step changed")
+    matches = [
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("name") == RELEASE_PACKAGE_STEP_NAME
+    ]
+    if len(matches) != 1:
+        fail(f"{path.name} must contain exactly one release-package step")
+    step = matches[0]
+    if step is not steps[5]:
+        fail(f"{path.name} release-package step order changed")
+    if step.get("if") != RELEASE_PACKAGE_TAG_IF:
+        fail(f"{path.name} release-package step is not tag-only")
+    if step.get("env") != {"GH_TOKEN": "${{ github.token }}"}:
+        fail(f"{path.name} release-package step does not use the exact read token")
+    if set(step) != {"name", "if", "env", "run"}:
+        fail(f"{path.name} release-package step mapping changed")
+
+    def exact_profile(raw: Any, name: str) -> tuple[str, ...]:
+        if not isinstance(raw, str):
+            fail(f"{path.name} {name} has no shell body")
+        command = ShellCommand(
+            run_line=1,
+            body_start_line=1,
+            scalar_style="|",
+            body=raw,
+            step_name=name,
+            working_directory=None,
+        )
+        lines = _logical_shell_lines(command)
+        if any(not line.top_level or _has_shell_control(line.text) for line in lines):
+            fail(f"{path.name} {name} is not an unconditional logical-command profile")
+        return tuple(_normalize_shell_whitespace(line.text) for line in lines)
+
+    results_archive = (
+        "Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip"
+    )
+    results_checksum = results_archive + ".sha256"
+    source_archive = (
+        "exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip"
+    )
+    expected_build_profile = (
+        "mkdir -p dist",
+        "gh release download v4.0.4 "
+        f"--pattern '{results_archive}' --pattern '{results_checksum}' --dir dist",
+        "make public-package",
+        f"test -f dist/{source_archive}",
+        "test -f dist/PUBLIC_SHA256SUMS",
+        "python -I -B \"$GITHUB_WORKSPACE/scripts/verify_public_package_roundtrip.py\" "
+        f"--archive \"$GITHUB_WORKSPACE/dist/{source_archive}\" "
+        "--source-checksum \"$GITHUB_WORKSPACE/dist/PUBLIC_SHA256SUMS\" "
+        f"--results-archive \"$GITHUB_WORKSPACE/dist/{results_archive}\" "
+        f"--results-checksum \"$GITHUB_WORKSPACE/dist/{results_checksum}\"",
+    )
+    observed_build_profile = exact_profile(step.get("run"), RELEASE_PACKAGE_STEP_NAME)
+    if observed_build_profile != expected_build_profile:
+        fail(
+            f"{path.name} release-package executable profile changed: "
+            f"observed={observed_build_profile!r}"
+        )
+
+    prepare_step = steps[6]
+    if (
+        not isinstance(prepare_step, dict)
+        or set(prepare_step) != {"name", "if", "run"}
+        or prepare_step.get("name") != RELEASE_PREPARE_STAGE_STEP_NAME
+        or prepare_step.get("if") != RELEASE_PACKAGE_TAG_IF
+    ):
+        fail(f"{path.name} exact four-file envelope preparation changed")
+    exact_body(
+        prepare_step.get("run"),
+        (
+            'STAGE="$RUNNER_TEMP/v404-source-release-stage"',
+            'test -d "$RUNNER_TEMP"',
+            'test ! -L "$RUNNER_TEMP"',
+            'test ! -e "$STAGE"',
+            'test ! -L "$STAGE"',
+            'mkdir -m 0700 "$STAGE"',
+            'test -d "$GITHUB_WORKSPACE/dist"',
+            'test ! -L "$GITHUB_WORKSPACE/dist"',
+            f'test -f "$GITHUB_WORKSPACE/dist/{source_archive}"',
+            f'test ! -L "$GITHUB_WORKSPACE/dist/{source_archive}"',
+            'test -f "$GITHUB_WORKSPACE/dist/PUBLIC_SHA256SUMS"',
+            'test ! -L "$GITHUB_WORKSPACE/dist/PUBLIC_SHA256SUMS"',
+            f'test -f "$GITHUB_WORKSPACE/dist/{results_archive}"',
+            f'test ! -L "$GITHUB_WORKSPACE/dist/{results_archive}"',
+            f'test -f "$GITHUB_WORKSPACE/dist/{results_checksum}"',
+            f'test ! -L "$GITHUB_WORKSPACE/dist/{results_checksum}"',
+            "cp --no-dereference --no-clobber \\",
+            f'  "$GITHUB_WORKSPACE/dist/{source_archive}" \\',
+            f'  "$STAGE/{source_archive}"',
+            "cp --no-dereference --no-clobber \\",
+            '  "$GITHUB_WORKSPACE/dist/PUBLIC_SHA256SUMS" \\',
+            '  "$STAGE/PUBLIC_SHA256SUMS"',
+            "cp --no-dereference --no-clobber \\",
+            f'  "$GITHUB_WORKSPACE/dist/{results_archive}" \\',
+            f'  "$STAGE/{results_archive}"',
+            "cp --no-dereference --no-clobber \\",
+            f'  "$GITHUB_WORKSPACE/dist/{results_checksum}" \\',
+            f'  "$STAGE/{results_checksum}"',
+            'test -d "$STAGE"',
+            'test ! -L "$STAGE"',
+            f'test -f "$STAGE/{source_archive}"',
+            f'test ! -L "$STAGE/{source_archive}"',
+            'test -f "$STAGE/PUBLIC_SHA256SUMS"',
+            'test ! -L "$STAGE/PUBLIC_SHA256SUMS"',
+            f'test -f "$STAGE/{results_archive}"',
+            f'test ! -L "$STAGE/{results_archive}"',
+            f'test -f "$STAGE/{results_checksum}"',
+            f'test ! -L "$STAGE/{results_checksum}"',
+            "find -P \"$STAGE\" -mindepth 1 -maxdepth 1 -printf '%f\\n' | "
+            'LC_ALL=C sort > "$RUNNER_TEMP/v404-source-release-stage.inventory"',
+            f"printf '%s\\n' {results_archive} {results_checksum} "
+            f"PUBLIC_SHA256SUMS {source_archive} | cmp -s - "
+            '"$RUNNER_TEMP/v404-source-release-stage.inventory"',
+        ),
+        RELEASE_PREPARE_STAGE_STEP_NAME,
+    )
+
+    upload_ref = "actions/upload-artifact@" + PINNED_ACTIONS["actions/upload-artifact"]
+    stage_matches = [
+        candidate
+        for candidate in steps
+        if isinstance(candidate, dict)
+        and candidate.get("name") == RELEASE_STAGE_STEP_NAME
+    ]
+    expected_stage = {
+        "name": RELEASE_STAGE_STEP_NAME,
+        "if": RELEASE_PACKAGE_TAG_IF,
+        "uses": upload_ref,
+        "with": {
+            "name": "v4.0.4-four-file-release-envelope",
+            "path": (
+                f"${{{{ runner.temp }}}}/v404-source-release-stage/{source_archive}\n"
+                "${{ runner.temp }}/v404-source-release-stage/PUBLIC_SHA256SUMS\n"
+                f"${{{{ runner.temp }}}}/v404-source-release-stage/{results_archive}\n"
+                f"${{{{ runner.temp }}}}/v404-source-release-stage/{results_checksum}\n"
+            ),
+            "if-no-files-found": "error",
+            "retention-days": "1",
+        },
+    }
+    if stage_matches != [expected_stage] or steps[7] != expected_stage:
+        fail(f"{path.name} exact four-file envelope staging step changed")
+
+    publisher = jobs.get("publish-source-release-assets") if isinstance(jobs, dict) else None
+    if not isinstance(publisher, dict):
+        fail(f"{path.name} lacks the source-release publisher job")
+    if (
+        publisher.get("if") != RELEASE_PACKAGE_TAG_IF
+        or publisher.get("needs") != "verify"
+        or publisher.get("permissions") != {"contents": "write"}
+        or publisher.get("runs-on") != "ubuntu-22.04"
+        or publisher.get("timeout-minutes") != "10"
+        or set(publisher)
+        != {"if", "needs", "permissions", "runs-on", "timeout-minutes", "steps"}
+    ):
+        fail(f"{path.name} source-release publisher privilege boundary changed")
+    publish_steps = publisher.get("steps")
+    if not isinstance(publish_steps, list) or len(publish_steps) != 9:
+        fail(f"{path.name} source-release publisher steps changed")
+    publisher_checkout = {
+        "uses": checkout_ref,
+        "with": {"fetch-depth": "0", "persist-credentials": "false"},
+    }
+    if publish_steps[0] != publisher_checkout:
+        fail(f"{path.name} source-release publisher checkout changed")
+
+    publisher_setup = {
+        "uses": setup_ref,
+        "with": {"python-version": "3.10", "cache": "pip"},
+    }
+    if publish_steps[1] != publisher_setup:
+        fail(f"{path.name} source-release publisher setup-python changed")
+    publisher_install = publish_steps[2]
+    if (
+        not isinstance(publisher_install, dict)
+        or set(publisher_install) != {"name", "run"}
+        or publisher_install.get("name") != RELEASE_PUBLISH_INSTALL_STEP_NAME
+    ):
+        fail(f"{path.name} publisher dependency-install schema changed")
+    exact_body(
+        publisher_install.get("run"),
+        (
+            "python -m pip install --require-hashes --only-binary=:all: -r requirements.txt",
+            "python -m pip check",
+            'python "$GITHUB_WORKSPACE/scripts/verify_numerical_runtime.py"',
+        ),
+        RELEASE_PUBLISH_INSTALL_STEP_NAME,
+    )
+
+    publisher_lineage = publish_steps[7]
+    if (
+        not isinstance(publisher_lineage, dict)
+        or set(publisher_lineage) != {"name", "run"}
+        or publisher_lineage.get("name") != RELEASE_PUBLISH_LINEAGE_STEP_NAME
+    ):
+        fail(f"{path.name} publisher release-lineage preflight changed")
+    exact_body(
+        publisher_lineage.get("run"),
+        lineage_body,
+        RELEASE_PUBLISH_LINEAGE_STEP_NAME,
+    )
+
+    fresh_destination = publish_steps[3]
+    if (
+        not isinstance(fresh_destination, dict)
+        or set(fresh_destination) != {"name", "run"}
+        or fresh_destination.get("name") != RELEASE_FRESH_DESTINATION_STEP_NAME
+    ):
+        fail(f"{path.name} publisher fresh-destination guard changed")
+    exact_body(
+        fresh_destination.get("run"),
+        (
+            'RECEIVED="$RUNNER_TEMP/v404-source-release-received"',
+            'test -d "$RUNNER_TEMP"',
+            'test ! -L "$RUNNER_TEMP"',
+            'test ! -e "$RECEIVED"',
+            'test ! -L "$RECEIVED"',
+        ),
+        RELEASE_FRESH_DESTINATION_STEP_NAME,
+    )
+
+    download_ref = "actions/download-artifact@" + PINNED_ACTIONS["actions/download-artifact"]
+    publisher_download = {
+        "uses": download_ref,
+        "with": {
+            "name": "v4.0.4-four-file-release-envelope",
+            "path": "${{ runner.temp }}/v404-source-release-received",
+        },
+    }
+    if publish_steps[4] != publisher_download:
+        fail(f"{path.name} source-release publisher transport changed")
+
+    inventory_step = publish_steps[5]
+    if (
+        not isinstance(inventory_step, dict)
+        or set(inventory_step) != {"name", "run"}
+        or inventory_step.get("name") != RELEASE_INVENTORY_STEP_NAME
+    ):
+        fail(f"{path.name} exact received-envelope inventory guard changed")
+    exact_body(
+        inventory_step.get("run"),
+        (
+            'RECEIVED="$RUNNER_TEMP/v404-source-release-received"',
+            'test -d "$RECEIVED"',
+            'test ! -L "$RECEIVED"',
+            f'test -f "$RECEIVED/{source_archive}"',
+            f'test ! -L "$RECEIVED/{source_archive}"',
+            'test -f "$RECEIVED/PUBLIC_SHA256SUMS"',
+            'test ! -L "$RECEIVED/PUBLIC_SHA256SUMS"',
+            f'test -f "$RECEIVED/{results_archive}"',
+            f'test ! -L "$RECEIVED/{results_archive}"',
+            f'test -f "$RECEIVED/{results_checksum}"',
+            f'test ! -L "$RECEIVED/{results_checksum}"',
+            "find -P \"$RECEIVED\" -mindepth 1 -maxdepth 1 -printf '%f\\n' | "
+            'LC_ALL=C sort > "$RUNNER_TEMP/v404-source-release-received.inventory"',
+            f"printf '%s\\n' {results_archive} {results_checksum} "
+            f"PUBLIC_SHA256SUMS {source_archive} | cmp -s - "
+            '"$RUNNER_TEMP/v404-source-release-received.inventory"',
+        ),
+        RELEASE_INVENTORY_STEP_NAME,
+    )
+
+    full_roundtrip_step = publish_steps[6]
+    if (
+        not isinstance(full_roundtrip_step, dict)
+        or set(full_roundtrip_step) != {"name", "run"}
+        or full_roundtrip_step.get("name") != RELEASE_FULL_ROUNDTRIP_STEP_NAME
+    ):
+        fail(f"{path.name} credential-free full roundtrip step changed")
+    expected_full_roundtrip_profile = (
+        "python -I -B \"$GITHUB_WORKSPACE/scripts/verify_public_package_roundtrip.py\" "
+        f"--archive \"$RUNNER_TEMP/v404-source-release-received/{source_archive}\" "
+        "--source-checksum \"$RUNNER_TEMP/v404-source-release-received/"
+        "PUBLIC_SHA256SUMS\" "
+        f"--results-archive \"$RUNNER_TEMP/v404-source-release-received/{results_archive}\" "
+        f"--results-checksum \"$RUNNER_TEMP/v404-source-release-received/{results_checksum}\"",
+    )
+    observed_full_roundtrip_profile = exact_profile(
+        full_roundtrip_step.get("run"), RELEASE_FULL_ROUNDTRIP_STEP_NAME
+    )
+    if observed_full_roundtrip_profile != expected_full_roundtrip_profile:
+        fail(
+            f"{path.name} credential-free full package roundtrip changed: "
+            f"observed={observed_full_roundtrip_profile!r}"
+        )
+
+    publish_step = publish_steps[8]
+    if (
+        not isinstance(publish_step, dict)
+        or set(publish_step) != {"name", "env", "run"}
+        or publish_step.get("name") != RELEASE_PUBLISH_STEP_NAME
+        or publish_step.get("env") != {"GH_TOKEN": "${{ github.token }}"}
+    ):
+        fail(f"{path.name} source-release publication step changed")
+    exact_body(
+        publish_step.get("run"),
+        (
+            'test ! -e "$RUNNER_TEMP/v404-source-release-recheck"',
+            'test ! -L "$RUNNER_TEMP/v404-source-release-recheck"',
+            "python -I -B \"$GITHUB_WORKSPACE/scripts/verify_public_package_roundtrip.py\" \\",
+            "  --publish-v404-source-assets \\",
+            f'  --archive "$RUNNER_TEMP/v404-source-release-received/{source_archive}" \\',
+            '  --source-checksum "$RUNNER_TEMP/v404-source-release-received/'
+            'PUBLIC_SHA256SUMS" \\',
+            '  --download-dir "$RUNNER_TEMP/v404-source-release-recheck"',
+        ),
+        RELEASE_PUBLISH_STEP_NAME,
+    )
 
 
 def require_dispatch_input(
@@ -832,13 +1733,11 @@ def _python_invocation(
     if not re.fullmatch(r"(?:python(?:3(?:\.\d+)*)?|py)(?:\.exe)?", tokens[0]):
         return None
     invoked_path = tokens[1]
-    allowed_invocations = {
-        script_path,
-        f"$GITHUB_WORKSPACE/{script_path}",
-    }
+    allowed_invocations = {f"$GITHUB_WORKSPACE/{script_path}"}
     if invoked_path not in allowed_invocations:
         protected_name = script_path.rsplit("/", 1)[-1]
-        if invoked_path.endswith(protected_name):
+        invoked_name = invoked_path.replace("\\", "/").rsplit("/", 1)[-1]
+        if invoked_name == protected_name:
             fail(
                 f"line {line.line_number} invokes protected script "
                 f"{protected_name!r} through non-allowlisted path {invoked_path!r}; "
@@ -886,6 +1785,17 @@ def _has_prior_unconditional_terminator(
     return False
 
 
+def _has_prior_cwd_mutator(
+    lines: list[LogicalShellLine], target: LogicalShellLine
+) -> bool:
+    for line in lines:
+        if line is target:
+            break
+        if line.top_level and CWD_MUTATION_COMMAND_RE.search(_normalized_line(line)):
+            return True
+    return False
+
+
 def _matching_python_invocations(
     commands: list[ShellCommand], script_path: str
 ) -> list[tuple[ShellCommand, LogicalShellLine, list[str]]]:
@@ -901,6 +1811,18 @@ def _matching_python_invocations(
                     f"run line {command.run_line} places {script_path} after an "
                     "unconditional shell terminator"
                 )
+            if tokens[1] == script_path:
+                if command.working_directory is not None:
+                    fail(
+                        f"run line {command.run_line} invokes protected relative "
+                        f"script {script_path!r} with working-directory="
+                        f"{command.working_directory!r}"
+                    )
+                if _has_prior_cwd_mutator(lines, line):
+                    fail(
+                        f"run line {command.run_line} invokes protected relative "
+                        f"script {script_path!r} after changing the working directory"
+                    )
             matches.append((command, line, tokens))
     return matches
 
@@ -1075,11 +1997,143 @@ def require_posterior_manifest_guard(
         {
             "--artifact-root": "/tmp/bryson-v4-posterior",
             "--branch": "constant",
+            "--pc-catalog": BRYSON_PC_CATALOG,
+            "--stellar-catalog": BRYSON_STELLAR_CATALOG,
             "--expected-bryson-source-sha256": BRYSON_SOURCE_SHA256,
         },
     )
     if not valid:
         fail(f"{path.name}:{line.line_number} has an invalid aggregate guard: {reason}")
+
+
+def require_host_artifact_contract_guard(
+    path: Path, commands: list[ShellCommand]
+) -> None:
+    """Require exact host-contract gates after import and before consumption."""
+
+    script_path = "scripts/verify_host_artifact_contract.py"
+    contract_path = (
+        "$GITHUB_WORKSPACE/provenance/"
+        "HOST_ARTIFACT_CONTRACT_v4_0_4.json"
+    )
+    guards = _matching_python_invocations(commands, script_path)
+    expected_count = (
+        2
+        if path.name
+        in {
+            "bryson-v4-corrected-production.yml",
+            "bryson-v4-corrected-zero-extended.yml",
+        }
+        else 1
+    )
+    if len(guards) != expected_count:
+        fail(
+            f"{path.name} must execute exactly {expected_count} "
+            f"host-artifact contract verifier(s); found {len(guards)}"
+        )
+    expected_tail = [
+        "--mode",
+        "verify",
+        "--contract",
+        contract_path,
+        "--artifact-root",
+        "/tmp/jj-hosts",
+    ]
+    for _, guard_line, tokens in guards:
+        valid, reason = _options_match(
+            tokens,
+            {
+                "--mode": "verify",
+                "--contract": contract_path,
+                "--artifact-root": "/tmp/jj-hosts",
+            },
+        )
+        if not valid or tokens[2:] != expected_tail:
+            fail(
+                f"{path.name}:{guard_line.line_number} host-contract "
+                f"verifier argv changed: {tokens[2:]!r}; {reason}"
+            )
+
+    host_downloads: list[tuple[ShellCommand, LogicalShellLine]] = []
+    for command in commands:
+        for line in _logical_shell_lines(command):
+            argv = _argv(line)
+            if (
+                argv is not None
+                and argv[:4]
+                == ["gh", "run", "download", "$HOST_RUN_ID"]
+                and "jj-g-host-export-padova-dr05-tams-canonical" in argv
+            ):
+                host_downloads.append((command, line))
+    if len(host_downloads) != 1:
+        fail(
+            f"{path.name} must contain one canonical host download before "
+            f"contract verification; found {len(host_downloads)}"
+        )
+    download_command, download_line = host_downloads[0]
+    download_position = (
+        download_command.run_line,
+        download_line.line_number,
+    )
+    guard_positions = [
+        (command.run_line, line.line_number)
+        for command, line, _ in guards
+    ]
+    if download_position >= min(guard_positions):
+        fail(f"{path.name} verifies the host artifact before downloading it")
+    if not any(
+        command is download_command
+        and (command.run_line, line.line_number) > download_position
+        for command, line, _ in guards
+    ):
+        fail(
+            f"{path.name} does not verify the downloaded host artifact "
+            "inside its provenance-checked import step"
+        )
+
+    obsolete_tokens = (
+        "sha256sum --check SHA256SUMS_padova.txt",
+        "a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28",
+        "bc38c3d42422b20b57ea433dff12b394881167318ac8e0ad77dd894b429474cd",
+    )
+    active = "\n".join(active_shell_text(command) for command in commands)
+    for token in obsolete_tokens:
+        if token in active:
+            fail(
+                f"{path.name} retains an obsolete inline host gate: {token}"
+            )
+
+    propagation = _matching_python_invocations(
+        commands,
+        "research/bryson-joint-posterior/"
+        "propagate_hab2_joint_posterior.py",
+    )
+    if propagation:
+        if len(propagation) != 1:
+            fail(
+                f"{path.name} must contain exactly one host consumer; "
+                f"found {len(propagation)}"
+            )
+        consumer_command, consumer_line, _ = propagation[0]
+        consumer_position = (
+            consumer_command.run_line,
+            consumer_line.line_number,
+        )
+        prior_guards = [
+            (command, line)
+            for command, line, _ in guards
+            if (command.run_line, line.line_number) < consumer_position
+        ]
+        if not prior_guards:
+            fail(
+                f"{path.name} consumes hosts before exact contract acceptance"
+            )
+        if path.name != "bryson-v4-propagate-constant.yml":
+            if not any(command is consumer_command for command, _ in prior_guards):
+                fail(
+                    f"{path.name} does not reverify the transferred host "
+                    "artifact in the consumer step"
+                )
 
 
 def require_accepted_aggregate_guard(
@@ -1093,6 +2147,8 @@ def require_accepted_aggregate_guard(
         {
             "--artifact-root": "/tmp/bryson-v4-posterior",
             "--branch": branch,
+            "--pc-catalog": BRYSON_PC_CATALOG,
+            "--stellar-catalog": BRYSON_STELLAR_CATALOG,
             "--expected-bryson-source-sha256": BRYSON_SOURCE_SHA256,
         },
     )
@@ -1155,6 +2211,183 @@ def require_production_aggregate_profile(
     )
 
 
+def require_private_raw_chain_flow(
+    path: Path,
+    data: dict[str, Any],
+    commands: list[ShellCommand],
+) -> None:
+    """Require the private-only raw-chain handoff into production aggregation."""
+
+    profiles = {
+        "bryson-v4-corrected-production.yml": {
+            "assignment": (
+                'PRIVATE_EVIDENCE="/tmp/bryson-v4-private-evidence-'
+                '$BRANCH-$SHARD"'
+            ),
+            "upload_name": (
+                "bryson-v4-private-convergence-evidence-"
+                "${{ matrix.branch }}-${{ matrix.shard }}"
+            ),
+            "upload_path": (
+                "/tmp/bryson-v4-private-evidence-"
+                "${{ matrix.branch }}-${{ matrix.shard }}/"
+            ),
+            "download_pattern": (
+                "bryson-v4-private-convergence-evidence-"
+                "${{ matrix.branch }}-*"
+            ),
+        },
+        "bryson-v4-corrected-zero-extended.yml": {
+            "assignment": (
+                'PRIVATE_EVIDENCE="/tmp/bryson-v4-private-evidence-'
+                'zero-$SHARD"'
+            ),
+            "upload_name": (
+                "bryson-v4-private-convergence-evidence-zero-"
+                "${{ matrix.shard }}"
+            ),
+            "upload_path": (
+                "/tmp/bryson-v4-private-evidence-zero-"
+                "${{ matrix.shard }}/"
+            ),
+            "download_pattern": "bryson-v4-private-convergence-evidence-zero-*",
+        },
+    }
+    expected = profiles.get(path.name)
+    if expected is None:
+        fail(f"private raw-chain policy applied to unsupported workflow {path.name}")
+    jobs = data.get("jobs")
+    if not isinstance(jobs, dict):
+        fail(f"{path.name} has no jobs mapping")
+    for job_name in ("reconstruct-shards", "aggregate"):
+        job = jobs.get(job_name)
+        if not isinstance(job, dict) or job.get("if") != PRIVATE_REPOSITORY_JOB_IF:
+            fail(
+                f"{path.name} private raw-chain job {job_name!r} is not "
+                "fail-closed to a private repository"
+            )
+
+    expected_assignment = _normalize_shell_whitespace(str(expected["assignment"]))
+    assignment_commands = [
+        command
+        for command in commands
+        for line in _logical_shell_lines(command)
+        if line.top_level and _normalized_line(line) == expected_assignment
+    ]
+    if len(assignment_commands) != 1:
+        fail(
+            f"{path.name} must assign its private raw-chain directory exactly once"
+        )
+    runner_command, _runner_line, _runner_tokens = _require_single_python_invocation(
+        path,
+        commands,
+        "raw-chain-producing Bryson runner",
+        "research/bryson-joint-posterior/run_hab2_joint_posterior.py",
+        {"--private-raw-chain-dir": "$PRIVATE_EVIDENCE"},
+    )
+    if assignment_commands[0] is not runner_command:
+        fail(
+            f"{path.name} does not bind the private raw-chain directory in the "
+            "runner step"
+        )
+    _require_single_python_invocation(
+        path,
+        commands,
+        "raw-chain-auditing aggregate",
+        "research/bryson-joint-posterior/aggregate_hab2_joint_posterior.py",
+        {"--private-raw-chain-root": "/tmp/bryson-v4-private-evidence"},
+    )
+
+    upload_use = "actions/upload-artifact@" + PINNED_ACTIONS["actions/upload-artifact"]
+    download_use = (
+        "actions/download-artifact@" + PINNED_ACTIONS["actions/download-artifact"]
+    )
+    reconstruct_steps = jobs["reconstruct-shards"].get("steps")
+    aggregate_steps = jobs["aggregate"].get("steps")
+    if not isinstance(reconstruct_steps, list) or not isinstance(aggregate_steps, list):
+        fail(f"{path.name} private raw-chain jobs lack explicit steps")
+    expected_upload = {
+        "name": expected["upload_name"],
+        "path": expected["upload_path"],
+        "if-no-files-found": "error",
+        "retention-days": "1",
+        "compression-level": "0",
+    }
+    expected_download = {
+        "pattern": expected["download_pattern"],
+        "path": "/tmp/bryson-v4-private-evidence",
+    }
+    uploads = [
+        step
+        for step in reconstruct_steps
+        if isinstance(step, dict)
+        and step.get("uses") == upload_use
+        and isinstance(step.get("with"), dict)
+        and "private-convergence-evidence" in str(step["with"].get("name", ""))
+    ]
+    downloads = [
+        step
+        for step in aggregate_steps
+        if isinstance(step, dict)
+        and step.get("uses") == download_use
+        and isinstance(step.get("with"), dict)
+        and "private-convergence-evidence" in str(
+            step["with"].get("pattern", "")
+        )
+    ]
+    if len(uploads) != 1 or uploads[0].get("with") != expected_upload:
+        fail(f"{path.name} private convergence-evidence upload is not exact")
+    if len(downloads) != 1 or downloads[0].get("with") != expected_download:
+        fail(f"{path.name} private convergence-evidence download is not exact")
+    if "raw" in str(expected["upload_name"]).lower():
+        fail(f"{path.name} exposes raw-chain semantics in its artifact name")
+
+
+def require_catalog_replay_input_artifact(path: Path, data: dict[str, Any]) -> None:
+    """Require locked catalogs to arrive before the accepted replay gate."""
+
+    artifact_names = {
+        "bryson-v4-corrected-production.yml": (
+            "bryson-v4-corrected-production-inputs-${{ matrix.branch }}"
+        ),
+        "bryson-v4-corrected-zero-extended.yml": (
+            "bryson-v4-corrected-zero-extended-inputs"
+        ),
+    }
+    expected_name = artifact_names.get(path.name)
+    if expected_name is None:
+        fail(f"catalog replay artifact policy applied to {path.name}")
+    jobs = data.get("jobs")
+    propagate = jobs.get("propagate") if isinstance(jobs, dict) else None
+    steps = propagate.get("steps") if isinstance(propagate, dict) else None
+    if not isinstance(steps, list):
+        fail(f"{path.name} propagate job has no explicit steps")
+    download_use = (
+        "actions/download-artifact@" + PINNED_ACTIONS["actions/download-artifact"]
+    )
+    expected_with = {
+        "name": expected_name,
+        "path": "/tmp/DR25-occurrence-public",
+    }
+    downloads = [
+        (index, step)
+        for index, step in enumerate(steps)
+        if isinstance(step, dict)
+        and step.get("uses") == download_use
+        and step.get("with") == expected_with
+    ]
+    accepted_steps = [
+        index
+        for index, step in enumerate(steps)
+        if isinstance(step, dict)
+        and "scripts/verify_accepted_aggregate.py" in str(step.get("run", ""))
+    ]
+    if len(downloads) != 1 or len(accepted_steps) != 1:
+        fail(f"{path.name} lacks an exact catalog-transfer/replay step pair")
+    if downloads[0][0] >= accepted_steps[0]:
+        fail(f"{path.name} verifies catalog replay before downloading catalogs")
+
+
 def require_numerical_environment_capture(
     path: Path, commands: list[ShellCommand]
 ) -> None:
@@ -1169,6 +2402,319 @@ def require_numerical_environment_capture(
             "} > numerical_environment.txt",
         ),
     )
+
+
+def _locked_requirements_install(line: LogicalShellLine) -> bool:
+    tokens = _argv(line)
+    if tokens is None:
+        return False
+    if (
+        len(tokens) >= 5
+        and re.fullmatch(r"(?:python(?:3(?:\.\d+)*)?|py)(?:\.exe)?", tokens[0])
+        and tokens[1:4] == ["-m", "pip", "install"]
+    ):
+        arguments = tokens[4:]
+    elif (
+        len(tokens) >= 2
+        and re.fullmatch(r"pip(?:3(?:\.\d+)*)?(?:\.exe)?", tokens[0])
+        and tokens[1] == "install"
+    ):
+        arguments = tokens[2:]
+    else:
+        return False
+    approved, reason = _locked_pip_install(
+        " ".join(shlex.quote(token) for token in arguments)
+    )
+    return approved and reason == "binary-only hash-locked requirements"
+
+
+def _is_exact_pip_check(line: LogicalShellLine) -> bool:
+    tokens = _argv(line)
+    return bool(
+        tokens
+        and len(tokens) == 4
+        and re.fullmatch(r"(?:python(?:3(?:\.\d+)*)?|py)(?:\.exe)?", tokens[0])
+        and tokens[1:] == ["-m", "pip", "check"]
+    )
+
+
+def require_numerical_runtime_verification(
+    path: Path, commands: list[ShellCommand]
+) -> None:
+    """Gate every locked numerical environment before a consumer can run."""
+
+    expected_outputs = EXPECTED_NUMERICAL_RUNTIME_OUTPUTS.get(path.name)
+    if expected_outputs is None:
+        fail(f"{path.name} has no audited numerical-runtime invocation profile")
+
+    observed_outputs: list[str | None] = []
+    for command in commands:
+        lines = _logical_shell_lines(command)
+        install_indexes = [
+            index
+            for index, line in enumerate(lines)
+            if _locked_requirements_install(line)
+        ]
+        runtime_matches = _matching_python_invocations(
+            [command], "scripts/verify_numerical_runtime.py"
+        )
+
+        if not install_indexes:
+            if runtime_matches:
+                fail(
+                    f"{path.name}:{command.run_line} executes the numerical-runtime "
+                    "verifier outside its locked requirements installation step"
+                )
+            continue
+        if len(install_indexes) != 1:
+            fail(
+                f"{path.name}:{command.run_line} must contain exactly one locked "
+                f"requirements install; found {len(install_indexes)}"
+            )
+        if len(runtime_matches) != 1:
+            fail(
+                f"{path.name}:{command.run_line} must contain exactly one "
+                f"numerical-runtime verifier after installation; found "
+                f"{len(runtime_matches)}"
+            )
+
+        check_indexes = [
+            index for index, line in enumerate(lines) if _is_exact_pip_check(line)
+        ]
+        if len(check_indexes) != 1:
+            fail(
+                f"{path.name}:{command.run_line} must contain exactly one exact "
+                f"python -m pip check; found {len(check_indexes)}"
+            )
+
+        _, runtime_line, runtime_tokens = runtime_matches[0]
+        runtime_indexes = [
+            index
+            for index, line in enumerate(lines)
+            if line.line_number == runtime_line.line_number
+            and _python_invocation(line, "scripts/verify_numerical_runtime.py")
+            is not None
+        ]
+        if len(runtime_indexes) != 1:
+            fail(
+                f"{path.name}:{runtime_line.line_number} numerical-runtime "
+                "verifier position is ambiguous"
+            )
+
+        install_index = install_indexes[0]
+        check_index = check_indexes[0]
+        runtime_index = runtime_indexes[0]
+        if check_index != install_index + 1 or runtime_index != check_index + 1:
+            fail(
+                f"{path.name}:{command.run_line} must execute locked install, "
+                "pip check, and numerical-runtime verification consecutively"
+            )
+
+        arguments = runtime_tokens[2:]
+        if not arguments:
+            observed_outputs.append(None)
+        elif len(arguments) == 2 and arguments[0] == "--output":
+            output = arguments[1]
+            output_path = Path(output)
+            if (
+                output_path.is_absolute()
+                or ".." in output_path.parts
+                or output_path.suffix.lower() != ".json"
+            ):
+                fail(
+                    f"{path.name}:{runtime_line.line_number} has unsafe numerical "
+                    f"runtime report path {output!r}"
+                )
+            observed_outputs.append(output)
+        else:
+            fail(
+                f"{path.name}:{runtime_line.line_number} numerical-runtime "
+                f"verifier arguments changed: {arguments!r}"
+            )
+
+    if tuple(observed_outputs) != expected_outputs:
+        fail(
+            f"{path.name} numerical-runtime invocation matrix changed: "
+            f"observed={tuple(observed_outputs)!r}, expected={expected_outputs!r}"
+        )
+
+
+def require_metallicity_negative_artifact_gate(
+    path: Path, commands: list[ShellCommand]
+) -> None:
+    if path.name != "jj-tams-metallicity-differential.yml":
+        fail("metallicity artifact policy applied to the wrong workflow")
+
+    producer_options = {
+        "--input": "/tmp/metallicity-host/jj_g_hosts_parent_prelogg_padova.csv",
+        "--reference-tams": (
+            "$GITHUB_WORKSPACE/research/jj-host-export/reference-data/"
+            "tams_parsec_danxhuber.txt"
+        ),
+        "--cache": "/tmp/parsec-metal-tracks",
+        "--out": "$GITHUB_WORKSPACE/results/metallicity-audit",
+        "--data-locks": "$GITHUB_WORKSPACE/provenance/DATA_LOCKS.json",
+    }
+    producer_command, producer_line, producer_tokens = _require_single_python_invocation(
+        path,
+        commands,
+        "metallicity-TAMS negative-artifact producer",
+        "research/jj-host-export/metallicity_tams_differential_sensitivity.py",
+        producer_options,
+    )
+    verifier_options = {
+        "--artifact-root": "results/metallicity-audit",
+        "--data-locks": "provenance/DATA_LOCKS.json",
+    }
+    verifier_command, verifier_line, verifier_tokens = _require_single_python_invocation(
+        path,
+        commands,
+        "metallicity-TAMS exact-artifact verifier",
+        "scripts/verify_metallicity_tams_audit.py",
+        verifier_options,
+    )
+    exact_profiles = (
+        (
+            producer_line,
+            producer_tokens,
+            "research/jj-host-export/metallicity_tams_differential_sensitivity.py",
+            producer_options,
+        ),
+        (
+            verifier_line,
+            verifier_tokens,
+            "scripts/verify_metallicity_tams_audit.py",
+            verifier_options,
+        ),
+    )
+    for line, tokens, script, options in exact_profiles:
+        if tokens[:2] != ["python", f"$GITHUB_WORKSPACE/{script}"] or len(
+            tokens
+        ) != 2 + 2 * len(options):
+            fail(
+                f"{path.name}:{line.line_number} has additional or non-canonical "
+                f"arguments for protected script {script!r}: {tokens!r}"
+            )
+    provenance_copy = (
+        "cp research/jj-host-export/PROVENANCE_METALLICITY_DIFFERENTIAL.md "
+        "results/metallicity-audit/PROVENANCE_METALLICITY_DIFFERENTIAL.md"
+    )
+    copy_command = _require_exact_lines_in_one_block(
+        path,
+        commands,
+        "static metallicity provenance copy",
+        (provenance_copy,),
+    )
+    normalized_copy = _normalize_shell_whitespace(provenance_copy)
+    copy_count = sum(
+        _normalized_line(line) == normalized_copy
+        for command in commands
+        for line in _logical_shell_lines(command)
+        if line.top_level
+    )
+    if copy_count != 1:
+        fail(
+            f"{path.name} must copy static metallicity provenance exactly once; "
+            f"found {copy_count}"
+        )
+    if not (
+        producer_command.run_line
+        < copy_command.run_line
+        < verifier_command.run_line
+    ):
+        fail(
+            f"{path.name} must produce the metallicity audit, copy static "
+            "provenance, then verify the exact artifact"
+        )
+
+
+def require_no_unattested_age_cut_workflow(
+    path: Path, commands: list[ShellCommand]
+) -> None:
+    """Keep release-specific age evidence behind the signed local contract."""
+
+    forbidden_scripts = (AGE_CUT_PRODUCER_SCRIPT, AGE_CUT_VERIFIER_SCRIPT)
+    for script in forbidden_scripts:
+        matches = _matching_python_invocations(commands, script)
+        if matches:
+            fail(
+                f"{path.name} invokes {script!r} without the release-specific "
+                "two-repetition signed qualification contract"
+            )
+
+    forbidden_markers = (
+        "results/age-cut",
+        "results/jj/age-cut",
+        *AGE_CUT_ARTIFACT_FILES,
+    )
+    for command in commands:
+        for line in _logical_shell_lines(command):
+            if any(marker in line.text for marker in forbidden_markers):
+                fail(
+                    f"{path.name}:{line.line_number} stages unqualified age-cut "
+                    "evidence inside a reusable workflow"
+                )
+
+
+def require_exact_jj_export_profile(
+    path: Path, commands: list[ShellCommand]
+) -> None:
+    """Require an exact JJ runner argv immediately after tracked-blob proof."""
+
+    expected_argv = EXPECTED_JJ_EXPORT_ARGV.get(path.name)
+    matches = _matching_python_invocations(commands, JJ_EXPORT_SCRIPT)
+    if expected_argv is None:
+        if matches:
+            fail(
+                f"{path.name} invokes the JJ export runner outside its two "
+                "approved workflows"
+            )
+        return
+    if len(matches) != 1:
+        fail(
+            f"{path.name} must execute exactly one JJ export runner; found "
+            f"{len(matches)}"
+        )
+
+    command, invocation_line, tokens = matches[0]
+    if tuple(tokens) != expected_argv:
+        fail(
+            f"{path.name}:{invocation_line.line_number} JJ export argv changed: "
+            f"observed={tuple(tokens)!r}, expected={expected_argv!r}"
+        )
+
+    lines = _logical_shell_lines(command)
+    invocation_indexes = [
+        index for index, line in enumerate(lines) if line == invocation_line
+    ]
+    if len(invocation_indexes) != 1:
+        fail(f"{path.name} has an ambiguous JJ export invocation position")
+    invocation_index = invocation_indexes[0]
+    guard_count = len(JJ_EXPORT_INTEGRITY_LINES)
+    if invocation_index < guard_count or tuple(
+        line.text
+        for line in lines[invocation_index - guard_count : invocation_index]
+    ) != JJ_EXPORT_INTEGRITY_LINES:
+        fail(
+            f"{path.name}:{invocation_line.line_number} must execute the exact "
+            "tracked-blob JJ source guard immediately before export"
+        )
+
+    all_lines = [
+        line.text
+        for candidate in commands
+        for line in _logical_shell_lines(candidate)
+    ]
+    duplicate_guards = {
+        expected: all_lines.count(expected)
+        for expected in JJ_EXPORT_INTEGRITY_LINES
+        if all_lines.count(expected) != 1
+    }
+    if duplicate_guards:
+        fail(
+            f"{path.name} JJ tracked-blob guard count changed: "
+            f"{duplicate_guards!r}"
+        )
 
 
 def require_production_candidate_status(
@@ -1214,6 +2760,14 @@ def main() -> None:
     paths = sorted({*WORKFLOWS.glob("*.yml"), *WORKFLOWS.glob("*.yaml")})
     if not paths:
         fail("no workflow files found")
+    observed_workflow_names = {path.name for path in paths}
+    expected_workflow_names = set(EXPECTED_NUMERICAL_RUNTIME_OUTPUTS)
+    if observed_workflow_names != expected_workflow_names:
+        fail(
+            "audited workflow set changed: "
+            f"observed={sorted(observed_workflow_names)!r}, "
+            f"expected={sorted(expected_workflow_names)!r}"
+        )
 
     shell_count = 0
     block_count = 0
@@ -1247,6 +2801,12 @@ def main() -> None:
             parsed.data,
             allowed_input_bindings.get(path.name, set()),
         )
+        require_workflow_execution_conditions(path, parsed.data)
+        require_release_package_tag_gate(path, parsed.data)
+        require_numerical_runtime_environment(path, parsed.data)
+        require_numerical_runtime_verification(path, parsed.commands)
+        require_exact_jj_export_profile(path, parsed.commands)
+        require_no_unattested_age_cut_workflow(path, parsed.commands)
         observed_actions.update(validate_action_uses(path, parsed.actions))
         action_count += len(parsed.actions)
         for command in parsed.commands:
@@ -1262,6 +2822,14 @@ def main() -> None:
             "GitHub Action pin set changed: "
             f"observed={sorted(observed_actions)}, expected={sorted(PINNED_ACTIONS)}"
         )
+
+    metallicity_path = WORKFLOWS / "jj-tams-metallicity-differential.yml"
+    metallicity = parsed_by_path.get(metallicity_path)
+    if metallicity is None:
+        fail(f"required metallicity workflow is missing: {metallicity_path.name}")
+    require_metallicity_negative_artifact_gate(
+        metallicity_path, metallicity.commands
+    )
 
     production_names = (
         "bryson-v4-corrected-production.yml",
@@ -1281,8 +2849,11 @@ def main() -> None:
             expected_workflow_env="EXPECTED_HOST_WORKFLOW",
             expected_workflow_path=".github/workflows/jj-g-host-export.yml",
         )
+        require_host_artifact_contract_guard(path, parsed.commands)
         require_production_candidate_status(path, parsed.commands)
         require_production_aggregate_profile(path, parsed.commands)
+        require_private_raw_chain_flow(path, parsed.data, parsed.commands)
+        require_catalog_replay_input_artifact(path, parsed.data)
         require_numerical_environment_capture(path, parsed.commands)
 
     production_path = WORKFLOWS / "bryson-v4-corrected-production.yml"
@@ -1321,6 +2892,9 @@ def main() -> None:
     require_posterior_manifest_guard(
         propagation_path, propagation.data, propagation.commands
     )
+    require_host_artifact_contract_guard(
+        propagation_path, propagation.commands
+    )
     require_accepted_aggregate_guard(
         propagation_path, propagation.commands, "constant"
     )
@@ -1349,11 +2923,24 @@ def main() -> None:
         "--dir",
         "/tmp/bryson-v4-posterior",
     )
+    production_inputs_download = (
+        "gh",
+        "run",
+        "download",
+        "$PRODUCTION_RUN_ID",
+        "--repo",
+        "$GH_REPOSITORY",
+        "--name",
+        "bryson-v4-corrected-production-inputs-constant",
+        "--dir",
+        "/tmp/DR25-occurrence-public",
+    )
     expected_downloads = {
         "bryson-v4-corrected-production.yml": (host_download,),
         "bryson-v4-corrected-zero-extended.yml": (host_download,),
         "bryson-v4-propagate-constant.yml": (
             production_download,
+            production_inputs_download,
             host_download,
         ),
     }

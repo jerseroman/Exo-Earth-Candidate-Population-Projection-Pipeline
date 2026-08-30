@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "status": "PINNED",
-  "generated_utc": "2026-08-22T17:35:00Z",
+  "generated_utc": "2026-08-29T18:52:50Z",
   "locks": {
     "bryson_rate_models_3d": {
       "filename": "rateModels3D.py",
@@ -86,6 +86,138 @@
       "requires_terms_acceptance": true,
       "terms_url": "https://heidata.uni-heidelberg.de/file.xhtml?persistentId=doi:10.11588/data/ZCXHOE/7XCJQP"
     },
+    "parsec_tracks_z00005": {
+      "filename": "Z0.0005Y0.249.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.0005Y0.249.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "459b015771c4bc47f87a4147b39045e857b1456ac95b0d3330499ff48beacb8f",
+      "expected_size_bytes": 14827581,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "parsec_tracks_z0001": {
+      "filename": "Z0.001Y0.25.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.001Y0.25.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "a4a54ba715b8c5f4a004f9df48c466f54cbed89975d09eeabef2d3622db093c8",
+      "expected_size_bytes": 15326585,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "parsec_tracks_z0002": {
+      "filename": "Z0.002Y0.252.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.002Y0.252.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "871793c172cd5bb6c63d48b3a89d93144ed49b1d1335728a7ceab5b8d8609685",
+      "expected_size_bytes": 16136348,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "parsec_tracks_z0004": {
+      "filename": "Z0.004Y0.256.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.004Y0.256.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "4431a9dcf4fb39d91095df800ceb3724f4510e0d8ba5aac307b22e25e2b86e46",
+      "expected_size_bytes": 16445767,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "parsec_tracks_z0006": {
+      "filename": "Z0.006Y0.259.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.006Y0.259.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "b254caa87e9a9876457992d68b82826b24e6482b030f027af40ba20f157929d2",
+      "expected_size_bytes": 16808182,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "parsec_tracks_z0008": {
+      "filename": "Z0.008Y0.263.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.008Y0.263.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "0a1b186e7a080208ac7fd1e6d14631c0509870119a9d027fa3e97c6cd41886e4",
+      "expected_size_bytes": 17048814,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "parsec_tracks_z001": {
+      "filename": "Z0.01Y0.267.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.01Y0.267.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "a04eee19cb8de6a4016bd4e1cb5905925917169871bc4aa1fb37a4d7977b5d73",
+      "expected_size_bytes": 17750391,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "parsec_tracks_z0014": {
+      "filename": "Z0.014Y0.273.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.014Y0.273.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "5f17d2e28b994ca9470d7c63017bf3c7b837d64814b48f161679d1f956bd1026",
+      "expected_size_bytes": 17926080,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "parsec_tracks_z0017": {
+      "filename": "Z0.017Y0.279.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.017Y0.279.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "22d0dd4783d6c4bff882c9c319f748aa5e8d3937bb57b5dbc54f5071d51268c2",
+      "expected_size_bytes": 18109804,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "parsec_tracks_z002": {
+      "filename": "Z0.02Y0.284.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.02Y0.284.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "48a211c8ae37564791db68e178d828eebcdce635b286b3b00100bc7d02e34624",
+      "expected_size_bytes": 19773778,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "parsec_tracks_z003": {
+      "filename": "Z0.03Y0.302.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.03Y0.302.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "5ee0d8b220793ab911a17ee035c80072999beed150e47e28e9759c170eff0041",
+      "expected_size_bytes": 21432587,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
+    "parsec_tracks_z004": {
+      "filename": "Z0.04Y0.321.tar.gz",
+      "source_url": "https://people.sissa.it/~sbressan/CAF09_V1.2S_M36_LT/Z0.04Y0.321.tar.gz",
+      "source_version": "PARSEC V1.2S M36 LT archive; bytes locked 2026-08-29",
+      "expected_sha256": "d7360bc853269d9aaa8c777bd2539f5acc97b1eb9728de797fdfcc423ab9fc07",
+      "expected_size_bytes": 20921063,
+      "distribution_role": "fetch-only",
+      "license": "NOASSERTION",
+      "citation": "Bressan et al. (2012), MNRAS 427, 127, DOI 10.1111/j.1365-2966.2012.21948.x; official PARSEC archive URL recorded above",
+      "requires_terms_acceptance": false
+    },
     "huber_parsec_tams_table": {
       "filename": "tams_parsec_danxhuber.txt",
       "source_url": "https://raw.githubusercontent.com/danxhuber/evolstate/5e904afad81805c4e3ac4c3f78510a2a1df33d14/tams_parsec.txt",
@@ -128,7 +260,19 @@
     ],
     ".github/workflows/jj-tams-metallicity-differential.yml": [
       "jj_padova_multiband_archive",
-      "huber_parsec_tams_table"
+      "huber_parsec_tams_table",
+      "parsec_tracks_z00005",
+      "parsec_tracks_z0001",
+      "parsec_tracks_z0002",
+      "parsec_tracks_z0004",
+      "parsec_tracks_z0006",
+      "parsec_tracks_z0008",
+      "parsec_tracks_z001",
+      "parsec_tracks_z0014",
+      "parsec_tracks_z0017",
+      "parsec_tracks_z002",
+      "parsec_tracks_z003",
+      "parsec_tracks_z004"
     ],
     ".github/workflows/jj-tams-radial-convergence.yml": [
       "jj_padova_multiband_archive",

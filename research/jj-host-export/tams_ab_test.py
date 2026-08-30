@@ -26,6 +26,7 @@ from pathlib import Path
 
 import numpy as np
 from astropy.table import Table
+from occurrence_reference import f_earth10, f_hz
 from tams_reference import EXPECTED_SHA256 as TAMS_REFERENCE_SHA256
 from tams_reference import tams_radius_rsun
 
@@ -35,42 +36,8 @@ LOGG_MIN,LOGG_MAX=4.3,7.0
 LOGG_SUN=4.438
 TSUN_RADIUS=5772.0
 
-F0=1.107; ALPHA=-1.082; BETA=-0.839; GAMMA=-2.671
-T0=3900.; TBREAK=5117.; T1=6300.
-RUN=(1.107,1.332e-4,1.58e-8,-8.308e-12,-1.931e-15)
-MAXG=(0.356,6.171e-5,1.698e-9,-3.198e-12,-5.575e-16)
-
 def require(condition,message):
     if not condition:raise RuntimeError(message)
-
-def P(lo,hi,p): return (hi**(p+1)-lo**(p+1))/(p+1)
-ARFIT=P(.5,2.5,ALPHA); AIFIT=P(.2,2.2,BETA)
-q1=GAMMA+3.16; q2=GAMMA+4.49
-GBAR=(10**(-11.839)*P(T0,TBREAK,q1)+10**(-16.769)*P(TBREAK,T1,q2))/(T1-T0)
-C1=1/(ARFIT*AIFIT*GBAR)
-AR_HZ=P(.5,1.5,ALPHA); AR10=P(.9,1.1,ALPHA)
-
-def hz_edges(T):
-    T=np.asarray(T,float); x=T-5780.
-    inner=RUN[0]+RUN[1]*x+RUN[2]*x**2+RUN[3]*x**3+RUN[4]*x**4
-    outer=MAXG[0]+MAXG[1]*x+MAXG[2]*x**2+MAXG[3]*x**3+MAXG[4]*x**4
-    return outer,inner
-
-def pref(T):
-    T=np.asarray(T,float)
-    g=np.where(T<=TBREAK,10**(-11.839)*T**3.16,10**(-16.769)*T**4.49)
-    return F0*C1*T**GAMMA*g
-
-def f_hz(T):
-    outer,inner=hz_edges(T)
-    ai=(inner**(BETA+1)-outer**(BETA+1))/(BETA+1)
-    return pref(T)*AR_HZ*ai
-
-def f10(T):
-    outer,inner=hz_edges(T)
-    lo=np.maximum(.9,outer); hi=np.minimum(1.1,inner)
-    ai=np.where(hi>lo,(hi**(BETA+1)-lo**(BETA+1))/(BETA+1),0.)
-    return pref(T)*AR10*ai
 
 def integrate(radial, col, lo, hi):
     q=[r for r in radial if lo <= r['R_kpc'] <= hi]
@@ -111,7 +78,7 @@ def main():
                     A=(lg>LOGG_MIN and lg<LOGG_MAX)
                     B=(below_tams and lg<LOGG_MAX)
                     if below_tams and lg>=LOGG_MAX: compact_rejected_rows+=1
-                    fhz=float(f_hz(T)); fe=float(f10(T)); n_parent+=1
+                    fhz=float(f_hz(T)); fe=float(f_earth10(T)); n_parent+=1
                     if rg>0 and rl>0: rel_radius.append(abs(rg-rl)/((rg+rl)/2))
                     if A: acc['A_N']+=wt; acc['A_L1']+=wt*fhz; acc['A_L2']+=wt*fe
                     if B: acc['B_N']+=wt; acc['B_L1']+=wt*fhz; acc['B_L2']+=wt*fe

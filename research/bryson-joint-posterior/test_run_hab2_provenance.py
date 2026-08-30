@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -103,6 +104,35 @@ class RunStatusTests(unittest.TestCase):
         text = RUNNER_PATH.read_text(encoding="utf-8")
         self.assertNotIn("d200f54b6f0df49e0dae530e69983cdce5397bfb", text)
         self.assertNotIn('if "pilot" in args.run_label', text)
+
+    def test_production_candidate_requires_private_raw_chain_directory(self) -> None:
+        arguments = [
+            str(RUNNER_PATH),
+            "--bryson-root",
+            "unused-bryson",
+            "--stellar-catalog",
+            "unused-stellar",
+            "--pc-catalog",
+            "unused-pc",
+            "--completeness",
+            "unused-completeness",
+            "--branch",
+            "constant",
+            "--out",
+            "unused-out",
+            "--seed",
+            "1",
+            "--run-status",
+            "production_candidate",
+        ]
+
+        def raise_parser_error(message: str) -> None:
+            raise RuntimeError(message)
+
+        with mock.patch.object(sys, "argv", arguments), mock.patch.object(
+            argparse.ArgumentParser, "error", side_effect=raise_parser_error
+        ), self.assertRaisesRegex(RuntimeError, "private-raw-chain-dir"):
+            RUNNER.main()
 
 
 class BrysonSourceProvenanceTests(unittest.TestCase):
@@ -223,20 +253,76 @@ class BrysonSourceProvenanceTests(unittest.TestCase):
                 provenance = RUNNER.verify_bryson_source(root, digest)
 
             RUNNER.verify_loaded_bryson_module(
-                types.SimpleNamespace(__file__=str(source)), provenance
+                types.SimpleNamespace(
+                    __file__=str(source), __verified_source_sha256__=digest
+                ),
+                provenance,
             )
             wrong = root / "elsewhere.py"
             wrong.write_text("", encoding="utf-8")
             with self.assertRaisesRegex(RuntimeError, "does not match verified source"):
                 RUNNER.verify_loaded_bryson_module(
-                    types.SimpleNamespace(__file__=str(wrong)), provenance
+                    types.SimpleNamespace(
+                        __file__=str(wrong), __verified_source_sha256__=digest
+                    ),
+                    provenance,
                 )
 
             source.write_bytes(b"MUTATED_AFTER_VERIFICATION = True\n")
             with self.assertRaisesRegex(RuntimeError, "source bytes changed"):
                 RUNNER.verify_loaded_bryson_module(
-                    types.SimpleNamespace(__file__=str(source)), provenance
+                    types.SimpleNamespace(
+                        __file__=str(source), __verified_source_sha256__=digest
+                    ),
+                    provenance,
                 )
+
+    def test_loaded_module_executes_only_the_captured_source_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "snapshot"
+            source = make_source(root, b"MODEL_VERSION = 17\n")
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            with mock.patch.object(
+                RUNNER, "locked_bryson_source_sha256", return_value=digest
+            ):
+                provenance = RUNNER.verify_bryson_source(root, digest)
+
+            module = RUNNER.load_verified_bryson_module(provenance)
+            self.assertEqual(module.MODEL_VERSION, 17)
+            self.assertEqual(module.__verified_source_sha256__, digest)
+
+    def test_public_provenance_is_strict_json_and_excludes_snapshots(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "snapshot"
+            source = make_source(root)
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            with mock.patch.object(
+                RUNNER, "locked_bryson_source_sha256", return_value=digest
+            ):
+                source_record = RUNNER.verify_bryson_source(root, digest)
+
+            input_path = root / "stellar.csv"
+            input_path.write_bytes(b"locked-input\n")
+            snapshot = RUNNER.stable_input_snapshot(input_path, "test input")
+            input_records = {
+                "stellar_catalog": {
+                    "path": str(snapshot.path),
+                    "sha256": snapshot.sha256,
+                    "size_bytes": snapshot.size_bytes,
+                    "_snapshot": snapshot,
+                }
+            }
+            public = {
+                "source_provenance": RUNNER.public_bryson_source_provenance(
+                    source_record
+                ),
+                "input_files": RUNNER.public_runner_input_provenance(input_records),
+            }
+            encoded = json.dumps(public, allow_nan=False)
+
+            self.assertNotIn("_source_snapshot", encoded)
+            self.assertNotIn("_snapshot", encoded)
+            self.assertNotIn("locked-input", encoded)
 
 
 class RunnerInputProvenanceTests(unittest.TestCase):
@@ -265,7 +351,7 @@ class RunnerInputProvenanceTests(unittest.TestCase):
                 RUNNER, "locked_runner_input_sha256", return_value=expected
             ):
                 with self.assertRaisesRegex(
-                    RuntimeError, "Symlinked runner input is not allowed"
+                    RuntimeError, "Unsafe or missing runner input"
                 ):
                     RUNNER.verify_runner_inputs(
                         "constant",

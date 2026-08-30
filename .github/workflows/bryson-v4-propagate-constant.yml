@@ -28,6 +28,14 @@ permissions:
   contents: read
   actions: read
 
+env:
+  NPY_DISABLE_CPU_FEATURES: AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL
+  OPENBLAS_NUM_THREADS: "1"
+  OMP_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  NUMEXPR_NUM_THREADS: "1"
+  PYTHONHASHSEED: "0"
+
 jobs:
   propagate:
     # Licensing boundary: frozen production artifacts stay private.
@@ -47,6 +55,7 @@ jobs:
         run: |
           python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
           python -m pip check
+          python "$GITHUB_WORKSPACE/scripts/verify_numerical_runtime.py"
 
       - name: Download checksum-locked posterior and host artifacts
         env:
@@ -77,11 +86,15 @@ jobs:
             --arg sha "$HOST_RUN_SHA" \
             '.status == "completed" and .conclusion == "success" and .event == "workflow_dispatch" and .path == $workflow and .head_sha == $sha' \
             /tmp/host-run.json > /dev/null
-          mkdir -p /tmp/bryson-v4-posterior /tmp/jj-hosts
+          mkdir -p /tmp/bryson-v4-posterior /tmp/DR25-occurrence-public /tmp/jj-hosts
           gh run download "$PRODUCTION_RUN_ID" \
             --repo "$GH_REPOSITORY" \
             --name bryson-v4-corrected-posterior-constant \
             --dir /tmp/bryson-v4-posterior
+          gh run download "$PRODUCTION_RUN_ID" \
+            --repo "$GH_REPOSITORY" \
+            --name bryson-v4-corrected-production-inputs-constant \
+            --dir /tmp/DR25-occurrence-public
           gh run download "$HOST_RUN_ID" \
             --repo "$GH_REPOSITORY" \
             --name jj-g-host-export-padova-dr05-tams-canonical \
@@ -90,13 +103,18 @@ jobs:
           python "$GITHUB_WORKSPACE/scripts/verify_accepted_aggregate.py" \
             --artifact-root /tmp/bryson-v4-posterior \
             --branch constant \
+            --pc-catalog /tmp/DR25-occurrence-public/insolation/koiCatalogs/PCs_dr25_hab2.csv \
+            --stellar-catalog /tmp/DR25-occurrence-public/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt \
             --expected-bryson-source-sha256 0bb479b0c94c4f793b95e4fa1e853973805c54d3de7e2a2acc2e51c05b70a586
-          echo 'a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28  /tmp/jj-hosts/jj_g_hosts_raw_eligible_padova.csv' | sha256sum --check
+          python "$GITHUB_WORKSPACE/scripts/verify_host_artifact_contract.py" \
+            --mode verify \
+            --contract "$GITHUB_WORKSPACE/provenance/HOST_ARTIFACT_CONTRACT_v4_0_4.json" \
+            --artifact-root /tmp/jj-hosts
 
       - name: Propagate joint samples
         run: |
           OUT="$GITHUB_WORKSPACE/results/bryson-v4-galactic-constant"
-          python research/bryson-joint-posterior/propagate_hab2_joint_posterior.py \
+          python "$GITHUB_WORKSPACE/research/bryson-joint-posterior/propagate_hab2_joint_posterior.py" \
             --hosts /tmp/jj-hosts/jj_g_hosts_raw_eligible_padova.csv \
             --samples /tmp/bryson-v4-posterior/joint_posterior_constant_for_galactic_propagation.csv.gz \
             --branch constant \

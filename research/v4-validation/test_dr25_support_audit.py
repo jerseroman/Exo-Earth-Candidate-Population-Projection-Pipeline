@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 from dr25_support_audit import (
     earth_analog_target_mask,
@@ -15,6 +16,7 @@ from dr25_support_audit import (
     PC_CATALOG_WINDOWS_CRLF_SHA256,
     RUNAWAY_1MEARTH,
     pc_catalog_provenance,
+    analyze_perturbation_branch,
 )
 
 
@@ -56,6 +58,46 @@ class Dr25SupportMaskTests(unittest.TestCase):
         self.assertFalse(bool(mask[0]))
         outer = seff(teff, MAXIMUM_GREENHOUSE)
         self.assertLess(float(outer[0]), 0.9)
+
+    def test_audit_integer_and_boolean_text_are_not_coerced(self) -> None:
+        source = pd.DataFrame(
+            {
+                "kepoi_name": ["SYNTHETIC-1"],
+                "gaia_iso_prad": [2.0],
+                "gaia_iso_insol": [2.0],
+                "teff": [5000.0],
+                "totalReliability": [1.0],
+            }
+        )
+        rows = pd.DataFrame(
+            {
+                "branch": ["constant"] * 400,
+                "measurement_error_mode": ["quantile_matched_two_sided"] * 400,
+                "global_trial": list(range(400)),
+                "source_row": [0] * 400,
+                "kepoi_name": ["SYNTHETIC-1"] * 400,
+                "retained_by_active_policy": ["False"] * 400,
+                "perturbed_flux": [2.0] * 400,
+                "perturbed_radius": [2.0] * 400,
+                "perturbed_teff": [5000.0] * 400,
+            }
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "audit.csv"
+            rows.to_csv(path, index=False, lineterminator="\n")
+            summary, counts, _ = analyze_perturbation_branch(path, "constant", source)
+            self.assertEqual(summary["realization_count"], 400)
+            self.assertTrue((counts.retained_in_source_domain == 0).all())
+            changed = rows.copy()
+            changed.loc[0, "global_trial"] = "0.5"
+            changed.to_csv(path, index=False, lineterminator="\n")
+            with self.assertRaises(RuntimeError):
+                analyze_perturbation_branch(path, "constant", source)
+            changed = rows.copy()
+            changed.loc[0, "retained_by_active_policy"] = "yes"
+            changed.to_csv(path, index=False, lineterminator="\n")
+            with self.assertRaises(RuntimeError):
+                analyze_perturbation_branch(path, "constant", source)
 
 
 if __name__ == "__main__":

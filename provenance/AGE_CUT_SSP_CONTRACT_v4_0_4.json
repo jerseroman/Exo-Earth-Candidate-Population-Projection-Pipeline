@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "contract_id": "jj-padova-pre-age-ssp-v4.0.4",
+  "ssp_manifest_name": "JJ_SSP_INPUT_SHA256SUMS.txt",
+  "repetition_manifest_name": "SHA256SUMS_age_cut_ssp_repetition.txt",
+  "runtime_parameters_name": "parameters",
+  "sfr_peaks_parameters_name": "sfrd_peaks_parameters",
+  "numerical_runtime_manifest_name": "NUMERICAL_RUNTIME_POLICY.json",
+  "provenance_name": "AGE_CUT_RUN_PROVENANCE.json",
+  "ssp_members": [
+    "SSP_R4.0_d_Padova.csv",
+    "SSP_R4.0_t_Padova.csv",
+    "SSP_R4.5_d_Padova.csv",
+    "SSP_R4.5_t_Padova.csv",
+    "SSP_R5.0_d_Padova.csv",
+    "SSP_R5.0_t_Padova.csv",
+    "SSP_R5.5_d_Padova.csv",
+    "SSP_R5.5_t_Padova.csv",
+    "SSP_R6.0_d_Padova.csv",
+    "SSP_R6.0_t_Padova.csv",
+    "SSP_R6.5_d_Padova.csv",
+    "SSP_R6.5_t_Padova.csv",
+    "SSP_R7.0_d_Padova.csv",
+    "SSP_R7.0_t_Padova.csv",
+    "SSP_R7.5_d_Padova.csv",
+    "SSP_R7.5_t_Padova.csv",
+    "SSP_R8.0_d_Padova.csv",
+    "SSP_R8.0_t_Padova.csv",
+    "SSP_R8.5_d_Padova.csv",
+    "SSP_R8.5_t_Padova.csv",
+    "SSP_R9.0_d_Padova.csv",
+    "SSP_R9.0_t_Padova.csv",
+    "SSP_R9.5_d_Padova.csv",
+    "SSP_R9.5_t_Padova.csv",
+    "SSP_R10.0_d_Padova.csv",
+    "SSP_R10.0_t_Padova.csv",
+    "SSP_R10.5_d_Padova.csv",
+    "SSP_R10.5_t_Padova.csv",
+    "SSP_R11.0_d_Padova.csv",
+    "SSP_R11.0_t_Padova.csv",
+    "SSP_R11.5_d_Padova.csv",
+    "SSP_R11.5_t_Padova.csv",
+    "SSP_R12.0_d_Padova.csv",
+    "SSP_R12.0_t_Padova.csv",
+    "SSP_R12.5_d_Padova.csv",
+    "SSP_R12.5_t_Padova.csv",
+    "SSP_R13.0_d_Padova.csv",
+    "SSP_R13.0_t_Padova.csv",
+    "SSP_R13.5_d_Padova.csv",
+    "SSP_R13.5_t_Padova.csv",
+    "SSP_R14.0_d_Padova.csv",
+    "SSP_R14.0_t_Padova.csv"
+  ],
+  "locked_inputs": {
+    "jj_repository": "askenja/jjmodel",
+    "jj_commit": "2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54",
+    "jj_version_expected": "1.0.1",
+    "isochrone_label": "Padova",
+    "isochrone_family": "Padova/PARSEC",
+    "padova_archive": {
+      "data_lock_id": "jj_padova_multiband_archive",
+      "filename": "multiband_padova.zip",
+      "sha256": "97c8e09ea2669abe4147333f0fa141642e2c56d97b6f44de4e4518974ab7c7e8",
+      "size_bytes": 327078533
+    }
+  },
+  "qualification_policy": {
+    "required_distinct_fresh_repetitions": 2,
+    "attestation_namespace": "exoearth-age-cut-ssp-v4.0.4",
+    "required_distinct_signers": 2,
+    "nonce_bytes": 32,
+    "fresh_execution_controller": "verify_age_cut_ssp_contract.execute_fresh_repetition",
+    "generation_program": "research/jj-host-export/run_jj_export.py",
+    "generation_argv_mode": "subprocess_no_shell_exact_pinned",
+    "require_signed_pre_run_challenge": true,
+    "require_controller_created_empty_run_directory": true,
+    "require_exact_padova_extraction_from_locked_archive": true,
+    "require_bit_identical_ssp_members": true,
+    "require_bit_identical_runtime_inputs": true,
+    "require_identical_source_state": true,
+    "required_source_roles": [
+      "public_release",
+      "private_production"
+    ],
+    "allowed_execution_environments": [
+      "local_ubuntu_22_04_wsl2",
+      "github_actions_ubuntu_22_04"
+    ],
+    "exact_repeat_files": [
+      "JJ_SSP_INPUT_SHA256SUMS.txt",
+      "parameters",
+      "sfrd_peaks_parameters",
+      "NUMERICAL_RUNTIME_POLICY.json"
+    ]
+  },
+  "artifact_sets": [
+    {
+      "id": "v4.0.4-production-pending-qualification",
+      "role": "qualification_candidate",
+      "production_accepted": false,
+      "qualification_eligible": true,
+      "ssp_manifest_sha256": null,
+      "ssp_member_sha256": null,
+      "runtime_parameters_sha256": null,
+      "sfr_peaks_parameters_sha256": null,
+      "numerical_runtime_manifest_sha256": null,
+      "attestation_signers": [
+        {
+          "signer_id": "v404-local-attestor-a",
+          "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF6o39g15REJBdvRMh21U9DUs+spMaeeIVw7seFaqWwi v4.0.4-local-attestor-a"
+        },
+        {
+          "signer_id": "v404-local-attestor-b",
+          "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA3LslBc9zXOtiUoZedp9hzUO67FiV3ny8VJBOHXHouP v4.0.4-local-attestor-b"
+        }
+      ],
+      "qualification_report": null,
+      "note": "Fail closed until two distinct fresh production repetitions are bit-identical and the resulting self-identifying report is reviewed and hash-locked here."
+    }
+  ]
+}

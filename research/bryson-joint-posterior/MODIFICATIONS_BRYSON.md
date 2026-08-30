@@ -1,9 +1,10 @@
 # Bryson-derived implementation: source and modifications
 
 The files `run_hab2_joint_posterior.py`, `measurement_error.py`,
-`test_measurement_error.py`, and `test_run_hab2_provenance.py` form the modified
-Bryson-derived component of this repository. They are distributed under
-**GPL-2.0-only**, not MIT.
+`catalog_perturbation_audit.py`, `likelihood_grid_convergence.py`,
+`test_measurement_error.py`, and `test_run_hab2_provenance.py` form the
+modified Bryson-derived component of this repository. They are distributed
+under **GPL-2.0-only**, not MIT.
 
 ## Upstream source
 
@@ -24,9 +25,11 @@ source-faithful and corrected measurement-error modes, explicit domain checks,
 adaptive convergence diagnostics, regression tests, recorded input hashes, and
 machine-readable output summaries. The v4.0.4 hardening additionally verifies
 the branch-specific catalog and completeness hashes before loading them and
-again before summary creation, closing a time-of-check/time-of-use provenance
-gap. These changes do not relicense or replace the upstream rights. The
-resulting derivative component remains `GPL-2.0-only`.
+again before summary creation, independently replays every accepted catalog
+perturbation, and audits 31/61/121-cell convergence of the likelihood integral.
+These changes close provenance and numerical-convergence gaps; they do not
+relicense or replace the upstream rights. The resulting derivative component
+remains `GPL-2.0-only`.
 
 The upstream catalogs, completeness products, and `rateModels3D.py` are fetched
 only by private production workflows. They are not included in the cleared

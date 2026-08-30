@@ -138,7 +138,9 @@ def main():
             for hz,b in BRANCHES:
                 d=m['branches'][f'{hz}_{b}']; row[f'{hz}_{b}_L1']=d['Lambda_ESHZ']; row[f'{hz}_{b}_L2']=d['Lambda_earth10']
             w.writerow(row)
-    (out/'tams_all_branch_results.json').write_text(json.dumps(results,indent=2),encoding='utf-8')
-    print(json.dumps(results['masks']['lineweaver_7_9'],indent=2))
+    (out/'tams_all_branch_results.json').write_text(
+        json.dumps(results,indent=2,allow_nan=False)+'\n',encoding='utf-8',newline='\n'
+    )
+    print(json.dumps(results['masks']['lineweaver_7_9'],indent=2,allow_nan=False))
 
 if __name__=='__main__': main()
