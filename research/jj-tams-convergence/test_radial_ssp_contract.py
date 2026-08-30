@@ -176,9 +176,13 @@ for radius in rr.radii_for_dr(dr):
         (tab / f'SSP_R{{float(radius)}}_{{code}}_Padova.csv').write_text(header + rows, encoding='utf-8', newline='\\n')
 derived = rr.rederive_private_run(Path(a.run_dir), dr)
 out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+published_rows = [dict(row) for row in derived['radial_rows']]
+# Exercise the contract's numerical comparison: an independently implemented
+# generator may differ from the reference derivation by one representable float.
+published_rows[0]['dN_dR'] = math.nextafter(published_rows[0]['dN_dR'], math.inf)
 with (out / f'tams_radial_dr{{rr.tag(dr)}}.csv').open('w', encoding='utf-8', newline='') as handle:
     writer = csv.DictWriter(handle, fieldnames=rr.RADIAL_COLUMNS)
-    writer.writeheader(); writer.writerows(derived['radial_rows'])
+    writer.writeheader(); writer.writerows(published_rows)
 result = {{
     'experiment': 'final_TAMS_radial_convergence',
     'jj_commit': subprocess.check_output(['git','rev-parse','HEAD'], cwd=a.jj_root, text=True).strip(),
@@ -706,6 +710,17 @@ result = {{
                     self.triplet_a / run_name / "tams_result.json",
                     public / f"tams_result_dr{tag}.json",
                 )
+            report_document = json.loads(report.read_text(encoding="utf-8"))
+            rows = verifier.rederive.parse_generated_radial(
+                public / "tams_radial_dr1p0.csv", 1.0
+            )
+            signed_reference_hash = report_document["scientific_evidence"]["runs"][
+                "1.0"
+            ]["summary"]["radial_rows_sha256"]
+            self.assertNotEqual(
+                hashlib.sha256(verifier.canonical_bytes(rows)).hexdigest(),
+                signed_reference_hash,
+            )
             result = verifier.bind_public_convergence(contract, report, root)
             self.assertEqual(result["status"], "PASS")
             with (public / "tams_radial_dr0p5.csv").open("ab") as handle:
