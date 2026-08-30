@@ -155,6 +155,8 @@ verify_license_policy = verify_v404_release_acceptance.load_source_only_module(
 class SourceSnapshot:
     path: Path
     identity: tuple[int, int, int, int, int]
+    sha256: str
+    size_bytes: int
 
 
 @dataclass(frozen=True)
@@ -392,16 +394,49 @@ def stable_source_read(relative: PurePosixPath) -> tuple[bytes, SourceSnapshot]:
         or len(data) != opened.st_size
     ):
         raise SystemExit(f"Public path changed while read: {relative.as_posix()}")
-    return data, SourceSnapshot(current, identity)
+    return data, SourceSnapshot(
+        current,
+        identity,
+        hashlib.sha256(data).hexdigest(),
+        len(data),
+    )
 
 
 def recheck_sources(snapshots: list[SourceSnapshot]) -> None:
     for snapshot in snapshots:
         try:
-            current = snapshot.path.lstat()
+            before = snapshot.path.lstat()
+            flags = (
+                os.O_RDONLY
+                | getattr(os, "O_BINARY", 0)
+                | getattr(os, "O_NOFOLLOW", 0)
+            )
+            descriptor = os.open(snapshot.path, flags)
+            try:
+                opened = os.fstat(descriptor)
+                blocks: list[bytes] = []
+                while True:
+                    block = os.read(descriptor, 1024 * 1024)
+                    if not block:
+                        break
+                    blocks.append(block)
+                after_fd = os.fstat(descriptor)
+            finally:
+                os.close(descriptor)
+            after = snapshot.path.lstat()
         except OSError as error:
             raise SystemExit(f"Cannot recheck public source {snapshot.path}: {error}")
-        if is_link_or_reparse(current) or file_identity(current) != snapshot.identity:
+        data = b"".join(blocks)
+        if (
+            is_link_or_reparse(before)
+            or is_link_or_reparse(after)
+            or file_identity(before) != snapshot.identity
+            or file_identity(opened) != snapshot.identity
+            or file_identity(after_fd) != snapshot.identity
+            or file_identity(after) != snapshot.identity
+            or len(data) != snapshot.size_bytes
+            or hashlib.sha256(data).hexdigest() != snapshot.sha256
+        ):
             raise SystemExit(f"Public source changed after capture: {snapshot.path}")
 
 

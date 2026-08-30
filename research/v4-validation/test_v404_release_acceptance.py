@@ -1358,8 +1358,15 @@ class ReleaseAcceptanceTests(unittest.TestCase):
                 self.assertEqual(data, b"first\n")
                 source.unlink()
                 source.write_bytes(b"other\n")
-                with self.assertRaisesRegex(SystemExit, "changed after capture"):
-                    package.recheck_sources([snapshot])
+                # Some overlay filesystems can immediately reuse the same
+                # inode and coarse timestamps after unlink+create.  Force the
+                # identity collision: the content hash must still reject the
+                # replacement deterministically.
+                with mock.patch.object(
+                    package, "file_identity", return_value=snapshot.identity
+                ):
+                    with self.assertRaisesRegex(SystemExit, "changed after capture"):
+                        package.recheck_sources([snapshot])
 
     def test_public_output_refuses_predestined_symlink_and_preserves_victim(self) -> None:
         with tempfile.TemporaryDirectory(prefix="v404-public-output-") as temporary:
