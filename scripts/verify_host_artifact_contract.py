@@ -1020,16 +1020,16 @@ def validate_contract(document: Any) -> dict[str, Any]:
             artifact_set["manifest_sha256"], f"{identifier}.manifest_sha256"
         )
         file_hashes = artifact_set["file_sha256"]
-        if (
-            not isinstance(file_hashes, dict)
-            or list(file_hashes) != list(EXPECTED_CANONICAL_FILES)
+        if not isinstance(file_hashes, dict) or set(file_hashes) != set(
+            EXPECTED_CANONICAL_FILES
         ):
             fail(
-                f"{identifier}.file_sha256 must use the exact canonical "
-                "order and set"
+                f"{identifier}.file_sha256 must use the exact canonical set"
             )
-        for filename, digest in file_hashes.items():
-            _require_hex(digest, f"{identifier}.file_sha256[{filename!r}]")
+        for filename in EXPECTED_CANONICAL_FILES:
+            _require_hex(
+                file_hashes[filename], f"{identifier}.file_sha256[{filename!r}]"
+            )
         _require_hex(
             artifact_set["summary_sha256_without_python"],
             f"{identifier}.summary_sha256_without_python",

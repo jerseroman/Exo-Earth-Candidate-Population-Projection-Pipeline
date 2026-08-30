@@ -809,10 +809,12 @@ def validate_contract(document: Any) -> dict[str, Any]:
             for field in hash_fields:
                 require_sha(item[field], 64, f"SSP artifact set {identifier} {field}")
             member_hashes = item["ssp_member_sha256"]
-            if not isinstance(member_hashes, dict) or list(member_hashes) != list(SSP_MEMBERS):
-                fail("SSP artifact-set member hash tuple order/set changed")
-            for name, digest in member_hashes.items():
-                require_sha(digest, 64, f"SSP artifact set {identifier} {name}")
+            if not isinstance(member_hashes, dict) or set(member_hashes) != set(SSP_MEMBERS):
+                fail("SSP artifact-set member hash set changed")
+            for name in SSP_MEMBERS:
+                require_sha(
+                    member_hashes[name], 64, f"SSP artifact set {identifier} {name}"
+                )
         signers = item["attestation_signers"]
         if signers is not None:
             if not isinstance(signers, list) or len(signers) != 2:

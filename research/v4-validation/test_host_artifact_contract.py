@@ -646,6 +646,36 @@ class SignedHostContractTests(unittest.TestCase):
         result = host.verify_artifact(self.fixture.contract_path, first)
         self.assertEqual(result["full_artifact_tuple"]["parent"]["row_count"], 3)
 
+    def test_canonical_accepted_contract_roundtrip_preserves_file_set(self) -> None:
+        first = self.fixture.make_repetition("fresh-a", 0)
+        second = self.fixture.make_repetition("fresh-b", 1)
+        report = host.qualify_artifacts(
+            self.fixture.contract_path,
+            first,
+            second,
+            "candidate-fixture",
+            self.fixture.report_path,
+        )
+        self.fixture.activate(report)
+        document = json.loads(self.fixture.contract_path.read_text(encoding="utf-8"))
+        self.fixture.contract_path.write_bytes(host.canonical_json_bytes(document))
+        result = host.verify_artifact(self.fixture.contract_path, first)
+        self.assertEqual(result["artifact_set"]["id"], "candidate-fixture")
+
+        missing = json.loads(self.fixture.contract_path.read_text(encoding="utf-8"))
+        missing_hashes = missing["artifact_sets"][0]["file_sha256"]
+        removed_name = next(iter(missing_hashes))
+        removed_digest = missing_hashes.pop(removed_name)
+        self.fixture.contract_path.write_bytes(host.canonical_json_bytes(missing))
+        with self.assertRaises(host.ContractError):
+            host.load_contract(self.fixture.contract_path)
+
+        missing_hashes[removed_name] = removed_digest
+        missing_hashes["unexpected.csv"] = "0" * 64
+        self.fixture.contract_path.write_bytes(host.canonical_json_bytes(missing))
+        with self.assertRaises(host.ContractError):
+            host.load_contract(self.fixture.contract_path)
+
     def test_contract_promotion_changes_only_acceptance_evidence(self) -> None:
         pending = copy.deepcopy(self.fixture.contract)
         first = self.fixture.make_repetition("fresh-a", 0)

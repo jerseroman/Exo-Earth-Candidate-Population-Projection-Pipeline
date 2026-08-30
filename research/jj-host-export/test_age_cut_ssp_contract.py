@@ -367,6 +367,41 @@ for i in range(21):
         with self.assertRaises(contract_verifier.SSPContractError):
             contract_verifier.accepted_candidate(contract)
 
+    def test_canonical_accepted_contract_roundtrip_preserves_member_set(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Fixture(Path(temporary))
+            contract = json.loads(fixture.ssp_contract.read_text(encoding="utf-8"))
+            fixture.ssp_contract.write_bytes(
+                contract_verifier.canonical_json_bytes(contract)
+            )
+            result = contract_verifier.verify_accepted_repetition(
+                fixture.ssp_contract,
+                fixture.qualification_report,
+                fixture.repeat_a,
+            )
+            self.assertEqual(
+                result["artifact_set_id"],
+                "v4.0.4-production-pending-qualification",
+            )
+
+            missing = json.loads(fixture.ssp_contract.read_text(encoding="utf-8"))
+            missing_hashes = missing["artifact_sets"][0]["ssp_member_sha256"]
+            removed_name = next(iter(missing_hashes))
+            removed_digest = missing_hashes.pop(removed_name)
+            fixture.ssp_contract.write_bytes(
+                contract_verifier.canonical_json_bytes(missing)
+            )
+            with self.assertRaises(contract_verifier.SSPContractError):
+                contract_verifier.load_contract(fixture.ssp_contract)
+
+            missing_hashes[removed_name] = removed_digest
+            missing_hashes["SSP_R99.0_d_Padova.csv"] = "0" * 64
+            fixture.ssp_contract.write_bytes(
+                contract_verifier.canonical_json_bytes(missing)
+            )
+            with self.assertRaises(contract_verifier.SSPContractError):
+                contract_verifier.load_contract(fixture.ssp_contract)
+
     def test_same_root_and_exact_copytree_are_not_two_repetitions(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary))
