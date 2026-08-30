@@ -33,6 +33,7 @@ if str(SCRIPTS) not in sys.path:
 
 from scripts import build_public_package as package  # noqa: E402
 from scripts import verify_public_package_roundtrip as roundtrip  # noqa: E402
+from scripts import verify_local_run_attestation as local_gate  # noqa: E402
 from scripts import verify_v404_release_acceptance as gate  # noqa: E402
 
 
@@ -238,6 +239,9 @@ class ReleaseFixture:
             "source_commit": self.computational_source["commit"],
             "source_tree": self.computational_source["tree"],
             "source_archive_sha256": self.computational_source["archive_sha256"],
+            "source_archive_size_bytes": self.computational_source[
+                "archive_size_bytes"
+            ],
             "source_file_set_sha256": "d" * 64,
             "command_plan_sha256": "e" * 64,
             "numerical_runtime_manifest_sha256": "f" * 64,
@@ -516,6 +520,7 @@ class ReleaseFixture:
             "public_report_sha256": digest(report_path.read_bytes()),
             "candidate_id": self.accepted_ids["local"],
             "source_archive_sha256": report["source_archive_sha256"],
+            "source_archive_size_bytes": report["source_archive_size_bytes"],
             "command_plan_sha256": report["command_plan_sha256"],
             "numerical_runtime_manifest_sha256": report[
                 "numerical_runtime_manifest_sha256"
@@ -919,6 +924,74 @@ class ReleaseAcceptanceTests(unittest.TestCase):
             evidence["release_source"]["payload_manifest_sha256"],
         )
 
+    def test_local_report_producer_and_release_consumer_schemas_match(self) -> None:
+        snapshot = SimpleNamespace(sha256="a" * 64)
+        contract = {"contract_id": "local-production-run-v4.0.4"}
+        candidate = {"id": self.fixture.accepted_ids["local"]}
+        challenge = {
+            "run_id": "fixture-run",
+            "challenge_id": "b" * 64,
+            "start_signer_id": "signer-a",
+        }
+        completion = {
+            "source_state_after": {
+                "commit": self.fixture.computational_source["commit"],
+                "tree": self.fixture.computational_source["tree"],
+                "archive_sha256": self.fixture.computational_source[
+                    "archive_sha256"
+                ],
+                "archive_size_bytes": self.fixture.computational_source[
+                    "archive_size_bytes"
+                ],
+            },
+            "source_file_set_sha256": "c" * 64,
+            "command_plan": {"sha256": "d" * 64},
+            "numerical_runtime_manifest": {"sha256": "e" * 64},
+            "completion_id": "f" * 64,
+            "completion_signer_id": "signer-b",
+            "execution_started_utc": "2026-08-30T00:00:00Z",
+            "execution_ended_utc": "2026-08-30T01:00:00Z",
+            "command_results": [
+                {
+                    "command_index": 0,
+                    "exit_code": 0,
+                    "started_utc": "2026-08-30T00:00:01Z",
+                    "ended_utc": "2026-08-30T00:00:02Z",
+                    "stdout": {"sha256": "0" * 64, "size_bytes": 1},
+                    "stderr": {"sha256": "1" * 64, "size_bytes": 0},
+                }
+            ],
+        }
+        output_entries = [
+            {"path": "result.bin", "sha256": "2" * 64, "size_bytes": 1}
+        ]
+        report = local_gate.build_public_report(
+            contract,
+            candidate,
+            challenge,
+            completion,
+            snapshot,
+            snapshot,
+            snapshot,
+            snapshot,
+            snapshot,
+            output_entries,
+        )
+
+        self.assertEqual(
+            gate._validate_local_report(
+                report,
+                contract,
+                candidate,
+                local_gate,
+            ),
+            report,
+        )
+        self.assertEqual(
+            report["source_archive_size_bytes"],
+            self.fixture.computational_source["archive_size_bytes"],
+        )
+
     def test_release_lock_must_be_production_accepted(self) -> None:
         self.fixture.rewrite_acceptance(
             lambda value: value.__setitem__("production_accepted", False)
@@ -989,6 +1062,90 @@ class ReleaseAcceptanceTests(unittest.TestCase):
         self.fixture.rewrite_age_source_commit("0" * 40)
         with self.assertRaisesRegex(
             gate.ReleaseAcceptanceError, "does not bind the release source lock"
+        ):
+            self.verify()
+
+    def test_local_report_archive_size_must_match_source_lock(self) -> None:
+        report_path = (
+            self.fixture.root
+            / "provenance"
+            / self.fixture.report_names["local"]
+        )
+        report = read_json(report_path)
+        report["source_archive_size_bytes"] = (
+            self.fixture.computational_source["archive_size_bytes"] + 1
+        )
+        report.pop("report_id")
+        report["report_id"] = digest(gate.canonical_json_bytes(report))
+        report_path.write_bytes(gate.canonical_json_bytes(report))
+
+        contract_path = self.fixture.root / Path(
+            *gate.CONTRACT_PATHS["local"].split("/")
+        )
+        contract = read_json(contract_path)
+        contract["candidates"][0]["accepted_report"] = {
+            "report_id": report["report_id"],
+            "sha256": digest(report_path.read_bytes()),
+            "size_bytes": report_path.stat().st_size,
+        }
+        self.fixture._write_json(gate.CONTRACT_PATHS["local"], contract)
+
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError, "differs from its source lock"
+        ):
+            gate.verify_local_report_contract_binding(
+                self.fixture.root,
+                report_path,
+                local_verifier=FakeLocal,
+            )
+
+    def test_end_to_end_local_report_archive_size_must_match_source(self) -> None:
+        report_path = (
+            self.fixture.root
+            / "provenance"
+            / self.fixture.report_names["local"]
+        )
+        report = read_json(report_path)
+        report["source_archive_size_bytes"] = (
+            self.fixture.computational_source["archive_size_bytes"] + 1
+        )
+        report.pop("report_id")
+        report["report_id"] = digest(gate.canonical_json_bytes(report))
+        report_path.write_bytes(gate.canonical_json_bytes(report))
+
+        contract_path = self.fixture.root / Path(
+            *gate.CONTRACT_PATHS["local"].split("/")
+        )
+        contract = read_json(contract_path)
+        contract["candidates"][0]["accepted_report"] = {
+            "report_id": report["report_id"],
+            "sha256": digest(report_path.read_bytes()),
+            "size_bytes": report_path.stat().st_size,
+        }
+        self.fixture._write_json(gate.CONTRACT_PATHS["local"], contract)
+        self.fixture.report_ids["local"] = report["report_id"]
+        self.fixture._write_freezes()
+        self.fixture._write_acceptance()
+
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError,
+            "local public report does not bind the release source",
+        ):
+            self.verify()
+
+    def test_freeze_local_archive_size_binding_is_exact(self) -> None:
+        spec = gate.FREEZE_SPECS["numerical"]
+        freeze_root = self.fixture.root / Path(*spec["root"].split("/"))
+        freeze = read_json(freeze_root / spec["json"])
+        freeze["artifact_roots"]["signed_local_production_run"][
+            "source_archive_size_bytes"
+        ] += 1
+        self.fixture._write_freeze_set("numerical", freeze)
+        self.fixture._write_acceptance()
+
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError,
+            "local-run source_archive_size_bytes",
         ):
             self.verify()
 

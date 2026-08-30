@@ -184,6 +184,7 @@ LOCAL_REPORT_KEYS = {
     "source_commit",
     "source_tree",
     "source_archive_sha256",
+    "source_archive_size_bytes",
     "source_file_set_sha256",
     "command_plan_sha256",
     "numerical_runtime_manifest_sha256",
@@ -226,6 +227,7 @@ LOCAL_BINDING_FIELDS = {
     "public_report_sha256",
     "candidate_id",
     "source_archive_sha256",
+    "source_archive_size_bytes",
     "command_plan_sha256",
     "numerical_runtime_manifest_sha256",
     "output_manifest_sha256",
@@ -2272,7 +2274,11 @@ def _validate_local_report(
     ended = _utc(item["execution_ended_utc"], "local execution end")
     if ended <= started:
         fail("local production execution interval is not positive")
-    for field in ("output_file_count", "output_total_size_bytes"):
+    for field in (
+        "source_archive_size_bytes",
+        "output_file_count",
+        "output_total_size_bytes",
+    ):
         _positive_size(item[field], f"local report {field}")
     results = item["command_results"]
     if not isinstance(results, list) or not results:
@@ -2361,6 +2367,7 @@ def _verify_local(
         report["source_commit"] != source["commit"]
         or report["source_tree"] != source["tree"]
         or report["source_archive_sha256"] != source["archive_sha256"]
+        or report["source_archive_size_bytes"] != source["archive_size_bytes"]
     ):
         fail("local public report does not bind the release source")
     source_lock = _mapping(candidate.get("source_lock"), "local candidate source lock")
@@ -2450,6 +2457,7 @@ def verify_local_report_contract_binding(
         report["source_commit"] != source["commit"]
         or report["source_tree"] != source["tree"]
         or report["source_archive_sha256"] != source["archive_sha256"]
+        or report["source_archive_size_bytes"] != source["archive_size_bytes"]
     ):
         fail("accepted local public report differs from its source lock")
     recheck_snapshot(contract_snapshot, "local production attestation contract")
@@ -2613,6 +2621,7 @@ def _verify_freeze_cross_bindings(
             "public_report_sha256": components["local"]["report_sha256"],
             "candidate_id": components["local"]["accepted_id"],
             "source_archive_sha256": report["source_archive_sha256"],
+            "source_archive_size_bytes": report["source_archive_size_bytes"],
             "command_plan_sha256": report["command_plan_sha256"],
             "numerical_runtime_manifest_sha256": report[
                 "numerical_runtime_manifest_sha256"
