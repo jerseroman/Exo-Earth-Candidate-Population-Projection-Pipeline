@@ -5,7 +5,7 @@
 #
 # Derived from the Bryson DR25 occurrence implementation identified in
 # MODIFICATIONS_BRYSON.md. Roman Jerše's modifications remain under GPL-2.0-only.
-# Modified by Roman Jerše on 2026-08-21; see MODIFICATIONS_BRYSON.md.
+# Modified by Roman Jerše on 2026-08-30; see MODIFICATIONS_BRYSON.md.
 """Re-run the Bryson et al. Model-1 hab2 joint posterior.
 
 This is a clean, seeded implementation of the public notebook

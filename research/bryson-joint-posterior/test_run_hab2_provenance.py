@@ -5,7 +5,7 @@
 #
 # Tests exercise the modified Bryson-derived runner documented in
 # MODIFICATIONS_BRYSON.md and are distributed with it under GPL-2.0-only.
-# Modified by Roman Jerše on 2026-08-29; see MODIFICATIONS_BRYSON.md.
+# Modified by Roman Jerše on 2026-08-30; see MODIFICATIONS_BRYSON.md.
 """Focused regression tests for standalone run status and source provenance."""
 from __future__ import annotations
 
@@ -327,12 +327,17 @@ class BrysonSourceProvenanceTests(unittest.TestCase):
 
 
 class RunnerInputProvenanceTests(unittest.TestCase):
-    def test_gzip_completeness_is_decoded_from_locked_bytes(self) -> None:
+    def test_completeness_gzip_and_plain_streams_are_equivalent_and_closed(
+        self,
+    ) -> None:
         class FakeHduList(list):
+            closed = False
+
             def __enter__(self):
                 return self
 
             def __exit__(self, _exc_type, _exc, _traceback):
+                self.closed = True
                 return False
 
         header = {
@@ -350,12 +355,17 @@ class RunnerInputProvenanceTests(unittest.TestCase):
             header=header,
         )
         observed_prefixes: list[bytes] = []
+        observed_streams = []
+        observed_hdu_lists: list[FakeHduList] = []
 
         def open_fits(stream, *, memmap):
             self.assertFalse(memmap)
+            observed_streams.append(stream)
             observed_prefixes.append(stream.read(6))
             stream.seek(0)
-            return FakeHduList([hdu])
+            hdu_list = FakeHduList([hdu])
+            observed_hdu_lists.append(hdu_list)
+            return hdu_list
 
         def interpolate(_x, _y, _values):
             return lambda x, y: RUNNER.np.zeros((len(y), len(x)), dtype=float)
@@ -366,15 +376,57 @@ class RunnerInputProvenanceTests(unittest.TestCase):
             period1D=RUNNER.np.array([2.0, 1.0]),
             rp1D=RUNNER.np.array([1.0, 2.0]),
         )
-        compressed = gzip.compress(b"SIMPLE synthetic FITS bytes", mtime=0)
-        with mock.patch.object(
-            RUNNER.fits, "open", side_effect=open_fits, create=True
-        ), mock.patch.object(RUNNER, "interp2d", side_effect=interpolate):
-            summed, means = RUNNER.load_completeness(compressed, cs)
+        plain = b"SIMPLE synthetic FITS bytes"
+        results = []
+        for payload in (plain, gzip.compress(plain, mtime=0)):
+            with mock.patch.object(
+                RUNNER.fits, "open", side_effect=open_fits, create=True
+            ), mock.patch.object(RUNNER, "interp2d", side_effect=interpolate):
+                results.append(RUNNER.load_completeness(payload, cs))
 
-        self.assertEqual(observed_prefixes, [b"SIMPLE"])
-        self.assertEqual(summed.shape, (2, 2, 1))
-        self.assertEqual(means.tolist(), [5500.0])
+        self.assertEqual(observed_prefixes, [b"SIMPLE", b"SIMPLE"])
+        self.assertTrue(all(stream.closed for stream in observed_streams))
+        self.assertTrue(all(hdu_list.closed for hdu_list in observed_hdu_lists))
+        for summed, means in results:
+            self.assertEqual(summed.shape, (2, 2, 1))
+            self.assertEqual(means.tolist(), [5500.0])
+        RUNNER.np.testing.assert_array_equal(results[0][0], results[1][0])
+        RUNNER.np.testing.assert_array_equal(results[0][1], results[1][1])
+
+    def test_corrupt_gzip_completeness_fails_closed_and_closes_streams(self) -> None:
+        captured_streams = []
+        decoded_streams = []
+        real_bytes_io = RUNNER.io.BytesIO
+        real_gzip_file = RUNNER.gzip.GzipFile
+
+        def tracked_bytes_io(data):
+            stream = real_bytes_io(data)
+            captured_streams.append(stream)
+            return stream
+
+        def tracked_gzip_file(*args, **kwargs):
+            stream = real_gzip_file(*args, **kwargs)
+            decoded_streams.append(stream)
+            return stream
+
+        corrupt = bytearray(gzip.compress(b"SIMPLE synthetic FITS bytes", mtime=0))
+        corrupt[-8] ^= 0xFF
+        with mock.patch.object(
+            RUNNER.io, "BytesIO", side_effect=tracked_bytes_io
+        ), mock.patch.object(
+            RUNNER.gzip, "GzipFile", side_effect=tracked_gzip_file
+        ), mock.patch.object(
+            RUNNER,
+            "_load_completeness_stream",
+            side_effect=lambda stream, _cs: stream.read(),
+        ):
+            with self.assertRaises(gzip.BadGzipFile):
+                RUNNER.load_completeness(bytes(corrupt), object())
+
+        self.assertEqual(len(captured_streams), 1)
+        self.assertEqual(len(decoded_streams), 1)
+        self.assertTrue(captured_streams[0].closed)
+        self.assertTrue(decoded_streams[0].closed)
 
     def test_original_input_symlink_fails_closed_where_supported(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -27,6 +27,11 @@ machine-readable output summaries. The v4.0.4 hardening additionally verifies
 the branch-specific catalog and completeness hashes before loading them and
 again before summary creation, independently replays every accepted catalog
 perturbation, and audits 31/61/121-cell convergence of the likelihood integral.
+The v4.0.4 input-loader repair also recognizes gzip magic bytes in the
+preflight-captured immutable completeness payload and decompresses that stream
+before FITS parsing. Input hashes remain bound to the original locked bytes;
+regression tests cover equivalent plain/gzip loader paths, corrupt-gzip
+rejection, and stream closure.
 These changes close provenance and numerical-convergence gaps; they do not
 relicense or replace the upstream rights. The resulting derivative component
 remains `GPL-2.0-only`.
