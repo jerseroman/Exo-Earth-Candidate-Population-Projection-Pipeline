@@ -3159,6 +3159,8 @@ def _source_record(
     repository: str,
     source_root: Path,
     archive_path: Path,
+    *,
+    allowed_untracked_paths: set[str] | None = None,
 ) -> dict[str, Any]:
     return _helper_call(
         helper,
@@ -3167,6 +3169,7 @@ def _source_record(
         repository,
         source_root,
         archive_path,
+        allowed_untracked_paths=allowed_untracked_paths,
     )
 
 
@@ -3370,10 +3373,33 @@ def execute_fresh_repetition(
     jj_execution = execution / "source-jj"
     public_execution = execution / "source-public"
     private_execution = execution / "source-private"
-    _extract_git_tar(jj_archive, jj_execution, "JJ source")
+    execution_jj_tree = _helper_call(
+        helper,
+        "materialize_jj_archive_checkout",
+        Path(jj_root),
+        jj_archive,
+        jj_execution,
+        locked["jj_commit"],
+    )
     _extract_git_tar(public_archive, public_execution, "public source")
     _extract_git_tar(private_archive, private_execution, "private source")
-    padova_extraction = _extract_padova_zip(padova, jj_execution)
+    (
+        execution_padova_paths,
+        padova_extraction,
+        execution_padova_directories,
+    ) = _helper_call(
+        helper, "extract_padova_overlay_snapshot", padova, jj_execution
+    )
+    execution_jj_source = _source_record(
+        helper,
+        "jj_generator",
+        locked["jj_repository"],
+        jj_execution,
+        jj_source_archive,
+        allowed_untracked_paths=execution_padova_paths,
+    )
+    if execution_jj_source != jj_source:
+        fail("fresh JJ execution checkout differs from the locked source state")
 
     controller_snapshot = read_file_snapshot(
         Path(__file__), "host execution controller", maximum_bytes=2_000_000
@@ -3554,6 +3580,28 @@ def execute_fresh_repetition(
 
     if _runtime_executable_chain(str(python_path)) != python_executable_record:
         fail("numerical-runtime Python executable changed during the host run")
+    _helper_call(
+        helper,
+        "verify_extracted_archive_tree",
+        jj_execution,
+        execution_jj_tree,
+        "captured JJ Git archive",
+        allow_git_metadata=True,
+        allowed_overlay_files=execution_padova_paths,
+        allowed_overlay_directories=execution_padova_directories,
+    )
+    if (
+        _source_record(
+            helper,
+            "jj_generator",
+            locked["jj_repository"],
+            jj_execution,
+            jj_source_archive,
+            allowed_untracked_paths=execution_padova_paths,
+        )
+        != execution_jj_source
+    ):
+        fail("fresh JJ execution source changed during the host run")
     post_sources = (
         _source_record(
             helper,

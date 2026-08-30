@@ -933,13 +933,26 @@ class SignedHostContractTests(unittest.TestCase):
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / Path(relative), destination)
         copy_program = (
-            "import argparse,shutil\n"
+            "import argparse,os,shutil,subprocess\n"
             "from pathlib import Path\n"
             "p=argparse.ArgumentParser()\n"
             "p.add_argument('--jj-root');p.add_argument('--run-dir');"
             "p.add_argument('--out',required=True);p.add_argument('--iso');"
             "p.add_argument('--expected-radial-step-kpc')\n"
-            "a=p.parse_args();src=Path(__file__).resolve().parents[2]/'fixture_outputs';"
+            "a=p.parse_args();jj=Path(a.jj_root);"
+            "head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=jj,text=True).strip();"
+            "valid_head=len(head)==40 and all(c in '0123456789abcdef' for c in head);"
+            "origin=subprocess.check_output(['git','remote','get-url','origin'],cwd=jj,text=True).strip();"
+            "(_ for _ in ()).throw(RuntimeError('invalid JJ Git identity')) "
+            "if not valid_head or origin!='https://github.com/askenja/jjmodel.git' else None;"
+            "subprocess.run(['git','diff','--quiet','HEAD','--'],cwd=jj,check=True);"
+            "subprocess.run(['git','diff','--cached','--quiet','HEAD','--'],cwd=jj,check=True);"
+            "committed=subprocess.check_output(['git','show','HEAD:jjmodel/tutorials/tutorial2/parameters'],cwd=jj);"
+            "(_ for _ in ()).throw(RuntimeError('JJ tracked bytes changed')) "
+            "if committed!=(jj/'jjmodel/tutorials/tutorial2/parameters').read_bytes() else None;"
+            "(jj/'unexpected-empty-directory').mkdir() "
+            "if os.environ.get('HOST_CONTRACT_TEST_MUTATE_JJ')=='1' else None;"
+            "src=Path(__file__).resolve().parents[2]/'fixture_outputs';"
             f"names={output_names!r}\n"
             "[shutil.copy2(src/name,Path(a.out)/name) for name in names]\n"
         )
@@ -1046,6 +1059,26 @@ class SignedHostContractTests(unittest.TestCase):
             )
             self.assertEqual(result["signer_id"], self.fixture.signers[0]["signer_id"])
             self.assertEqual(result["full_artifact_tuple"]["parent"]["row_count"], 3)
+            with mock.patch.dict(
+                os.environ, {"HOST_CONTRACT_TEST_MUTATE_JJ": "1"}, clear=False
+            ), self.assertRaises(host.ContractError):
+                host.execute_fresh_repetition(
+                    self.fixture.contract_path,
+                    jj_root=jj,
+                    jj_source_archive=archives["jj"],
+                    padova_archive=padova,
+                    public_source_root=public,
+                    public_source_archive=archives["public"],
+                    private_source_root=private,
+                    private_source_archive=archives["private"],
+                    numerical_runtime_manifest=runtime_manifest,
+                    candidate_set_id="candidate-fixture",
+                    signer_id=self.fixture.signers[1]["signer_id"],
+                    signing_key=self.fixture.keys[1],
+                    repeat_label="jj-mutation-b",
+                    execution_root=self.fixture.root / "jj-mutation-execution",
+                    output_root=self.fixture.root / "jj-mutation-repetition",
+                )
             (private / "shadow.py").write_text("pass\n", encoding="utf-8")
             with self.assertRaises(host.ContractError):
                 host.execute_fresh_repetition(
