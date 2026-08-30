@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gzip
 import hashlib
 import io
 import json
@@ -665,10 +666,10 @@ def nll(theta, cs, koi_flux, koi_radius, koi_teff, sum_comp, teff_means, model):
     return -value if np.isfinite(value) else 1.0e15
 
 
-def load_completeness(data: bytes, cs):
-    """Load completeness only from the preflight-captured immutable bytes."""
+def _load_completeness_stream(stream, cs):
+    """Parse one already opened FITS byte stream."""
 
-    with fits.open(io.BytesIO(data), memmap=False) as hdulist:
+    with fits.open(stream, memmap=False) as hdulist:
         cumulative = np.asarray(hdulist[0].data)
         header = hdulist[0].header
         prob_teff = cumulative[3:, :, :]
@@ -696,6 +697,16 @@ def load_completeness(data: bytes, cs):
             interpolator(cs.period1D, cs.rp1D)
         )
     return summed_teff, mean_teff
+
+
+def load_completeness(data: bytes, cs):
+    """Load FITS data from the preflight-captured immutable input bytes."""
+
+    with io.BytesIO(data) as captured:
+        if data.startswith(b"\x1f\x8b"):
+            with gzip.GzipFile(fileobj=captured, mode="rb") as decoded:
+                return _load_completeness_stream(decoded, cs)
+        return _load_completeness_stream(captured, cs)
 
 
 def safe_initial_positions(center: np.ndarray, bounds, n_walkers: int) -> np.ndarray:

@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import importlib.util
 import json
@@ -326,6 +327,55 @@ class BrysonSourceProvenanceTests(unittest.TestCase):
 
 
 class RunnerInputProvenanceTests(unittest.TestCase):
+    def test_gzip_completeness_is_decoded_from_locked_bytes(self) -> None:
+        class FakeHduList(list):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, _exc_type, _exc, _traceback):
+                return False
+
+        header = {
+            "NPER": 2,
+            "NRP": 2,
+            "MAXFLX": 2.0,
+            "MINFLX": 1.0,
+            "MINRP": 1.0,
+            "MAXRP": 2.0,
+            "NTEFF": 1,
+            "MEANT0": 5500.0,
+        }
+        hdu = types.SimpleNamespace(
+            data=RUNNER.np.arange(16, dtype=float).reshape(4, 2, 2),
+            header=header,
+        )
+        observed_prefixes: list[bytes] = []
+
+        def open_fits(stream, *, memmap):
+            self.assertFalse(memmap)
+            observed_prefixes.append(stream.read(6))
+            stream.seek(0)
+            return FakeHduList([hdu])
+
+        def interpolate(_x, _y, _values):
+            return lambda x, y: RUNNER.np.zeros((len(y), len(x)), dtype=float)
+
+        cs = types.SimpleNamespace(
+            nPeriod=2,
+            nRp=2,
+            period1D=RUNNER.np.array([2.0, 1.0]),
+            rp1D=RUNNER.np.array([1.0, 2.0]),
+        )
+        compressed = gzip.compress(b"SIMPLE synthetic FITS bytes", mtime=0)
+        with mock.patch.object(
+            RUNNER.fits, "open", side_effect=open_fits, create=True
+        ), mock.patch.object(RUNNER, "interp2d", side_effect=interpolate):
+            summed, means = RUNNER.load_completeness(compressed, cs)
+
+        self.assertEqual(observed_prefixes, [b"SIMPLE"])
+        self.assertEqual(summed.shape, (2, 2, 1))
+        self.assertEqual(means.tolist(), [5500.0])
+
     def test_original_input_symlink_fails_closed_where_supported(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
