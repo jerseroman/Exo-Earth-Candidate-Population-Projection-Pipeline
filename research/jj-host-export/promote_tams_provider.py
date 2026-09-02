@@ -45,6 +45,23 @@ def sha256(path):
         for chunk in iter(lambda:f.read(1024*1024),b''): h.update(chunk)
     return h.hexdigest()
 
+def write_sha256_manifest(manifest, files):
+    manifest.write_text(
+        ''.join(f'{sha256(path)}  {path.name}\n' for path in files),
+        encoding='utf-8',
+    )
+
+def preserve_legacy_files(out):
+    source_names=[name for name in CANONICAL if name!='SHA256SUMS_padova.txt']
+    legacy_files=[]
+    for name in source_names:
+        src=out/name
+        require(src.is_file(),f'Missing canonical file before legacy preservation: {src}')
+        dst=out/legacy_name(name)
+        shutil.copy2(src,dst)
+        legacy_files.append(dst)
+    write_sha256_manifest(out/legacy_name('SHA256SUMS_padova.txt'),legacy_files)
+
 def trap(radial, field, lo, hi):
     q=[r for r in radial if lo <= r['R_kpc'] <= hi]
     R=np.array([r['R_kpc'] for r in q],float); y=np.array([r[field] for r in q],float)
@@ -56,9 +73,7 @@ def main():
     parent=out/'jj_g_hosts_parent_prelogg_padova.csv'
     if not parent.exists(): raise FileNotFoundError(parent)
 
-    for name in CANONICAL:
-        src=out/name
-        if src.exists(): shutil.copy2(src,out/legacy_name(name))
+    preserve_legacy_files(out)
 
     rows=[]
     with parent.open(newline='',encoding='utf-8') as f:
@@ -153,7 +168,7 @@ def main():
     (out/'jj_g_hosts_summary_padova.json').write_text(json.dumps(summary,indent=2),encoding='utf-8')
 
     mainfiles=[out/n for n in CANONICAL if n!='SHA256SUMS_padova.txt']
-    (out/'SHA256SUMS_padova.txt').write_text(''.join(f'{sha256(p)}  {p.name}\n' for p in mainfiles),encoding='utf-8')
+    write_sha256_manifest(out/'SHA256SUMS_padova.txt',mainfiles)
 
     require(abs(N_full-1238302534.419577) < 1e-2, f'N_G R4--14 anchor mismatch: {N_full}')
     require(abs(N_79-263061992.36670703) < 1e-2, f'N_G R7--9 anchor mismatch: {N_79}')

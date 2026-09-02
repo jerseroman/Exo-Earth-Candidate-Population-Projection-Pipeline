@@ -15,9 +15,12 @@ MATRIX = ROOT / "provenance" / "LICENSE_MATRIX.csv"
 ROMAN_MIT_ALLOWLIST = ROOT / "provenance" / "ROMAN_MIT_PATHS.txt"
 
 GPL_PATHS = {
+    "research/bryson-joint-posterior/catalog_perturbation_audit.py",
+    "research/bryson-joint-posterior/likelihood_grid_convergence.py",
     "research/bryson-joint-posterior/run_hab2_joint_posterior.py",
     "research/bryson-joint-posterior/measurement_error.py",
     "research/bryson-joint-posterior/test_measurement_error.py",
+    "research/bryson-joint-posterior/test_run_hab2_provenance.py",
 }
 HUBER_TABLE = "research/jj-host-export/reference-data/tams_parsec_danxhuber.txt"
 BLOCKED_DR25_PATHS = {

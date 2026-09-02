@@ -5,7 +5,12 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
+import os
+import re
+import stat
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +43,10 @@ PC_CATALOG_SOURCE_LF_SHA256 = (
 PC_CATALOG_WINDOWS_CRLF_SHA256 = (
     "5cf4805d8742507ead6916dcd1f7b118b7e5a28966b9ddd5b8d09fc6e181115c"
 )
+STELLAR_CATALOG_SHA256 = "79744e4daf1f46414dacada9f91be017b2dcfed68028ef18544e3764fe5a4fa3"
+STELLAR_CATALOG_SIZE_BYTES = 100_194_836
+PUBLIC_MANIFEST_NAME = "SHA256SUMS_dr25_support_public.txt"
+PUBLIC_FILES = ("dr25_support_audit.json", "dr25_target_counts_by_trial.csv")
 MAXIMUM_GREENHOUSE = (
     0.356,
     6.171e-5,
@@ -45,6 +54,58 @@ MAXIMUM_GREENHOUSE = (
     -3.198e-12,
     -5.575e-16,
 )
+
+
+@dataclass(frozen=True)
+class FileSnapshot:
+    path: Path
+    data: bytes
+    sha256: str
+    size_bytes: int
+
+
+def read_file_snapshot(path: Path, label: str) -> FileSnapshot:
+    candidate = Path(path)
+    try:
+        before = candidate.lstat()
+    except OSError as error:
+        raise RuntimeError(f"{label} cannot be inspected: {candidate}") from error
+    if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
+        raise RuntimeError(f"{label} is not a regular non-symlink file: {candidate}")
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(candidate, flags)
+    except OSError as error:
+        raise RuntimeError(f"{label} cannot be opened safely: {candidate}") from error
+    with os.fdopen(descriptor, "rb") as stream:
+        opened_before = os.fstat(stream.fileno())
+        data = stream.read()
+        opened_after = os.fstat(stream.fileno())
+    try:
+        after = candidate.lstat()
+    except OSError as error:
+        raise RuntimeError(f"{label} disappeared while being read: {candidate}") from error
+    identities = (
+        (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns),
+        (
+            opened_before.st_dev,
+            opened_before.st_ino,
+            opened_before.st_size,
+            opened_before.st_mtime_ns,
+        ),
+        (
+            opened_after.st_dev,
+            opened_after.st_ino,
+            opened_after.st_size,
+            opened_after.st_mtime_ns,
+        ),
+        (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns),
+    )
+    if len(set(identities)) != 1 or len(data) != opened_after.st_size:
+        raise RuntimeError(f"{label} changed while being read: {candidate}")
+    return FileSnapshot(
+        candidate.resolve(), data, hashlib.sha256(data).hexdigest(), len(data)
+    )
 
 
 def sha256(path: Path) -> str:
@@ -55,8 +116,8 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def pc_catalog_provenance(path: Path) -> dict[str, Any]:
-    observed = sha256(path)
+def pc_catalog_provenance_snapshot(snapshot: Any) -> dict[str, Any]:
+    observed = snapshot.sha256
     representations = {
         PC_CATALOG_SOURCE_LF_SHA256: "pinned_source_lf",
         PC_CATALOG_WINDOWS_CRLF_SHA256: "historical_windows_crlf_checkout",
@@ -64,8 +125,9 @@ def pc_catalog_provenance(path: Path) -> dict[str, Any]:
     if observed not in representations:
         raise RuntimeError(f"Unexpected PC-catalog representation: {observed}")
     return {
-        "path": str(path),
+        "filename": snapshot.path.name,
         "sha256": observed,
+        "size_bytes": snapshot.size_bytes,
         "source_locked_sha256": PC_CATALOG_SOURCE_LF_SHA256,
         "representation": representations[observed],
         "line_ending_note": (
@@ -73,6 +135,10 @@ def pc_catalog_provenance(path: Path) -> dict[str, Any]:
             "CRLF for all 2278 lines; parsed CSV fields are unchanged."
         ),
     }
+
+
+def pc_catalog_provenance(path: Path) -> dict[str, Any]:
+    return pc_catalog_provenance_snapshot(read_file_snapshot(path, "DR25 PC catalog"))
 
 
 def seff(teff: np.ndarray, coefficients: tuple[float, ...]) -> np.ndarray:
@@ -153,9 +219,13 @@ def count_summary(counts: np.ndarray) -> dict[str, Any]:
     }
 
 
-def load_source_population(pc_path: Path, stellar_path: Path) -> pd.DataFrame:
-    pc = pd.read_csv(pc_path)
-    stellar = pd.read_csv(stellar_path, usecols=["kepid", "logg"])
+def load_source_population_bytes(pc_data: bytes, stellar_data: bytes) -> pd.DataFrame:
+    pc = pd.read_csv(io.BytesIO(pc_data), float_precision="round_trip")
+    stellar = pd.read_csv(
+        io.BytesIO(stellar_data),
+        usecols=["kepid", "logg"],
+        float_precision="round_trip",
+    )
     source = pd.merge(
         pc,
         stellar,
@@ -189,6 +259,29 @@ def load_source_population(pc_path: Path, stellar_path: Path) -> pd.DataFrame:
     return source
 
 
+def load_source_population(pc_path: Path, stellar_path: Path) -> pd.DataFrame:
+    pc_snapshot = read_file_snapshot(pc_path, "DR25 PC catalog")
+    stellar_snapshot = read_file_snapshot(stellar_path, "DR25 stellar catalog")
+    return load_source_population_bytes(pc_snapshot.data, stellar_snapshot.data)
+
+
+def _parse_nonnegative_integer_column(frame: pd.DataFrame, column: str) -> np.ndarray:
+    raw = frame[column].astype(str)
+    if raw.map(lambda value: re.fullmatch(r"0|[1-9][0-9]*", value) is not None).eq(
+        False
+    ).any():
+        raise RuntimeError(f"DR25 audit column is not exact non-negative integer text: {column}")
+    values = raw.map(int).to_numpy(dtype=np.int64)
+    return values
+
+
+def _parse_boolean_column(frame: pd.DataFrame, column: str) -> np.ndarray:
+    raw = frame[column].astype(str)
+    if not set(raw).issubset({"True", "False"}):
+        raise RuntimeError(f"DR25 audit column is not exact Boolean text: {column}")
+    return raw.eq("True").to_numpy(dtype=bool)
+
+
 def analyze_perturbation_branch(
     path: Path,
     branch: str,
@@ -205,35 +298,53 @@ def analyze_perturbation_branch(
         "perturbed_radius",
         "perturbed_teff",
     ]
-    audit = pd.read_csv(path, usecols=columns)
+    snapshot = read_file_snapshot(path, f"{branch} DR25 perturbation audit")
+    audit = pd.read_csv(
+        io.BytesIO(snapshot.data),
+        compression="gzip" if snapshot.path.name.endswith(".gz") else None,
+        usecols=columns,
+        dtype=str,
+        keep_default_na=False,
+    )
     if set(audit.branch.unique()) != {branch}:
         raise RuntimeError(f"Unexpected branch labels in {path}")
     if set(audit.measurement_error_mode.unique()) != {CORRECTED_MODE}:
         raise RuntimeError(f"Unexpected measurement-error mode in {path}")
-    trials = np.sort(audit.global_trial.unique())
+    global_trial = _parse_nonnegative_integer_column(audit, "global_trial")
+    source_rows = _parse_nonnegative_integer_column(audit, "source_row")
+    audit["global_trial"] = global_trial
+    audit["source_row"] = source_rows
+    trials = np.sort(np.unique(global_trial))
     if not np.array_equal(trials, np.arange(EXPECTED_TRIALS)):
         raise RuntimeError(f"Expected trials 0..{EXPECTED_TRIALS - 1} for {branch}")
     if audit.duplicated(["global_trial", "source_row"]).any():
         raise RuntimeError(f"Duplicate source row within a {branch} trial")
-    source_rows = audit.source_row.to_numpy(dtype=int)
     if source_rows.min() < 0 or source_rows.max() >= len(source):
         raise RuntimeError(f"Out-of-range source_row in {branch}")
     expected_names = source.kepoi_name.to_numpy(dtype=str)[source_rows]
     if not np.array_equal(audit.kepoi_name.to_numpy(dtype=str), expected_names):
         raise RuntimeError(f"Source-row identity mismatch in {branch}")
 
-    radius = audit.perturbed_radius.to_numpy(dtype=float)
-    instellation = audit.perturbed_flux.to_numpy(dtype=float)
-    teff = audit.perturbed_teff.to_numpy(dtype=float)
+    try:
+        radius = pd.to_numeric(audit.perturbed_radius, errors="raise").to_numpy(dtype=float)
+        instellation = pd.to_numeric(audit.perturbed_flux, errors="raise").to_numpy(dtype=float)
+        teff = pd.to_numeric(audit.perturbed_teff, errors="raise").to_numpy(dtype=float)
+    except (TypeError, ValueError) as error:
+        raise RuntimeError(f"Non-numeric DR25 perturbation values for {branch}") from error
+    if not finite_mask(radius, instellation, teff).all():
+        raise RuntimeError(f"Non-finite DR25 perturbation values for {branch}")
+    audit["perturbed_radius"] = radius
+    audit["perturbed_flux"] = instellation
+    audit["perturbed_teff"] = teff
     rectangle = rectangular_target_mask(radius, instellation, teff)
     earth_analog = earth_analog_target_mask(radius, instellation, teff)
     if np.any(earth_analog & ~rectangle):
         raise RuntimeError("Earth-analog mask is not a subset of its rectangle")
-    retained = audit.retained_by_active_policy.to_numpy(dtype=bool)
+    retained = _parse_boolean_column(audit, "retained_by_active_policy")
     if np.any(earth_analog & ~retained):
         raise RuntimeError("A target-domain row was removed by the active source policy")
 
-    trial_index = audit.global_trial.to_numpy(dtype=int)
+    trial_index = global_trial
     selected_counts = np.bincount(trial_index, minlength=EXPECTED_TRIALS)
     retained_counts = np.bincount(
         trial_index, weights=retained.astype(int), minlength=EXPECTED_TRIALS
@@ -317,7 +428,8 @@ def analyze_perturbation_branch(
         )
 
     summary = {
-        "input_sha256": sha256(path),
+        "input_sha256": snapshot.sha256,
+        "realization_count": EXPECTED_TRIALS,
         "audit_rows": int(len(audit)),
         "reliability_selected_before_domain": count_summary(selected_counts),
         "retained_in_source_domain": count_summary(retained_counts),
@@ -341,8 +453,19 @@ def main() -> None:
     args = parser.parse_args()
 
     output = args.out.resolve()
-    output.mkdir(parents=True, exist_ok=True)
-    source = load_source_population(args.pc_catalog, args.stellar_catalog)
+    if output.exists() and (not output.is_dir() or any(output.iterdir())):
+        raise RuntimeError("DR25 support output directory must be absent or empty")
+    pc_snapshot = read_file_snapshot(args.pc_catalog, "DR25 PC catalog")
+    stellar_snapshot = read_file_snapshot(args.stellar_catalog, "DR25 stellar catalog")
+    pc_provenance = pc_catalog_provenance_snapshot(pc_snapshot)
+    if pc_provenance["representation"] != "pinned_source_lf":
+        raise RuntimeError("Fresh DR25 audit requires the exact pinned LF PC catalog")
+    if (
+        stellar_snapshot.sha256 != STELLAR_CATALOG_SHA256
+        or stellar_snapshot.size_bytes != STELLAR_CATALOG_SIZE_BYTES
+    ):
+        raise RuntimeError("Fresh DR25 audit requires the exact locked stellar catalog")
+    source = load_source_population_bytes(pc_snapshot.data, stellar_snapshot.data)
     radius = source.gaia_iso_prad.to_numpy(dtype=float)
     instellation = source.gaia_iso_insol.to_numpy(dtype=float)
     teff = source.teff.to_numpy(dtype=float)
@@ -452,18 +575,19 @@ def main() -> None:
             "5300--6000 K target."
         ),
         "inputs": {
-            "pc_catalog": pc_catalog_provenance(args.pc_catalog),
+            "pc_catalog": pc_provenance,
             "stellar_catalog": {
-                "path": str(args.stellar_catalog),
-                "sha256": sha256(args.stellar_catalog),
+                "filename": stellar_snapshot.path.name,
+                "sha256": stellar_snapshot.sha256,
+                "size_bytes": stellar_snapshot.size_bytes,
             },
             "constant_perturbation_audit": {
-                "path": str(args.constant_audit),
-                "sha256": sha256(args.constant_audit),
+                "filename": args.constant_audit.name,
+                "sha256": branch_summaries["constant"]["input_sha256"],
             },
             "zero_perturbation_audit": {
-                "path": str(args.zero_audit),
-                "sha256": sha256(args.zero_audit),
+                "filename": args.zero_audit.name,
+                "sha256": branch_summaries["zero"]["input_sha256"],
             },
         },
         "source_domain_containment": source_containment,
@@ -482,18 +606,22 @@ def main() -> None:
         ),
     }
 
-    result_path = output / "dr25_support_audit.json"
+    public_output = output / "public"
+    private_output = output / "private"
+    public_output.mkdir(parents=True)
+    private_output.mkdir(parents=True)
+    result_path = public_output / "dr25_support_audit.json"
     with result_path.open("w", encoding="utf-8", newline="\n") as handle:
-        json.dump(result, handle, indent=2)
+        json.dump(result, handle, indent=2, allow_nan=False)
         handle.write("\n")
 
-    trial_path = output / "dr25_target_counts_by_trial.csv"
+    trial_path = public_output / "dr25_target_counts_by_trial.csv"
     with trial_path.open("w", encoding="utf-8", newline="\n") as handle:
         pd.concat(trial_tables, ignore_index=True).to_csv(
             handle, index=False, lineterminator="\n"
         )
 
-    frequency_path = output / "dr25_perturbed_candidate_frequency.csv"
+    frequency_path = private_output / "dr25_perturbed_candidate_frequency.csv"
     with frequency_path.open("w", encoding="utf-8", newline="\n") as handle:
         pd.concat(frequency_tables, ignore_index=True).to_csv(
             handle, index=False, lineterminator="\n"
@@ -516,17 +644,17 @@ def main() -> None:
     near["radius_0p9_1p1"] = radius_ok[near.index]
     near["fixed_instellation_0p9_1p1"] = fixed_flux_ok[near.index]
     near["conservative_hz_instellation_intersection"] = hz_flux_ok[near.index]
-    near_path = output / "dr25_nominal_near_support.csv"
+    near_path = private_output / "dr25_nominal_near_support.csv"
     with near_path.open("w", encoding="utf-8", newline="\n") as handle:
         near.to_csv(handle, index=False, lineterminator="\n")
 
-    manifest_path = output / "SHA256SUMS_dr25_support.txt"
-    generated = [result_path, trial_path, frequency_path, near_path]
+    manifest_path = public_output / PUBLIC_MANIFEST_NAME
+    generated = [result_path, trial_path]
     with manifest_path.open("w", encoding="utf-8", newline="\n") as handle:
         handle.write(
             "".join(f"{sha256(path)}  {path.name}\n" for path in generated)
         )
-    print(json.dumps(result, indent=2))
+    print(json.dumps(result, indent=2, allow_nan=False))
 
 
 if __name__ == "__main__":

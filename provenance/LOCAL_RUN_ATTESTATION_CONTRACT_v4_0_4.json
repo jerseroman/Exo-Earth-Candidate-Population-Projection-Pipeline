@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "contract_id": "local-production-run-v4.0.4",
+  "policy": {
+    "start_signature_namespace": "exoearth-local-production-start-v4.0.4",
+    "completion_signature_namespace": "exoearth-local-production-completion-v4.0.4",
+    "nonce_bytes": 32,
+    "required_distinct_signers": 2,
+    "execution_controller": "verify_local_run_attestation.execute_plan",
+    "command_execution": "subprocess_run_exact_argv_env_cwd_shell_false",
+    "require_clean_exact_private_source": true,
+    "require_archive_extracted_execution_tree": true,
+    "require_exact_output_file_set": true,
+    "require_shell_false": true,
+    "public_report_disclosure": "hashes_status_counts_and_timings_only",
+    "controller_sha256": "9c63468713c1eebd4023ecb1bbd7ca91ce6f7c9fa8f9e0c58017daf446bda121",
+    "allowed_execution_environments": [
+      "local_ubuntu_22_04_wsl2"
+    ]
+  },
+  "attestation_signers": [
+    {
+      "signer_id": "v404-local-attestor-a",
+      "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF6o39g15REJBdvRMh21U9DUs+spMaeeIVw7seFaqWwi v4.0.4-local-attestor-a"
+    },
+    {
+      "signer_id": "v404-local-attestor-b",
+      "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA3LslBc9zXOtiUoZedp9hzUO67FiV3ny8VJBOHXHouP v4.0.4-local-attestor-b"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "v4.0.4-local-production-pending",
+      "role": "qualification_candidate",
+      "qualification_eligible": true,
+      "production_accepted": false,
+      "source_lock": {
+        "public_repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline",
+        "private_repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
+        "commit": null,
+        "tree": null,
+        "archive_sha256": null,
+        "archive_size_bytes": null,
+        "git_executable": null,
+        "ssh_keygen_executable": null
+      },
+      "command_plan": null,
+      "numerical_runtime_manifest": null,
+      "accepted_report": null,
+      "note": "Fail closed. Populate the exact public/private source identity, tool bytes, command-plan bytes, and numerical-runtime bytes before execution. Set production_accepted only after the resulting public report is independently reviewed and hash-locked here."
+    }
+  ]
+}

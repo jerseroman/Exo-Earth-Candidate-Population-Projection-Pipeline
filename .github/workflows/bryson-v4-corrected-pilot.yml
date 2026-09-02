@@ -10,6 +10,14 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  NPY_DISABLE_CPU_FEATURES: AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL
+  OPENBLAS_NUM_THREADS: "1"
+  OMP_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  NUMEXPR_NUM_THREADS: "1"
+  PYTHONHASHSEED: "0"
+
 jobs:
   prepare-inputs:
     # Licensing boundary: this job fetches or packages third-party research inputs.
@@ -121,14 +129,15 @@ jobs:
 
       - name: Install pinned numerical environment
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install \
-            'numpy==1.23.5' \
-            'scipy==1.10.1' \
-            'pandas==1.5.3' \
-            'astropy==5.3.4' \
-            'emcee==3.1.6'
-          python -m pip freeze | sort > numerical_environment.txt
+          python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
+          python -m pip check
+          python "$GITHUB_WORKSPACE/scripts/verify_numerical_runtime.py" --output numerical_runtime.json
+          {
+            cat numerical_runtime.json
+            python --version
+            python -m pip --version
+            python -m pip freeze --all | sort
+          } > numerical_environment.txt
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -161,7 +170,7 @@ jobs:
           OUT="$GITHUB_WORKSPACE/results/bryson-v4-pilot-$BRANCH-$SEED_FAMILY"
           mkdir -p "$OUT"
           cp numerical_environment.txt "$OUT/numerical_environment.txt"
-          python research/bryson-joint-posterior/run_hab2_joint_posterior.py \
+          python "$GITHUB_WORKSPACE/research/bryson-joint-posterior/run_hab2_joint_posterior.py" \
             --bryson-root /tmp/DR25-occurrence-public \
             --stellar-catalog /tmp/DR25-occurrence-public/stellarCatalogs/dr25_stellar_berger2020_clean_hab2.txt \
             --pc-catalog /tmp/DR25-occurrence-public/insolation/koiCatalogs/PCs_dr25_hab2.csv \
@@ -212,7 +221,11 @@ jobs:
         with:
           python-version: '3.10'
 
-      - run: python -m pip install 'numpy==1.23.5' 'pandas==1.5.3'
+      - name: Install hash-locked aggregation environment
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
+          python -m pip check
+          python "$GITHUB_WORKSPACE/scripts/verify_numerical_runtime.py"
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:

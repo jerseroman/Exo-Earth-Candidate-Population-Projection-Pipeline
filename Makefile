@@ -1,32 +1,46 @@
-.PHONY: verify scope metadata licenses data-locks manifests tests optimized-tests public-package
+.PHONY: verify dependencies workflows scope metadata licenses data-locks manifests tests optimized-tests release-acceptance public-package
 
-verify: scope metadata licenses data-locks manifests tests optimized-tests
+PYTHON ?= python
+
+verify: dependencies workflows scope metadata licenses data-locks manifests tests optimized-tests
+
+dependencies:
+	$(PYTHON) scripts/verify_dependency_lock.py
+	$(PYTHON) -m pip check
+
+workflows:
+	$(PYTHON) scripts/verify_workflow_security.py
 
 scope:
-	python scripts/audit_repository_scope.py
+	$(PYTHON) scripts/audit_repository_scope.py
 
 metadata:
-	python scripts/verify_release_metadata.py
+	$(PYTHON) scripts/verify_release_metadata.py
 
 licenses:
-	python scripts/verify_license_policy.py
+	$(PYTHON) scripts/verify_license_policy.py
 
 data-locks:
-	python scripts/verify_locked_inputs.py
+	$(PYTHON) scripts/verify_locked_inputs.py
 
 manifests:
-	python scripts/verify_frozen_manifests.py
-	python scripts/build_manifest.py --check
+	$(PYTHON) scripts/verify_frozen_manifests.py
+	$(PYTHON) scripts/build_manifest.py --check
 
 tests:
-	python -m unittest discover -s research/bryson-joint-posterior -p "test_*.py" -v
-	python -m unittest discover -s research/jj-host-export -p "test_*.py" -v
-	python -m unittest discover -s research/v4-validation -p "test_*.py" -v
+	$(PYTHON) -m unittest discover -s research/bryson-joint-posterior -p "test_*.py" -v
+	$(PYTHON) -m unittest discover -s research/jj-host-export -p "test_*.py" -v
+	$(PYTHON) -m unittest discover -s research/jj-tams-convergence -p "test_*.py" -v
+	$(PYTHON) -m unittest discover -s research/v4-validation -p "test_*.py" -v
 
 optimized-tests:
-	python -O -m unittest discover -s research/bryson-joint-posterior -p "test_*.py" -v
-	python -O -m unittest discover -s research/jj-host-export -p "test_*.py" -v
-	python -O -m unittest discover -s research/v4-validation -p "test_*.py" -v
+	$(PYTHON) -O -m unittest discover -s research/bryson-joint-posterior -p "test_*.py" -v
+	$(PYTHON) -O -m unittest discover -s research/jj-host-export -p "test_*.py" -v
+	$(PYTHON) -O -m unittest discover -s research/jj-tams-convergence -p "test_*.py" -v
+	$(PYTHON) -O -m unittest discover -s research/v4-validation -p "test_*.py" -v
 
-public-package: verify
-	python scripts/build_public_package.py
+release-acceptance:
+	$(PYTHON) scripts/verify_v404_release_acceptance.py
+
+public-package: verify release-acceptance
+	$(PYTHON) scripts/build_public_package.py

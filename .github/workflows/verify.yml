@@ -3,30 +3,212 @@ name: Verify standalone v4 software
 on:
   push:
     branches: [main]
+    tags: ["v4.0.4"]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+env:
+  NPY_DISABLE_CPU_FEATURES: AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL
+  OPENBLAS_NUM_THREADS: "1"
+  OMP_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  NUMEXPR_NUM_THREADS: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONHASHSEED: "0"
+
 jobs:
   verify:
+    permissions:
+      contents: read
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Bind v4.0.4 tag to exact main lineage
+        if: github.event_name == 'push' && github.repository == 'jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline' && github.ref == 'refs/tags/v4.0.4' && github.ref_type == 'tag' && github.ref_name == 'v4.0.4'
+        run: |
+          test "$GITHUB_EVENT_NAME" = "push"
+          test "$GITHUB_SERVER_URL" = "https://github.com"
+          test "$GITHUB_REPOSITORY" = "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline"
+          test "$GITHUB_REF" = "refs/tags/v4.0.4"
+          test "$GITHUB_REF_TYPE" = "tag"
+          test "$GITHUB_REF_NAME" = "v4.0.4"
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git remote get-url origin)" = "https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline.git"
+          git fetch --force --no-tags origin \
+            '+refs/tags/v4.0.4:refs/tags/v4.0.4' \
+            '+refs/heads/main:refs/remotes/origin/main'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse --verify 'refs/tags/v4.0.4^{commit}')" = "$GITHUB_SHA"
+          git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.10"
           cache: pip
       - name: Install declared compatible dependencies
-        run: python -m pip install -r requirements.txt
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
+          python -m pip check
+          python "$GITHUB_WORKSPACE/scripts/verify_numerical_runtime.py"
       - name: Run software-only acceptance suite
         run: make verify
       - name: Build deterministic license-cleared source package
+        if: github.event_name == 'push' && github.repository == 'jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline' && github.ref == 'refs/tags/v4.0.4' && github.ref_type == 'tag' && github.ref_name == 'v4.0.4'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          mkdir -p dist
+          gh release download v4.0.4 \
+            --pattern 'Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip' \
+            --pattern 'Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256' \
+            --dir dist
           make public-package
-          archive="dist/$(awk 'NF == 2 {print $2}' dist/PUBLIC_SHA256SUMS)"
-          test -f "$archive"
-          python scripts/verify_public_package_roundtrip.py \
-            --archive "$archive"
+          test -f dist/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip
+          test -f dist/PUBLIC_SHA256SUMS
+          python -I -B "$GITHUB_WORKSPACE/scripts/verify_public_package_roundtrip.py" \
+            --archive "$GITHUB_WORKSPACE/dist/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip" \
+            --source-checksum "$GITHUB_WORKSPACE/dist/PUBLIC_SHA256SUMS" \
+            --results-archive "$GITHUB_WORKSPACE/dist/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip" \
+            --results-checksum "$GITHUB_WORKSPACE/dist/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256"
+      - name: Prepare fresh exact v4.0.4 four-file release envelope
+        if: github.event_name == 'push' && github.repository == 'jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline' && github.ref == 'refs/tags/v4.0.4' && github.ref_type == 'tag' && github.ref_name == 'v4.0.4'
+        run: |
+          STAGE="$RUNNER_TEMP/v404-source-release-stage"
+          test -d "$RUNNER_TEMP"
+          test ! -L "$RUNNER_TEMP"
+          test ! -e "$STAGE"
+          test ! -L "$STAGE"
+          mkdir -m 0700 "$STAGE"
+          test -d "$GITHUB_WORKSPACE/dist"
+          test ! -L "$GITHUB_WORKSPACE/dist"
+          test -f "$GITHUB_WORKSPACE/dist/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip"
+          test ! -L "$GITHUB_WORKSPACE/dist/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip"
+          test -f "$GITHUB_WORKSPACE/dist/PUBLIC_SHA256SUMS"
+          test ! -L "$GITHUB_WORKSPACE/dist/PUBLIC_SHA256SUMS"
+          test -f "$GITHUB_WORKSPACE/dist/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip"
+          test ! -L "$GITHUB_WORKSPACE/dist/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip"
+          test -f "$GITHUB_WORKSPACE/dist/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256"
+          test ! -L "$GITHUB_WORKSPACE/dist/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256"
+          cp --no-dereference --no-clobber \
+            "$GITHUB_WORKSPACE/dist/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip" \
+            "$STAGE/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip"
+          cp --no-dereference --no-clobber \
+            "$GITHUB_WORKSPACE/dist/PUBLIC_SHA256SUMS" \
+            "$STAGE/PUBLIC_SHA256SUMS"
+          cp --no-dereference --no-clobber \
+            "$GITHUB_WORKSPACE/dist/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip" \
+            "$STAGE/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip"
+          cp --no-dereference --no-clobber \
+            "$GITHUB_WORKSPACE/dist/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256" \
+            "$STAGE/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256"
+          test -d "$STAGE"
+          test ! -L "$STAGE"
+          test -f "$STAGE/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip"
+          test ! -L "$STAGE/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip"
+          test -f "$STAGE/PUBLIC_SHA256SUMS"
+          test ! -L "$STAGE/PUBLIC_SHA256SUMS"
+          test -f "$STAGE/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip"
+          test ! -L "$STAGE/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip"
+          test -f "$STAGE/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256"
+          test ! -L "$STAGE/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256"
+          find -P "$STAGE" -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort > "$RUNNER_TEMP/v404-source-release-stage.inventory"
+          printf '%s\n' Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256 PUBLIC_SHA256SUMS exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip | cmp -s - "$RUNNER_TEMP/v404-source-release-stage.inventory"
+      - name: Stage exact v4.0.4 four-file release envelope
+        if: github.event_name == 'push' && github.repository == 'jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline' && github.ref == 'refs/tags/v4.0.4' && github.ref_type == 'tag' && github.ref_name == 'v4.0.4'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: v4.0.4-four-file-release-envelope
+          path: |
+            ${{ runner.temp }}/v404-source-release-stage/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip
+            ${{ runner.temp }}/v404-source-release-stage/PUBLIC_SHA256SUMS
+            ${{ runner.temp }}/v404-source-release-stage/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip
+            ${{ runner.temp }}/v404-source-release-stage/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-source-release-assets:
+    if: github.event_name == 'push' && github.repository == 'jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline' && github.ref == 'refs/tags/v4.0.4' && github.ref_type == 'tag' && github.ref_name == 'v4.0.4'
+    needs: verify
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Install locked dependencies for publisher verification
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
+          python -m pip check
+          python "$GITHUB_WORKSPACE/scripts/verify_numerical_runtime.py"
+      - name: Require a fresh four-file release envelope destination
+        run: |
+          RECEIVED="$RUNNER_TEMP/v404-source-release-received"
+          test -d "$RUNNER_TEMP"
+          test ! -L "$RUNNER_TEMP"
+          test ! -e "$RECEIVED"
+          test ! -L "$RECEIVED"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: v4.0.4-four-file-release-envelope
+          path: ${{ runner.temp }}/v404-source-release-received
+      - name: Verify exact four-file release envelope inventory
+        run: |
+          RECEIVED="$RUNNER_TEMP/v404-source-release-received"
+          test -d "$RECEIVED"
+          test ! -L "$RECEIVED"
+          test -f "$RECEIVED/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip"
+          test ! -L "$RECEIVED/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip"
+          test -f "$RECEIVED/PUBLIC_SHA256SUMS"
+          test ! -L "$RECEIVED/PUBLIC_SHA256SUMS"
+          test -f "$RECEIVED/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip"
+          test ! -L "$RECEIVED/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip"
+          test -f "$RECEIVED/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256"
+          test ! -L "$RECEIVED/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256"
+          find -P "$RECEIVED" -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort > "$RUNNER_TEMP/v404-source-release-received.inventory"
+          printf '%s\n' Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256 PUBLIC_SHA256SUMS exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip | cmp -s - "$RUNNER_TEMP/v404-source-release-received.inventory"
+      - name: Reverify full v4.0.4 package roundtrip without write credentials
+        run: |
+          python -I -B "$GITHUB_WORKSPACE/scripts/verify_public_package_roundtrip.py" \
+            --archive "$RUNNER_TEMP/v404-source-release-received/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip" \
+            --source-checksum "$RUNNER_TEMP/v404-source-release-received/PUBLIC_SHA256SUMS" \
+            --results-archive "$RUNNER_TEMP/v404-source-release-received/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip" \
+            --results-checksum "$RUNNER_TEMP/v404-source-release-received/Exo-Earth-Candidate-Population-Projection-Pipeline-v4.0.4-results.zip.sha256"
+      - name: Rebind v4.0.4 tag to exact main lineage before publication
+        run: |
+          test "$GITHUB_EVENT_NAME" = "push"
+          test "$GITHUB_SERVER_URL" = "https://github.com"
+          test "$GITHUB_REPOSITORY" = "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline"
+          test "$GITHUB_REF" = "refs/tags/v4.0.4"
+          test "$GITHUB_REF_TYPE" = "tag"
+          test "$GITHUB_REF_NAME" = "v4.0.4"
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git remote get-url origin)" = "https://github.com/jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline.git"
+          git fetch --force --no-tags origin \
+            '+refs/tags/v4.0.4:refs/tags/v4.0.4' \
+            '+refs/heads/main:refs/remotes/origin/main'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse --verify 'refs/tags/v4.0.4^{commit}')" = "$GITHUB_SHA"
+          git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main
+      - name: Attach and recheck exact v4.0.4 source release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test ! -e "$RUNNER_TEMP/v404-source-release-recheck"
+          test ! -L "$RUNNER_TEMP/v404-source-release-recheck"
+          python -I -B "$GITHUB_WORKSPACE/scripts/verify_public_package_roundtrip.py" \
+            --publish-v404-source-assets \
+            --archive "$RUNNER_TEMP/v404-source-release-received/exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip" \
+            --source-checksum "$RUNNER_TEMP/v404-source-release-received/PUBLIC_SHA256SUMS" \
+            --download-dir "$RUNNER_TEMP/v404-source-release-recheck"

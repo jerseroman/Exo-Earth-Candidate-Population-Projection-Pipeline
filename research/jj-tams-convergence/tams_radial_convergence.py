@@ -74,6 +74,26 @@ def git(args, cwd=None):
     return subprocess.check_output(["git", *args], cwd=cwd, text=True).strip()
 
 
+def verify_jj_worktree(jj_root):
+    """Reject source edits and untracked executable shadow files."""
+    for arguments in (["diff", "--quiet", "HEAD", "--"],
+                      ["diff", "--cached", "--quiet", "HEAD", "--"]):
+        result = subprocess.run(["git", *arguments], cwd=jj_root, check=False)
+        if result.returncode != 0:
+            raise RuntimeError("JJ tracked source differs from the pinned commit")
+    untracked = git(["ls-files", "--others", "--exclude-standard"], cwd=jj_root)
+    allowed_prefix = "jjmodel/input/isochrones/Padova/"
+    unexpected = [
+        item for item in untracked.splitlines()
+        if item and not item.startswith(allowed_prefix)
+    ]
+    if unexpected:
+        raise RuntimeError(
+            "JJ checkout contains untracked files outside the locked Padova "
+            f"input tree: {unexpected[:5]!r}"
+        )
+
+
 def power_integral(lo, hi, p):
     return (hi ** (p + 1) - lo ** (p + 1)) / (p + 1)
 
@@ -160,6 +180,7 @@ def main():
     actual_sha = git(["rev-parse", "HEAD"], cwd=jj_root)
     if actual_sha != JJ_SHA:
         raise RuntimeError(f"JJ commit mismatch: {actual_sha} != {JJ_SHA}")
+    verify_jj_worktree(jj_root)
 
     sys.path.insert(0, str(jj_root))
     os.chdir(run_dir)

@@ -2,6 +2,7 @@
 """Immutable PARSEC-TAMS reference loader for the G-dwarf host provider."""
 from pathlib import Path
 import hashlib
+import io
 import numpy as np
 
 REFERENCE_PATH = Path(__file__).resolve().parent / 'reference-data' / 'tams_parsec_danxhuber.txt'
@@ -15,7 +16,7 @@ def load_full_tams_table():
     digest = hashlib.sha256(raw).hexdigest()
     if digest != EXPECTED_SHA256:
         raise RuntimeError(f'TAMS reference checksum mismatch: {digest} != {EXPECTED_SHA256}')
-    data = np.loadtxt(REFERENCE_PATH, dtype=float)
+    data = np.loadtxt(io.BytesIO(raw), dtype=float)
     if data.shape != (EXPECTED_ROWS, 2):
         raise RuntimeError(f'Unexpected TAMS table shape: {data.shape}')
     return data[:,0], data[:,1]

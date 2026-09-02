@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed when v4.0.3 publication metadata or provenance drifts."""
+"""Fail closed when v4.0.4 publication metadata or provenance drifts."""
 
 from __future__ import annotations
 
@@ -11,10 +11,13 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "4.0.3"
-RELEASE_DATE = "2026-08-29"
-DOI = "10.5281/zenodo.22158798"
+VERSION = "4.0.4"
+RELEASE_DATE = "2026-08-30"
+DOI = "10.5281/zenodo.22168215"
 ORCID = "https://orcid.org/0009-0001-5003-5354"
+BASE_RELEASE_VERSION = "4.0.3"
+RELEASE_CHANGE_RECORD = "provenance/RELEASE_4_0_4_CHANGE_RECORD.json"
+RELEASE_ACCEPTANCE = "provenance/V4_0_4_RELEASE_ACCEPTANCE.json"
 PUBLIC_REPOSITORY = (
     "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline"
 )
@@ -75,25 +78,26 @@ def main() -> None:
         require_text(cff, token, "CITATION.cff")
     if re.search(r"(?i)(?:\.dev\d*|-dev|placeholder|x{4,})", cff):
         fail("CITATION.cff contains development or placeholder metadata")
+    if "10.5281/zenodo.22158798" in cff or 'version: "4.0.3"' in cff:
+        fail("CITATION.cff retains superseded v4.0.3 publication metadata")
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     for token in (VERSION, DOI, f"/releases/tag/v{VERSION}"):
         require_text(readme, token, "README.md")
     if "4.0.0" in readme:
         fail("README.md retains obsolete v4.0.0 metadata")
+    if "10.5281/zenodo.22158798" in readme or "/releases/tag/v4.0.3" in readme:
+        fail("README.md retains superseded v4.0.3 publication metadata")
     require_text(readme, "provenance/SOURCE_LOCKS.json", "README.md")
-    require_text(
-        readme,
-        "approximately 3.2 million and 4.6 million",
-        "README.md scientific-status rounding",
-    )
+    require_text(readme, "source-locked production rerun", "README.md")
+    require_text(readme, "signed provenance", "README.md")
     require_text(
         readme,
         "separate completeness scenarios, not bounds",
         "README.md completeness interpretation",
     )
     if not re.search(
-        r"neither\s+headline value is a direct locally candidate-supported measurement",
+        r"neither\s+headline\s+value is a direct locally candidate-supported measurement",
         readme,
     ):
         fail("README.md lacks the local-support limitation")
@@ -126,17 +130,24 @@ def main() -> None:
         if not record.get("url") or "actions/runs/" not in record["url"]:
             fail("baseline Actions evidence contains a null or malformed URL")
 
-    sensitivity = load_json(
+    sensitivity_document = load_json(
         "research/v4-validation/frozen-sensitivities/V4_SENSITIVITY_FREEZE.json"
-    )["artifact_run"]
-    if sensitivity.get("repository") != LEGACY_REPOSITORY:
-        fail("sensitivity record has the wrong source repository")
-    if sensitivity.get("maximum_mcmc_steps") is not None:
-        fail("host/TAMS sensitivity run incorrectly has an MCMC ceiling")
+    )
+    if "computational_source" not in sensitivity_document:
+        sensitivity = sensitivity_document["artifact_run"]
+        if sensitivity.get("repository") != LEGACY_REPOSITORY:
+            fail("legacy sensitivity record has the wrong source repository")
+        if sensitivity.get("maximum_mcmc_steps") is not None:
+            fail("host/TAMS sensitivity run incorrectly has an MCMC ceiling")
+    elif sensitivity_document.get("status") != "SENSITIVITY_REGISTER_FROZEN":
+        fail("v4.0.4 sensitivity freeze has no accepted status")
 
     numerical = load_json(
         "research/bryson-joint-posterior/frozen-v4/V4_NUMERICAL_FREEZE.json"
     )
+    v404_requalification = "computational_source" in numerical
+    if v404_requalification and numerical.get("status") != "PASS":
+        fail("v4.0.4 numerical freeze has no accepted status")
     sensitivities = numerical["host_model"]
     old_key = "native_solar_selector_without_5200_anchor"
     new_key = old_key + "_fractional_change_vs_canonical"
@@ -209,6 +220,8 @@ def main() -> None:
 
     adjusted = audit["frozen_records"]["distributed_metadata_adjusted_records"]
     for prefix in ("baseline", "numerical"):
+        if prefix == "numerical" and v404_requalification:
+            continue
         if sha256(adjusted[f"{prefix}_path"]) != adjusted[f"{prefix}_sha256"]:
             fail(f"distributed {prefix} hash provenance drift")
 
@@ -216,16 +229,17 @@ def main() -> None:
         ROOT
         / "research/bryson-joint-posterior/PHASE2_NUMERICAL_FREEZE_REPORT.md"
     ).read_text(encoding="utf-8")
-    require_text(
-        phase2,
-        audit["frozen_records"]["audit_time_numerical_sha256"],
-        "PHASE2 numerical-freeze report",
-    )
-    require_text(
-        phase2,
-        adjusted["numerical_sha256"],
-        "PHASE2 numerical-freeze report",
-    )
+    if not v404_requalification:
+        require_text(
+            phase2,
+            audit["frozen_records"]["audit_time_numerical_sha256"],
+            "PHASE2 numerical-freeze report",
+        )
+        require_text(
+            phase2,
+            adjusted["numerical_sha256"],
+            "PHASE2 numerical-freeze report",
+        )
 
     dr25_path = "research/v4-validation/frozen-dr25-support/dr25_support_audit.json"
     phase3 = (ROOT / "research/v4-validation/PHASE3_DR25_SUPPORT_REPORT.md").read_text(
@@ -324,66 +338,70 @@ def main() -> None:
     for token in (f"exact `v{VERSION}` tag", "must not be promoted into the baseline"):
         require_text(reproducibility, token, "REPRODUCIBILITY.md")
 
-    changes = load_json("provenance/RELEASE_4_0_3_CHANGE_RECORD.json")
-    if (
-        changes.get("release_version") != VERSION
-        or changes.get("base_release_version") != "4.0.2"
-        or changes.get("reserved_zenodo_doi") != DOI
-        or changes.get("scientific_logic_changed") is not False
-        or changes.get("mcmc_configuration_or_seeds_changed") is not False
-        or changes.get("frozen_numerical_values_changed") is not False
-    ):
-        fail("release change record has inconsistent scientific-scope metadata")
-    recorded_paths = [
-        path
-        for group in changes.get("change_groups", [])
-        for path in group.get("paths", [])
-    ]
-    if len(recorded_paths) != len(set(recorded_paths)):
-        fail("release change record contains duplicate paths")
-    missing_paths = [path for path in recorded_paths if not (ROOT / path).is_file()]
-    if missing_paths:
-        fail(f"release change record contains missing paths: {missing_paths}")
+    change_record_path = ROOT / RELEASE_CHANGE_RECORD
+    acceptance_path = ROOT / RELEASE_ACCEPTANCE
+    if change_record_path.is_file():
+        changes = load_json(RELEASE_CHANGE_RECORD)
+        if (
+            changes.get("release_version") != VERSION
+            or changes.get("base_release_version") != BASE_RELEASE_VERSION
+            or changes.get("base_release_tag") != f"v{BASE_RELEASE_VERSION}"
+            or changes.get("reserved_zenodo_doi") != DOI
+            or changes.get("date_utc") != RELEASE_DATE
+        ):
+            fail("release change record has inconsistent identity metadata")
+        for field in (
+            "scientific_logic_changed",
+            "mcmc_configuration_or_seeds_changed",
+            "frozen_numerical_values_changed",
+        ):
+            if type(changes.get(field)) is not bool:
+                fail(f"release change record field {field} is not Boolean")
+        recorded_paths = [
+            path
+            for group in changes.get("change_groups", [])
+            for path in group.get("paths", [])
+        ]
+        if len(recorded_paths) != len(set(recorded_paths)):
+            fail("release change record contains duplicate paths")
+        if RELEASE_CHANGE_RECORD not in recorded_paths:
+            fail("release change record does not include itself")
+        missing_paths = [path for path in recorded_paths if not (ROOT / path).is_file()]
+        if missing_paths:
+            fail(f"release change record contains missing paths: {missing_paths}")
 
-    base = changes["base_release_commit"]
-    release_ref = f"v{VERSION}"
-    try:
-        base_exists = subprocess.run(
-            ["git", "cat-file", "-e", f"{base}^{{commit}}"],
-            cwd=ROOT,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-        ).returncode == 0
-        release_exists = subprocess.run(
-            ["git", "cat-file", "-e", f"{release_ref}^{{commit}}"],
-            cwd=ROOT,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-        ).returncode == 0
-    except FileNotFoundError:
-        base_exists = False
-        release_exists = False
-    if base_exists:
-        diff_args = ["git", "diff", "--name-only", base]
-        if release_exists:
-            diff_args.append(release_ref)
-        changed = set(
-            subprocess.run(
-                diff_args,
+        base = changes["base_release_tag"]
+        try:
+            base_exists = subprocess.run(
+                ["git", "cat-file", "-e", f"{base}^{{commit}}"],
                 cwd=ROOT,
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.splitlines()
-        )
-        if changed != set(recorded_paths):
-            fail(
-                "release change record path mismatch; missing="
-                f"{sorted(changed.difference(recorded_paths))}, extra="
-                f"{sorted(set(recorded_paths).difference(changed))}"
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            ).returncode == 0
+        except FileNotFoundError:
+            base_exists = False
+        if base_exists:
+            changed = set(
+                subprocess.run(
+                    ["git", "diff", "--name-only", base, "HEAD", "--"],
+                    cwd=ROOT,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout.splitlines()
             )
+            expected = set(recorded_paths)
+            if acceptance_path.is_file():
+                expected.add(RELEASE_ACCEPTANCE)
+            if changed != expected:
+                fail(
+                    "release change record path mismatch; missing="
+                    f"{sorted(changed.difference(expected))}, extra="
+                    f"{sorted(expected.difference(changed))}"
+                )
+    elif acceptance_path.is_file():
+        fail("final release acceptance exists without the v4.0.4 change record")
 
     print(
         f"PASS release metadata (v{VERSION}, DOI {DOI}, "

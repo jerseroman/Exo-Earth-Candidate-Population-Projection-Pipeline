@@ -6,6 +6,14 @@ on:
 permissions:
   contents: read
 
+env:
+  NPY_DISABLE_CPU_FEATURES: AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL
+  OPENBLAS_NUM_THREADS: "1"
+  OMP_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  NUMEXPR_NUM_THREADS: "1"
+  PYTHONHASHSEED: "0"
+
 jobs:
   convergence:
     # Licensing boundary: third-party model acquisition and exports stay private.
@@ -26,15 +34,17 @@ jobs:
 
       - name: Install pinned-compatible dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install 'numpy==1.23.5' 'scipy==1.10.1' 'astropy==5.3.4' 'matplotlib==3.7.5' 'fast-histogram==0.14' 'requests>=2.28'
+          python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
+          python -m pip check
+          python "$GITHUB_WORKSPACE/scripts/verify_numerical_runtime.py" \
+            --output results/tams-convergence/NUMERICAL_RUNTIME_POLICY.json
 
       - name: Checkout official JJ model at pinned commit
         run: |
           git clone https://github.com/askenja/jjmodel.git /tmp/jjmodel-src
           cd /tmp/jjmodel-src
           git checkout 2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54
-          python -m pip install -e .
+          python -m pip install --no-deps --no-build-isolation -e .
           git rev-parse HEAD
 
       - name: Download official Padova/PARSEC JJ isochrones
@@ -64,11 +74,16 @@ jobs:
             cp /tmp/jjmodel-src/jjmodel/tutorials/tutorial2/parameters "$rundir/parameters"
             cp /tmp/jjmodel-src/jjmodel/tutorials/tutorial2/sfrd_peaks_parameters "$rundir/sfrd_peaks_parameters"
             cp "$rundir/parameters" "$outdir/parameters.original"
+            cp "$rundir/sfrd_peaks_parameters" "$outdir/sfrd_peaks_parameters"
             sed -E -i 's/^(Rmin[[:space:]]+)4([[:space:]])/\14.0\2/' "$rundir/parameters"
             sed -E -i 's/^(Rmax[[:space:]]+)14([[:space:]])/\114.0\2/' "$rundir/parameters"
             sed -E -i "s/^(dR[[:space:]]+)[0-9.]+([[:space:]])/\\1${dr}\\2/" "$rundir/parameters"
+            # Limit only runtime process parallelism to the two cores exposed
+            # by the hosted runner; all three science configurations are unchanged.
+            sed -E -i 's/^(nprocess[[:space:]]+)4([[:space:]])/\12\2/' "$rundir/parameters"
+            grep -Eq '^nprocess[[:space:]]+2[[:space:]]' "$rundir/parameters"
             cp "$rundir/parameters" "$outdir/parameters.runtime"
-            grep -E '^(Rmin|Rmax|dR)[[:space:]]' "$rundir/parameters"
+            grep -E '^(nprocess|Rmin|Rmax|dR)[[:space:]]' "$rundir/parameters"
             python research/jj-tams-convergence/tams_radial_convergence.py \
               --jj-root /tmp/jjmodel-src \
               --run-dir "$rundir" \
@@ -91,6 +106,7 @@ jobs:
           - Purpose: publication-gating radial convergence of the FINAL TAMS host provider, not the legacy logg proxy.
           - JJ code: `askenja/jjmodel`, commit `2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54` (v1.0.1).
           - Base science configuration: official JJ tutorial2 parameters, SFH/IMF/AMR, thin+thick disk, Padova/PARSEC multiband isochrones.
+          - Runtime process parallelism is fixed at `nprocess=2` for the hosted runner and is applied identically to every radial-resolution experiment; it does not alter the scientific configuration.
           - Only numerical resolution differs among experiments: dR = 1.0, 0.5, 0.25 kpc; Rmin=4 kpc and Rmax=14 kpc fixed.
           - Host selector in every experiment: 5300 <= Teff <= 6000 K; age >= 4.57 Gyr; Rstar <= public Berger/Huber PARSEC TAMS(Teff); logg < 7 compact-remnant veto.
           - Primary radius reconstruction: R/Rsun = sqrt(Mf * 10^(4.438-logg)).
@@ -99,7 +115,14 @@ jobs:
           - Radial integration: trapezoidal on the actual regenerated JJ grid. No interpolation of a coarser host profile is used.
           - Publication gate: absolute 0.5 -> 0.25 kpc change must be <1% for N_G, L1 and L2 in the canonical 7-9 kpc domain.
           EOF
-          find results/tams-convergence -type f -print0 | sort -z | xargs -0 sha256sum > results/tams-convergence/SHA256SUMS.txt
+          (
+            cd results/tams-convergence
+            find . -type f ! -name SHA256SUMS.txt -print0 \
+              | sort -z \
+              | xargs -0 sha256sum \
+              > SHA256SUMS.txt
+            sha256sum --check SHA256SUMS.txt
+          )
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

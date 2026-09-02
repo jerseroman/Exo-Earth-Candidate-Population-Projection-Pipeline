@@ -43,8 +43,12 @@ def fetch(lock_id: str, destination: Path, accepted: set[str], locks: dict) -> N
     partial = destination.with_name(destination.name + ".part")
     partial.unlink(missing_ok=True)
     source_url = validate_source_url(record["source_url"])
+    # An open-ended byte range still requests the complete object, while
+    # avoiding full-body GET failures observed on the locked Dataverse archive.
+    # Exact byte count and SHA-256 verification below remain authoritative.
     request = urllib.request.Request(
-        source_url, headers={"User-Agent": "Mozilla/5.0"}
+        source_url,
+        headers={"Range": "bytes=0-", "User-Agent": "Mozilla/5.0"},
     )
     try:
         # validate_source_url restricts this request to credential-free HTTPS.

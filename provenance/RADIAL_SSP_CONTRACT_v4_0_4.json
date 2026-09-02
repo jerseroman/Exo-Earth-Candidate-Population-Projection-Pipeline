@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "contract_id": "jj-padova-radial-ssp-v4.0.4",
+  "locked_inputs": {
+    "jj_repository": "askenja/jjmodel",
+    "jj_commit": "2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54",
+    "jj_version_expected": "1.0.1",
+    "isochrone_family": "Padova/PARSEC",
+    "padova_archive": {
+      "data_lock_id": "jj_padova_multiband_archive",
+      "filename": "multiband_padova.zip",
+      "sha256": "97c8e09ea2669abe4147333f0fa141642e2c56d97b6f44de4e4518974ab7c7e8",
+      "size_bytes": 327078533
+    },
+    "tutorial_parameters_sha256": "e5919225b94e9ce8d8a7ad31553f0932bd437e2ae14f117dc39a37934e78a1c6",
+    "tutorial_sfr_sha256": "56d25b9ea61f454630a222ce6a6414bd1eaeb13bd165c25e9559ebe5c6b5039b",
+    "tams_reference_sha256": "d2c47b264a298a599064a9e58f19f309886e7b96f36cc9603c9ca55494f87aac"
+  },
+  "qualification_policy": {
+    "required_distinct_fresh_triplets": 2,
+    "required_distinct_signers": 2,
+    "radial_spacings_kpc": [1.0, 0.5, 0.25],
+    "radial_domain_kpc": [4.0, 14.0],
+    "expected_ssp_file_counts": {
+      "1.0": 22,
+      "0.5": 42,
+      "0.25": 82
+    },
+    "generator_relative_path": "research/jj-tams-convergence/tams_radial_convergence.py",
+    "controller": "verify_radial_ssp_contract.execute_fresh_triplet",
+    "execution_mode": "subprocess_no_shell_exact_pinned",
+    "private_raw_ssp_required": true,
+    "public_qualification_contains_raw_ssp": false,
+    "require_signed_pre_run_challenges": true,
+    "require_exact_git_archives": true,
+    "require_executing_controller_matches_committed_source": true,
+    "require_exact_padova_overlay_before_and_after": true,
+    "require_independent_raw_ssp_rederivation": true,
+    "allowed_execution_environments": [
+      "local_ubuntu_22_04_wsl2",
+      "github_actions_ubuntu_22_04"
+    ]
+  },
+  "artifact_sets": [
+    {
+      "id": "v4.0.4-radial-production-pending-qualification",
+      "role": "qualification_candidate",
+      "production_accepted": false,
+      "qualification_eligible": true,
+      "attestation_signers": [
+        {
+          "signer_id": "v404-local-attestor-a",
+          "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF6o39g15REJBdvRMh21U9DUs+spMaeeIVw7seFaqWwi v4.0.4-local-attestor-a"
+        },
+        {
+          "signer_id": "v404-local-attestor-b",
+          "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA3LslBc9zXOtiUoZedp9hzUO67FiV3ny8VJBOHXHouP v4.0.4-local-attestor-b"
+        }
+      ],
+      "qualified_public_evidence_sha256": null,
+      "qualification_report": null,
+      "note": "Fail closed until two independently signed controller-created triplets, each containing fresh dR=1.0, 0.5 and 0.25 JJ executions, are privately rederived and publicly hash-locked."
+    }
+  ]
+}
