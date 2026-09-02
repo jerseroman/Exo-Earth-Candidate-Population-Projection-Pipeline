@@ -259,6 +259,39 @@ class Fixture:
             "expected_output_files": list(gate.V404_EXPECTED_OUTPUT_FILES),
         }
 
+    def make_recovery_plan(self) -> dict:
+        plan = self.make_plan()
+        plan["plan_label"] = gate.V404_RECOVERY_PLAN_LABEL
+        command = plan["commands"][0]
+        command["command_id"] = gate.V404_RECOVERY_COMMAND_ID
+        command["argv"][2] = "recover-mcmc"
+        recovery_values = {
+            "--recovery-contract": str((self.root / "recovery/contract.json").resolve()),
+            "--expected-recovery-contract-sha256": "c" * 64,
+            "--expected-recovery-contract-size-bytes": "12345",
+            "--donor-work-shard-root": str((self.root / "donor/work").resolve()),
+            "--donor-raw-root": str((self.root / "donor/raw").resolve()),
+            "--donor-evidence-root": str((self.root / "donor/evidence").resolve()),
+            "--donor-attestation-contract": str(
+                (self.root / "donor/attestation-contract.json").resolve()
+            ),
+            "--donor-command-plan": str((self.root / "donor/plan.json").resolve()),
+            "--donor-numerical-runtime-manifest": str(
+                (self.root / "donor/runtime.json").resolve()
+            ),
+            "--donor-source-archive": str((self.root / "donor/source.tar").resolve()),
+            "--source-transition-evidence": str(
+                (self.root / "recovery/source-transition.json").resolve()
+            ),
+            "--recovery-qualification-report": str(
+                (self.root / "recovery/qualification.json").resolve()
+            ),
+            "--ssh-keygen-executable": str(self.ssh_keygen),
+        }
+        for flag in gate.V404_RECOVERY_FLAGS:
+            command["argv"].extend((flag, recovery_values[flag]))
+        return plan
+
     def make_contract(self) -> dict:
         commit = run([str(self.git), "rev-parse", "HEAD"], cwd=self.source).decode().strip()
         tree = run(
@@ -777,6 +810,86 @@ class LocalRunAttestationTests(unittest.TestCase):
                     ),
                     expected,
                 )
+
+    def test_exact_recovery_plan_schema_and_bindings_fail_closed(self) -> None:
+        recovery = self.fixture.make_recovery_plan()
+        self.assertEqual(gate.validate_plan(recovery, self.fixture.runtime), recovery)
+        gate.validate_plan_bindings(
+            recovery,
+            self.fixture.runtime,
+            self.fixture.execution.resolve(strict=False),
+            self.fixture.output.resolve(strict=False),
+            self.fixture.runtime_path.resolve(),
+            self.fixture.plan_path.resolve(),
+            self.fixture.git,
+            self.fixture.source,
+            self.fixture.public_source,
+            require_extracted_programs=False,
+            trusted_ssh_keygen_executable=self.fixture.ssh_keygen,
+        )
+
+        mutations = []
+        bad = copy.deepcopy(recovery)
+        bad["commands"][0]["argv"][2] = "run"
+        mutations.append((bad, "exact tracked"))
+        bad = copy.deepcopy(recovery)
+        bad["commands"][0]["command_id"] = gate.V404_COMMAND_ID
+        mutations.append((bad, "command id"))
+        bad = copy.deepcopy(recovery)
+        argv = bad["commands"][0]["argv"]
+        argv[argv.index("--expected-recovery-contract-size-bytes") + 1] = "012345"
+        mutations.append((bad, "canonical positive integer"))
+        bad = copy.deepcopy(recovery)
+        argv = bad["commands"][0]["argv"]
+        del argv[argv.index("--donor-raw-root") : argv.index("--donor-raw-root") + 2]
+        mutations.append((bad, "string array"))
+        for mutated, expected in mutations:
+            with self.subTest(expected=expected):
+                self.assertFails(
+                    lambda mutated=mutated: gate.validate_plan(
+                        mutated, self.fixture.runtime
+                    ),
+                    expected,
+                )
+
+        bad = copy.deepcopy(recovery)
+        argv = bad["commands"][0]["argv"]
+        argv[argv.index("--donor-raw-root") + 1] = argv[
+            argv.index("--private-raw-root") + 1
+        ]
+        self.assertFails(
+            lambda: gate.validate_plan_bindings(
+                bad,
+                self.fixture.runtime,
+                self.fixture.execution.resolve(strict=False),
+                self.fixture.output.resolve(strict=False),
+                self.fixture.runtime_path.resolve(),
+                self.fixture.plan_path.resolve(),
+                self.fixture.git,
+                self.fixture.source,
+                self.fixture.public_source,
+                require_extracted_programs=False,
+                trusted_ssh_keygen_executable=self.fixture.ssh_keygen,
+            ),
+            "overlaps mutable",
+        )
+
+        self.assertFails(
+            lambda: gate.validate_plan_bindings(
+                recovery,
+                self.fixture.runtime,
+                self.fixture.execution.resolve(strict=False),
+                self.fixture.output.resolve(strict=False),
+                self.fixture.runtime_path.resolve(),
+                self.fixture.plan_path.resolve(),
+                self.fixture.git,
+                self.fixture.source,
+                self.fixture.public_source,
+                require_extracted_programs=False,
+                trusted_ssh_keygen_executable=self.fixture.key_wrong,
+            ),
+            "trusted attestation tool",
+        )
 
     def test_executable_chain_rejects_linked_ancestor(self) -> None:
         with tempfile.TemporaryDirectory(prefix="executable-ancestor-") as temporary:

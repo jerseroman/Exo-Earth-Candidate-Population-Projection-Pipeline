@@ -224,6 +224,164 @@ def paired_summary(mode: str, *, seed: int = controller.CONSTANT_PILOT_SEED) -> 
 
 
 class LocalProductionOrchestratorTests(unittest.TestCase):
+    def test_recovery_configuration_is_all_or_nothing_and_argv_is_exact(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="v404-recovery-argv-") as temporary:
+            root = Path(temporary).absolute()
+            base = replace(
+                dummy_configuration(root),
+                python_executable=Path(sys.executable).absolute(),
+            )
+            partial = replace(base, recovery_contract=root / "recovery.json")
+            with self.assertRaisesRegex(
+                controller.OrchestrationError, "partially populated"
+            ):
+                controller.recovery_enabled(partial)
+            recovery = replace(
+                base,
+                recovery_contract=root / "recovery.json",
+                expected_recovery_contract_sha256="c" * 64,
+                expected_recovery_contract_size_bytes=1234,
+                donor_work_shard_root=root / "donor-work",
+                donor_raw_root=root / "donor-raw",
+                donor_evidence_root=root / "donor-evidence",
+                donor_attestation_contract=root / "donor-contract.json",
+                donor_command_plan=root / "donor-plan.json",
+                donor_numerical_runtime_manifest=root / "donor-runtime.json",
+                donor_source_archive=root / "donor-source.tar",
+                source_transition_evidence=root / "transition.json",
+                recovery_qualification_report=root / "qualification.json",
+                ssh_keygen_executable=root / "bin" / "ssh-keygen",
+            )
+            argv = controller.local_production_run_argv(
+                recovery,
+                execution_root=root / "execution",
+                plan_output=root / "recovery-plan.json",
+            )
+            self.assertEqual(argv[2], "recover-mcmc")
+            expected_suffix_flags = (
+                "--recovery-contract",
+                "--expected-recovery-contract-sha256",
+                "--expected-recovery-contract-size-bytes",
+                "--donor-work-shard-root",
+                "--donor-raw-root",
+                "--donor-evidence-root",
+                "--donor-attestation-contract",
+                "--donor-command-plan",
+                "--donor-numerical-runtime-manifest",
+                "--donor-source-archive",
+                "--source-transition-evidence",
+                "--recovery-qualification-report",
+                "--ssh-keygen-executable",
+            )
+            observed_suffix_flags = tuple(
+                argv[position]
+                for position in range(
+                    len(argv) - 2 * len(expected_suffix_flags), len(argv), 2
+                )
+            )
+            self.assertEqual(observed_suffix_flags, expected_suffix_flags)
+            self.assertEqual(
+                argv[argv.index("--expected-recovery-contract-size-bytes") + 1],
+                "1234",
+            )
+
+    def test_stable_recovery_copy_is_a_new_inode_and_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="v404-recovery-copy-") as temporary:
+            root = Path(temporary).absolute()
+            source_parent = root / "source"
+            destination_parent = root / "destination"
+            source_parent.mkdir()
+            destination_parent.mkdir()
+            source = source_parent / "artifact.bin"
+            source.write_bytes(b"qualified MCMC bytes\x00\x01")
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            copied = destination_parent / source.name
+            snapshot = controller._stable_copy_recovery_file(
+                source,
+                copied,
+                expected_sha256=digest,
+                expected_size_bytes=source.stat().st_size,
+                description="fixture MCMC artifact",
+            )
+            self.assertEqual(copied.read_bytes(), source.read_bytes())
+            self.assertEqual(snapshot.sha256, digest)
+            self.assertNotEqual(
+                (source.stat().st_dev, source.stat().st_ino),
+                (copied.stat().st_dev, copied.stat().st_ino),
+            )
+            with self.assertRaisesRegex(
+                controller.OrchestrationError, "failed stable byte-copy verification"
+            ):
+                controller._stable_copy_recovery_file(
+                    source,
+                    destination_parent / "bad.bin",
+                    expected_sha256="0" * 64,
+                    expected_size_bytes=source.stat().st_size,
+                    description="tampered MCMC artifact",
+                )
+            self.assertFalse((destination_parent / "bad.bin").exists())
+
+    def test_build_recovery_plan_uses_second_exact_plan_schema(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="v404-recovery-plan-") as temporary:
+            root = Path(temporary).absolute()
+            config, runtime, plan_path = plan_fixture(root)
+            recovery = replace(
+                config,
+                recovery_contract=root / "recovery-evidence" / "contract.json",
+                expected_recovery_contract_sha256="c" * 64,
+                expected_recovery_contract_size_bytes=1234,
+                donor_work_shard_root=root / "donor-work",
+                donor_raw_root=root / "donor-raw",
+                donor_evidence_root=root / "donor-evidence",
+                donor_attestation_contract=root / "donor-files" / "attestation.json",
+                donor_command_plan=root / "donor-files" / "plan.json",
+                donor_numerical_runtime_manifest=root / "donor-files" / "runtime.json",
+                donor_source_archive=root / "donor-files" / "source.tar",
+                source_transition_evidence=root / "recovery-evidence" / "transition.json",
+                recovery_qualification_report=root / "recovery-evidence" / "qualification.json",
+                ssh_keygen_executable=root / "bin" / "ssh-keygen",
+            )
+            plan, encoded = controller.build_plan_document(
+                recovery,
+                execution_root=recovery.source_root,
+                runtime_manifest=runtime,
+                output=plan_path,
+            )
+            command = plan["commands"][0]
+            self.assertEqual(plan["plan_label"], controller.RECOVERY_PLAN_LABEL)
+            self.assertEqual(command["command_id"], controller.RECOVERY_PLAN_COMMAND_ID)
+            self.assertEqual(command["argv"][2], "recover-mcmc")
+            self.assertEqual(len(plan["expected_output_files"]), 88)
+            runtime_value = attestation.validate_numerical_runtime(
+                json.loads(runtime.read_text(encoding="utf-8"))
+            )
+            self.assertEqual(
+                encoded,
+                attestation.canonical_json_bytes(
+                    attestation.validate_plan(plan, runtime_value)
+                ),
+            )
+
+    def test_recovery_manifest_parser_rejects_case_collision(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="v404-recovery-manifest-") as temporary:
+            manifest = Path(temporary) / "SHA256SUMS.txt"
+            manifest.write_text(
+                f"{'1' * 64}  result.bin\n{'2' * 64}  RESULT.bin\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            snapshot = controller.snapshot_file(
+                manifest, "fixture recovery manifest", collect=True
+            )
+            with self.assertRaisesRegex(
+                controller.OrchestrationError, "case-collides"
+            ):
+                controller._parse_recovery_manifest(
+                    snapshot,
+                    expected_targets=("result.bin", "RESULT.bin"),
+                    description="fixture recovery manifest",
+                )
+
     def test_attestation_validator_loader_ignores_unchecked_bytecode_cache(self) -> None:
         module_name = "_exoearth_v404_local_run_attestation_validator"
         previous = sys.modules.pop(module_name, None)
@@ -744,6 +902,22 @@ class LocalProductionOrchestratorTests(unittest.TestCase):
             with self.assertRaisesRegex(controller.OrchestrationError, "non-regular"):
                 controller.inspect_source_archive(archive_path, digest)
 
+    def test_source_archive_rejects_portable_case_collisions(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            archive_path = Path(temporary) / "source.tar"
+            digest = make_archive(
+                archive_path,
+                {
+                    "scripts/run_v404_local_production.py": b"# fixture\n",
+                    "research/Case.py": b"one\n",
+                    "research/case.py": b"two\n",
+                },
+            )
+            with self.assertRaisesRegex(
+                controller.OrchestrationError, "case-colliding"
+            ):
+                controller.inspect_source_archive(archive_path, digest)
+
     def test_strict_json_rejects_duplicate_and_nonfinite_values(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "record.json"
@@ -1251,6 +1425,156 @@ class LocalProductionOrchestratorTests(unittest.TestCase):
             host.assert_called_once()
             dr25.assert_called_once()
             sensitivity.assert_called_once()
+
+    def test_empty_recovery_stdout_is_narrowly_allowed_and_hash_locked(self) -> None:
+        empty = {
+            "sha256": hashlib.sha256(b"").hexdigest(),
+            "size_bytes": 0,
+        }
+        with self.assertRaisesRegex(controller.OrchestrationError, "size is invalid"):
+            controller._validate_recovery_evidence(empty, "ordinary evidence")
+        self.assertEqual(
+            controller._validate_recovery_evidence(
+                empty, "donor command stdout", allow_empty=True
+            ),
+            empty,
+        )
+        with self.assertRaisesRegex(
+            controller.OrchestrationError, "empty-file SHA-256"
+        ):
+            controller._validate_recovery_evidence(
+                {"sha256": "1" * 64, "size_bytes": 0},
+                "donor command stdout",
+                allow_empty=True,
+            )
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "stdout.bin"
+            path.write_bytes(b"")
+            snapshot = controller.snapshot_file(path, "empty stdout")
+            controller._matches_recovery_evidence(
+                snapshot,
+                empty,
+                "donor command stdout",
+                allow_empty=True,
+            )
+
+    def test_recovery_policy_lock_detects_constant_and_transitive_helper_changes(self) -> None:
+        source = Path(controller.__file__).read_bytes()
+        policy = controller._recovery_mcmc_policy_snapshot(source, "current source")
+        changed_seed = source.replace(
+            b"PRODUCTION_BASE_SEED = 2_026_082_200",
+            b"PRODUCTION_BASE_SEED = 2_026_082_201",
+            1,
+        )
+        self.assertNotEqual(
+            policy,
+            controller._recovery_mcmc_policy_snapshot(changed_seed, "changed seed"),
+        )
+        invariants = controller._recovery_controller_invariant_snapshot(
+            source, "current source"
+        )
+        changed_helper = source.replace(
+            b"return str(config.source_root / PurePosixPath(relative))",
+            b"return str(config.source_root / 'redirected' / PurePosixPath(relative))",
+            1,
+        )
+        self.assertNotEqual(source, changed_helper)
+        self.assertNotEqual(
+            invariants,
+            controller._recovery_controller_invariant_snapshot(
+                changed_helper, "changed helper"
+            ),
+        )
+
+    def test_recovery_import_recheck_rejects_deep_extra_file_added_during_rehash(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            work = root / "work"
+            raw = root / "raw"
+            relative = "variant/shard/artifact.bin"
+            directories = (".", "variant", "variant/shard")
+            for tree in (work, raw):
+                target = tree / relative
+                target.parent.mkdir(parents=True)
+                target.write_bytes(tree.name.encode("ascii"))
+            work_snapshot = controller.snapshot_file(work / relative, "work artifact")
+            raw_snapshot = controller.snapshot_file(raw / relative, "raw artifact")
+            work_root, work_identity = controller.snapshot_plain_directory_chain(
+                work, "work root"
+            )
+            raw_root, raw_identity = controller.snapshot_plain_directory_chain(
+                raw, "raw root"
+            )
+            evidence = controller.RecoveryImportEvidence(
+                snapshots=(work_snapshot, raw_snapshot),
+                work_root=work_root,
+                work_root_identity=work_identity,
+                work_file_count=1,
+                work_size_bytes=work_snapshot.size_bytes,
+                work_tree_sha256="1" * 64,
+                raw_root=raw_root,
+                raw_root_identity=raw_identity,
+                raw_file_count=1,
+                raw_size_bytes=raw_snapshot.size_bytes,
+                raw_tree_sha256="2" * 64,
+            )
+            original_recheck = controller.recheck_snapshot
+            injected = False
+
+            def inject(snapshot, description):
+                nonlocal injected
+                original_recheck(snapshot, description)
+                if not injected:
+                    (work / "variant" / "shard" / "extra.bin").write_bytes(b"extra")
+                    injected = True
+
+            with mock.patch.object(
+                controller,
+                "_recovery_tree_paths",
+                side_effect=lambda *, raw: ((relative,), directories),
+            ), mock.patch.object(controller, "recheck_snapshot", side_effect=inject):
+                with self.assertRaisesRegex(
+                    controller.OrchestrationError, "exact tree mismatch"
+                ):
+                    controller.recheck_recovery_import(
+                        evidence, "fixture import", rehash_files=True
+                    )
+
+    def test_recovery_lineage_rejects_merge_commit_with_donor_first_parent(self) -> None:
+        head = "a" * 40
+        donor = "b" * 40
+        merge = subprocess.CompletedProcess(
+            [], 0, f"{head} {donor} {'c' * 40}\n".encode("ascii"), b""
+        )
+        with mock.patch.object(controller.subprocess, "run", return_value=merge):
+            with self.assertRaisesRegex(
+                controller.OrchestrationError, "single-parent direct Git child"
+            ):
+                controller.validate_recovery_lineage(
+                    Path("/git"),
+                    Path("/checkout"),
+                    expected_head=head,
+                    donor_commit=donor,
+                    environment={"A": "B"},
+                    description="fixture",
+                )
+        direct = subprocess.CompletedProcess(
+            [], 0, f"{head} {donor}\n".encode("ascii"), b""
+        )
+        with mock.patch.object(controller.subprocess, "run", return_value=direct) as run:
+            controller.validate_recovery_lineage(
+                Path("/git"),
+                Path("/checkout"),
+                expected_head=head,
+                donor_commit=donor,
+                environment={"A": "B"},
+                description="fixture",
+            )
+        self.assertEqual(
+            run.call_args.args[0][3:],
+            ["rev-list", "--parents", "-n", "1", "HEAD"],
+        )
+        self.assertIs(run.call_args.kwargs["shell"], False)
 
 
 if __name__ == "__main__":

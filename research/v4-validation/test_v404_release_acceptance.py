@@ -342,7 +342,13 @@ class ReleaseFixture:
                 "regular_files_verified": 10,
                 "execution_tree_byte_identical": True,
             },
-            "production_design": {"fixture": True},
+            "production_design": {
+                "fixture": True,
+                "mcmc_recovery": {
+                    "mcmc_reused": False,
+                    "aggregates_and_downstream_recomputed": True,
+                },
+            },
             "acceptance": {"fixture": True},
             "public_boundary": {
                 "third_party_input_files_copied": False,
@@ -1183,6 +1189,93 @@ class ReleaseAcceptanceTests(unittest.TestCase):
         sidecar.write_text("0" * 64 + f"  {gate.RESULTS_ARCHIVE_NAME}\n", encoding="ascii")
         with self.assertRaisesRegex(gate.ReleaseAcceptanceError, "sidecar differs"):
             self.verify()
+
+    def test_recovery_disclosure_is_exact_and_not_self_asserted(self) -> None:
+        archive_path = self.fixture.root / "dist" / gate.RESULTS_ARCHIVE_NAME
+        with zipfile.ZipFile(archive_path, "r") as archive:
+            members = {
+                info.filename.split("/", 1)[1]: archive.read(info)
+                for info in archive.infolist()
+            }
+        observed = {
+            relative: (digest(data), len(data)) for relative, data in members.items()
+        }
+        report = gate.load_json_bytes(
+            members[gate.PUBLIC_RESULTS_REPORT_NAME], "fixture public report"
+        )
+        report["production_design"]["mcmc_recovery"] = {
+            "mcmc_reused": True,
+            "aggregates_and_downstream_recomputed": True,
+        }
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError, "recovery MCMC disclosure"
+        ):
+            gate._validate_public_results_report(
+                gate.canonical_json_bytes(report),
+                observed,
+                self.fixture.computational_source,
+            )
+
+    def test_complete_recovery_disclosure_is_accepted_and_binds_current_source(self) -> None:
+        archive_path = self.fixture.root / "dist" / gate.RESULTS_ARCHIVE_NAME
+        with zipfile.ZipFile(archive_path, "r") as archive:
+            members = {
+                info.filename.split("/", 1)[1]: archive.read(info)
+                for info in archive.infolist()
+            }
+        observed = {
+            relative: (digest(data), len(data)) for relative, data in members.items()
+        }
+        report = gate.load_json_bytes(
+            members[gate.PUBLIC_RESULTS_REPORT_NAME], "fixture public report"
+        )
+        current = self.fixture.computational_source
+        hash_value = "1" * 64
+        report["production_design"]["mcmc_recovery"] = {
+            "mcmc_reused": True,
+            "fresh_preflight_runtime_and_pilots_recomputed": True,
+            "aggregates_and_downstream_recomputed": True,
+            "donor_completion_attestation_present_in_qualified_evidence_set": False,
+            "donor_run_id": "2" * 64,
+            "donor_source_commit": "3" * 40,
+            "donor_source_tree": "4" * 40,
+            "donor_source_archive_sha256": hash_value,
+            "donor_source_archive_size_bytes": 100,
+            "donor_source_file_set_sha256": hash_value,
+            "donor_source_file_count": 183,
+            "donor_attestation_contract_sha256": hash_value,
+            "donor_attestation_contract_size_bytes": 100,
+            "donor_command_plan_sha256": hash_value,
+            "donor_numerical_runtime_sha256": hash_value,
+            "donor_start_challenge_sha256": hash_value,
+            "donor_start_signature_sha256": hash_value,
+            "recovery_contract_sha256": hash_value,
+            "recovery_contract_size_bytes": 100,
+            "mcmc_policy_sha256": hash_value,
+            "recovery_source_commit": current["commit"],
+            "recovery_source_tree": current["tree"],
+            "source_transition_report_id": "5" * 64,
+            "source_transition_report_sha256": hash_value,
+            "qualification_report_id": "6" * 64,
+            "qualification_report_sha256": hash_value,
+            "reused_realizations": 1_200,
+            "imported_work_file_count": 384,
+            "imported_work_size_bytes": 3_498_332_085,
+            "imported_work_tree_sha256": hash_value,
+            "imported_raw_file_count": 1_296,
+            "imported_raw_size_bytes": 10_002_742_894,
+            "imported_raw_tree_sha256": hash_value,
+        }
+        gate._validate_public_results_report(
+            gate.canonical_json_bytes(report), observed, current
+        )
+        report["production_design"]["mcmc_recovery"]["recovery_source_tree"] = "7" * 40
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError, "does not bind the release source"
+        ):
+            gate._validate_public_results_report(
+                gate.canonical_json_bytes(report), observed, current
+            )
 
     def test_internally_rebased_zip_cannot_escape_signed_local_output(self) -> None:
         archive_path = self.fixture.root / "dist" / gate.RESULTS_ARCHIVE_NAME

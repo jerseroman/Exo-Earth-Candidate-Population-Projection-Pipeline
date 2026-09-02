@@ -155,14 +155,25 @@ def _load_python_module_from_snapshot(
     module = types.ModuleType(module_name)
     module.__file__ = str(snapshot.path)
     module.__package__ = ""
+    missing = object()
+    previous = sys.modules.get(module_name, missing)
+    sys.modules[module_name] = module
     try:
-        code = compile(snapshot.data, str(snapshot.path), "exec")
-        exec(code, module.__dict__)
-    except Exception as error:
-        raise RuntimeError(f"{label} could not be loaded from its captured bytes") from error
-    if Path(str(module.__file__)).resolve() != snapshot.path.resolve():
-        raise RuntimeError(f"{label} changed its source identity while loading")
-    return module, snapshot
+        try:
+            code = compile(snapshot.data, str(snapshot.path), "exec")
+            exec(code, module.__dict__)
+        except Exception as error:
+            raise RuntimeError(
+                f"{label} could not be loaded from its captured bytes"
+            ) from error
+        if Path(str(module.__file__)).resolve() != snapshot.path.resolve():
+            raise RuntimeError(f"{label} changed its source identity while loading")
+        return module, snapshot
+    finally:
+        if previous is missing:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = previous
 
 
 def independent_occurrence_fractions(

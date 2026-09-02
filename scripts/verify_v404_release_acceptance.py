@@ -1713,6 +1713,139 @@ def _validate_public_results_report(
     for label in ("production_design", "acceptance", "runtime_seconds_by_stage"):
         if not isinstance(report[label], dict) or not report[label]:
             fail(f"embedded local production report {label} is empty")
+    recovery = _mapping(
+        report["production_design"].get("mcmc_recovery"),
+        "embedded local production MCMC recovery disclosure",
+    )
+    if recovery.get("mcmc_reused") is False:
+        if recovery != {
+            "mcmc_reused": False,
+            "aggregates_and_downstream_recomputed": True,
+        }:
+            fail("embedded full-run MCMC disclosure differs from the exact schema")
+    elif recovery.get("mcmc_reused") is True:
+        recovery = _exact_keys(
+            recovery,
+            {
+                "mcmc_reused",
+                "fresh_preflight_runtime_and_pilots_recomputed",
+                "aggregates_and_downstream_recomputed",
+                "donor_completion_attestation_present_in_qualified_evidence_set",
+                "donor_run_id",
+                "donor_source_commit",
+                "donor_source_tree",
+                "donor_source_archive_sha256",
+                "donor_source_archive_size_bytes",
+                "donor_source_file_set_sha256",
+                "donor_source_file_count",
+                "donor_attestation_contract_sha256",
+                "donor_attestation_contract_size_bytes",
+                "donor_command_plan_sha256",
+                "donor_numerical_runtime_sha256",
+                "donor_start_challenge_sha256",
+                "donor_start_signature_sha256",
+                "recovery_contract_sha256",
+                "recovery_contract_size_bytes",
+                "mcmc_policy_sha256",
+                "recovery_source_commit",
+                "recovery_source_tree",
+                "source_transition_report_id",
+                "source_transition_report_sha256",
+                "qualification_report_id",
+                "qualification_report_sha256",
+                "reused_realizations",
+                "imported_work_file_count",
+                "imported_work_size_bytes",
+                "imported_work_tree_sha256",
+                "imported_raw_file_count",
+                "imported_raw_size_bytes",
+                "imported_raw_tree_sha256",
+            },
+            "embedded recovery MCMC disclosure",
+        )
+        for field in (
+            "fresh_preflight_runtime_and_pilots_recomputed",
+            "aggregates_and_downstream_recomputed",
+        ):
+            if recovery[field] is not True:
+                fail(f"embedded recovery disclosure does not confirm {field}")
+        if (
+            recovery[
+                "donor_completion_attestation_present_in_qualified_evidence_set"
+            ]
+            is not False
+        ):
+            fail("embedded recovery disclosure misstates qualified donor completion evidence")
+        _sha(recovery["donor_run_id"], "embedded recovery donor run id")
+        _git_sha(recovery["donor_source_commit"], "embedded recovery donor commit")
+        _git_sha(recovery["donor_source_tree"], "embedded recovery donor tree")
+        _git_sha(recovery["recovery_source_commit"], "embedded recovery source commit")
+        _git_sha(recovery["recovery_source_tree"], "embedded recovery source tree")
+        if (
+            recovery["recovery_source_commit"] != source["commit"]
+            or recovery["recovery_source_tree"] != source["tree"]
+        ):
+            fail("embedded recovery disclosure does not bind the release source")
+        for field in (
+            "donor_source_archive_sha256",
+            "donor_source_file_set_sha256",
+            "donor_attestation_contract_sha256",
+            "donor_command_plan_sha256",
+            "donor_numerical_runtime_sha256",
+            "donor_start_challenge_sha256",
+            "donor_start_signature_sha256",
+            "recovery_contract_sha256",
+            "mcmc_policy_sha256",
+            "source_transition_report_sha256",
+            "qualification_report_sha256",
+            "imported_work_tree_sha256",
+            "imported_raw_tree_sha256",
+        ):
+            _sha(recovery[field], f"embedded recovery {field}")
+        _report_id(
+            recovery["source_transition_report_id"],
+            "embedded recovery source-transition report id",
+        )
+        _report_id(
+            recovery["qualification_report_id"],
+            "embedded recovery qualification report id",
+        )
+        _positive_size(
+            recovery["recovery_contract_size_bytes"],
+            "embedded recovery contract size",
+        )
+        _positive_size(
+            recovery["donor_source_archive_size_bytes"],
+            "embedded recovery donor source archive size",
+        )
+        _positive_size(
+            recovery["donor_attestation_contract_size_bytes"],
+            "embedded recovery donor attestation contract size",
+        )
+        _positive_size(
+            recovery["donor_source_file_count"],
+            "embedded recovery donor source-file count",
+        )
+        exact_counts = {
+            "reused_realizations": 1_200,
+            "imported_work_file_count": 384,
+            "imported_raw_file_count": 1_296,
+        }
+        for field, expected in exact_counts.items():
+            if type(recovery[field]) is not int or recovery[field] != expected:
+                fail(f"embedded recovery {field} differs from v4.0.4 policy")
+        work_size = _positive_size(
+            recovery["imported_work_size_bytes"],
+            "embedded recovery work-tree size",
+        )
+        raw_size = _positive_size(
+            recovery["imported_raw_size_bytes"],
+            "embedded recovery raw-tree size",
+        )
+        if work_size + raw_size != 13_501_074_979:
+            fail("embedded recovery imported byte total differs from the qualified donor")
+    else:
+        fail("embedded local production report lacks an exact MCMC provenance decision")
     for field in ("total_runtime_seconds",):
         value = report[field]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value)) or value <= 0:

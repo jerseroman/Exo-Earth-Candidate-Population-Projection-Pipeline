@@ -18,6 +18,92 @@ import host_tams_audit as audit
 
 
 class HostTamsAuditTests(unittest.TestCase):
+    def test_snapshot_module_loader_supports_dataclass_decorators(self) -> None:
+        module_name = "_host_test_snapshot_dataclass"
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "dataclass_fixture.py"
+            source.write_text(
+                "from dataclasses import dataclass\n"
+                "@dataclass(frozen=True)\n"
+                "class Record:\n"
+                "    value: int\n"
+                "INSTANCE = Record(7)\n",
+                encoding="utf-8",
+            )
+            try:
+                module, snapshot = audit._load_python_module_from_snapshot(
+                    source,
+                    module_name=module_name,
+                    label="dataclass loader fixture",
+                )
+                self.assertEqual(module.INSTANCE.value, 7)
+                self.assertEqual(snapshot.data, source.read_bytes())
+            finally:
+                sys.modules.pop(module_name, None)
+        self.assertNotIn(module_name, sys.modules)
+
+    def test_snapshot_module_loader_loads_exact_dataclass_verifiers(self) -> None:
+        repository_root = Path(audit.__file__).resolve().parents[2]
+        fixtures = (
+            (
+                repository_root / "scripts" / "verify_host_artifact_contract.py",
+                "_host_test_exact_host_contract_verifier",
+                "FileSnapshot",
+            ),
+            (
+                repository_root / "scripts" / "verify_local_run_attestation.py",
+                "_host_test_exact_local_run_verifier",
+                "DirectoryComponentSnapshot",
+            ),
+        )
+        for path, module_name, dataclass_name in fixtures:
+            with self.subTest(path=path.name):
+                self.assertNotIn(module_name, sys.modules)
+                module, snapshot = audit._load_python_module_from_snapshot(
+                    path,
+                    module_name=module_name,
+                    label=f"exact {path.name} fixture",
+                )
+                self.assertTrue(
+                    hasattr(getattr(module, dataclass_name), "__dataclass_fields__")
+                )
+                self.assertEqual(snapshot.data, path.read_bytes())
+                self.assertNotIn(module_name, sys.modules)
+
+    def test_snapshot_module_loader_restores_preexisting_registration(self) -> None:
+        for outcome in ("success", "failure"):
+            with self.subTest(
+                outcome=outcome
+            ), tempfile.TemporaryDirectory() as temporary:
+                module_name = f"_host_test_snapshot_restore_{outcome}"
+                previous = object()
+                sys.modules[module_name] = previous
+                source = Path(temporary) / f"{outcome}_fixture.py"
+                source.write_text(
+                    "VALUE = 7\n"
+                    if outcome == "success"
+                    else "raise RuntimeError('fixture failure')\n",
+                    encoding="utf-8",
+                )
+                try:
+                    if outcome == "success":
+                        module, _ = audit._load_python_module_from_snapshot(
+                            source,
+                            module_name=module_name,
+                            label="successful loader fixture",
+                        )
+                        self.assertEqual(module.VALUE, 7)
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, "captured bytes"):
+                            audit._load_python_module_from_snapshot(
+                                source,
+                                module_name=module_name,
+                                label="failing loader fixture",
+                            )
+                    self.assertIs(sys.modules[module_name], previous)
+                finally:
+                    sys.modules.pop(module_name, None)
+
     def test_json_loader_rejects_overflow_and_nonfinite_literals(self) -> None:
         for payload in (b'{"x":1e999}', b'{"x":NaN}', b'{"x":Infinity}'):
             with self.subTest(payload=payload), self.assertRaises(RuntimeError):

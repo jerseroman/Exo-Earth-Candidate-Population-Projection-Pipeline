@@ -32,6 +32,7 @@ if __name__ == "__main__" and not _bootstrap_sys.flags.isolated:
     )
 
 import argparse
+import ast
 from contextlib import contextmanager
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -48,6 +49,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 import types
 from typing import Any, Callable, Iterable, Mapping, Sequence
@@ -102,8 +104,137 @@ TRIALS_PER_SHARD = 25
 MAXIMUM_PARALLEL_SHARDS = 4
 PLAN_LABEL = "v4.0.4-local-production"
 PLAN_COMMAND_ID = "run-v404-local-production"
+RECOVERY_PLAN_LABEL = "v4.0.4-local-production-recover-mcmc"
+RECOVERY_PLAN_COMMAND_ID = "run-v404-local-production-recover-mcmc"
+RECOVERY_CONTRACT_ID = "mcmc-recovery-artifact-v4.0.4"
+RECOVERY_COPY_POLICY = "byte-copy-no-links"
+RECOVERY_CONTRACT_SCHEMA_VERSION = 2
+DONOR_ATTESTATION_CONTRACT_ID = "local-production-run-v4.0.4"
+DONOR_START_NAMESPACE = "exoearth-local-production-start-v4.0.4"
+DONOR_START_SIGNER_ID = "v404-local-attestor-a"
+DONOR_START_PUBLIC_KEY = (
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF6o39g15REJBdvRMh21U9DUs+spMaeeIVw7seFaqWwi "
+    "v4.0.4-local-attestor-a"
+)
+DONOR_START_NAME = "LOCAL_RUN_START_CHALLENGE.json"
+DONOR_START_SIGNATURE_NAME = f"{DONOR_START_NAME}.sig"
+DONOR_STDOUT_NAME = "COMMAND_000_run-v404-local-production.stdout.bin"
+DONOR_STDERR_NAME = "COMMAND_000_run-v404-local-production.stderr.bin"
+DONOR_EVIDENCE_FILES = (
+    DONOR_START_NAME,
+    DONOR_START_SIGNATURE_NAME,
+    DONOR_STDOUT_NAME,
+    DONOR_STDERR_NAME,
+)
+RECOVERY_MCMC_SOURCE_PREFIX = "research/bryson-joint-posterior/"
+RECOVERY_MCMC_SOURCE_FIXED_PATHS = (
+    "provenance/DATA_LOCKS.json",
+    "requirements.in",
+    "requirements.txt",
+    "scripts/verify_dependency_lock.py",
+    "scripts/verify_numerical_runtime.py",
+)
+DONOR_CANDIDATE_ID = "v4.0.4-local-production-pending"
+RECOVERY_WORK_FILE_COUNT = 384
+RECOVERY_RAW_FILE_COUNT = 1_296
+RECOVERY_TOTAL_FILE_COUNT = 1_680
+RECOVERY_TOTAL_SIZE_BYTES = 13_501_074_979
 TRACKED_CONTROLLER_PATH = "scripts/run_v404_local_production.py"
 ATTESTATION_VALIDATOR_NAME = "verify_local_run_attestation.py"
+RECOVERY_MCMC_POLICY_ASSIGNMENTS = (
+    "CORRECTED_MODE",
+    "LEGACY_MODE",
+    "NUMERICAL_ENVIRONMENT",
+    "REQUIRED_RUNTIME_PINS",
+    "PILOT_TRIALS",
+    "SHARDS",
+    "TRIALS_PER_SHARD",
+    "MAXIMUM_PARALLEL_SHARDS",
+    "WALKERS",
+    "BURNIN",
+    "MINIMUM_STEPS",
+    "RUNNER_THIN",
+    "CHECK_INTERVAL",
+    "TAU_MULTIPLE",
+    "TAU_RELATIVE_TOLERANCE",
+    "TAU_STABILITY_CHECKS",
+    "MCMC_SEED_OFFSET_A",
+    "MCMC_SEED_OFFSET_B",
+    "CONSTANT_PILOT_SEED",
+    "ZERO_PILOT_SEED",
+    "PRODUCTION_BASE_SEED",
+    "PRODUCTION_ZERO_OFFSET",
+    "SAMPLES_PER_REALIZATION",
+    "BOOTSTRAP_REPLICATES",
+    "AGGREGATION_BOOTSTRAP_SEED",
+    "PROPAGATION_BOOTSTRAP_SEED",
+    "INNER_CHAIN_BATCHES",
+    "PROPAGATION_STRIDE",
+    "VARIANTS",
+)
+RECOVERY_MCMC_POLICY_FUNCTIONS = (
+    "runner_output_names",
+    "raw_output_names",
+    "runner_argv",
+    "aggregate_argv",
+    "accepted_verifier_argv",
+    "propagation_argv",
+    "create_numerical_environment",
+    "stage_metallicity_audit",
+    "create_bryson_projection",
+    "run_pilots",
+    "run_production_shards",
+    "aggregate_and_verify",
+    "reverify_accepted_aggregates",
+    "propagate_variant",
+    "run_likelihood_grid_audits",
+    "run_dr25_support_audit",
+    "run_host_tams_audit",
+    "run_sensitivity_artifacts",
+)
+RECOVERY_CONTROLLER_ALLOWED_CLASSES = (
+    "Configuration",
+    "RecoveryContractBinding",
+    "RecoveryImportEvidence",
+)
+RECOVERY_CONTROLLER_ALLOWED_FUNCTIONS = (
+    "_add_recovery_arguments",
+    "_exact_object",
+    "_load_module_from_snapshot",
+    "_matches_recovery_evidence",
+    "_parse_recovery_manifest",
+    "_recovery_mcmc_policy_snapshot",
+    "_recovery_controller_invariant_snapshot",
+    "_recovery_tree_paths",
+    "_source_archive_member_bytes",
+    "_stable_copy_recovery_file",
+    "_validate_recovery_donor_trees",
+    "_validate_recovery_evidence",
+    "_validate_recovery_qualification",
+    "_validate_recovery_self_id",
+    "_validate_source_transition",
+    "_write_exclusive_captured_bytes",
+    "build_plan_document",
+    "configuration_from_args",
+    "ensure_exact_tree",
+    "enumerate_plain_tree",
+    "execute",
+    "finalize_public_output",
+    "import_recovery_shards",
+    "inspect_source_archive",
+    "load_strict_json",
+    "load_strict_json_bytes",
+    "local_production_run_argv",
+    "main",
+    "parser",
+    "recheck_recovery_import",
+    "recovery_enabled",
+    "snapshot_plain_directory_chain",
+    "validate_configuration",
+    "validate_recovery_contract",
+    "validate_recovery_lineage",
+    "write_local_command_plan",
+)
 WALKERS = 16
 BURNIN = 1000
 MINIMUM_STEPS = 3000
@@ -371,12 +502,11 @@ def _reject_nonfinite(value: Any, location: str = "JSON") -> None:
             _reject_nonfinite(item, f"{location}.{key}")
 
 
-def load_strict_json(path: Path, description: str) -> Any:
-    snapshot = snapshot_file(path, description, collect=True, maximum_bytes=16_000_000)
-    if snapshot.data is None:
-        fail(f"JSON snapshot was not collected: {description}")
+def load_strict_json_bytes(data: bytes, description: str) -> Any:
+    """Parse strict JSON from bytes already captured by a stable snapshot."""
+
     try:
-        text = snapshot.data.decode("utf-8", errors="strict")
+        text = data.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
         fail(f"{description} is not strict UTF-8: {exc}")
     if text.startswith("\ufeff"):
@@ -393,6 +523,13 @@ def load_strict_json(path: Path, description: str) -> Any:
         fail(f"cannot parse {description}: {exc}")
     _reject_nonfinite(value)
     return value
+
+
+def load_strict_json(path: Path, description: str) -> Any:
+    snapshot = snapshot_file(path, description, collect=True, maximum_bytes=16_000_000)
+    if snapshot.data is None:
+        fail(f"JSON snapshot was not collected: {description}")
+    return load_strict_json_bytes(snapshot.data, description)
 
 
 def canonical_json_bytes(value: Any) -> bytes:
@@ -472,6 +609,10 @@ def inspect_source_archive(
                 files[name] = (digest.hexdigest(), size)
     except (tarfile.TarError, OSError) as exc:
         fail(f"cannot inspect source archive: {exc}")
+    portable_names = [*files, *declared_directories]
+    folded_names = [name.casefold() for name in portable_names]
+    if len(folded_names) != len(set(folded_names)):
+        fail("source archive contains portable case-colliding members")
     required = "scripts/run_v404_local_production.py"
     if required not in files:
         fail(f"source archive lacks its production controller: {required}")
@@ -666,6 +807,102 @@ def ensure_exact_files(root: Path, expected: Iterable[str], description: str) ->
             f"missing={sorted(expected_set - observed)}, "
             f"extra={sorted(observed - expected_set)}"
         )
+
+
+def snapshot_plain_directory_chain(
+    path: Path, description: str
+) -> tuple[Path, tuple[int, int, int, int, int]]:
+    """Reject links/reparse points in an existing absolute directory chain."""
+
+    candidate = require_absolute(Path(path), description)
+    components = [candidate, *candidate.parents]
+    for component in reversed(components):
+        try:
+            observed = component.lstat()
+        except OSError as exc:
+            fail(f"cannot inspect {description} path component {component}: {exc}")
+        if (
+            stat.S_ISLNK(observed.st_mode)
+            or _has_reparse_point(observed)
+            or not stat.S_ISDIR(observed.st_mode)
+        ):
+            fail(f"{description} path chain contains a non-plain directory: {component}")
+    resolved = candidate.resolve(strict=True)
+    if os.path.normcase(str(resolved)) != os.path.normcase(str(candidate)):
+        fail(f"{description} path changes under real-path resolution")
+    status = candidate.lstat()
+    return resolved, _identity(status)
+
+
+def enumerate_plain_tree(
+    root: Path, description: str
+) -> tuple[set[str], set[str]]:
+    """Enumerate an exact non-link tree and reject portable case collisions."""
+
+    base, _identity_value = snapshot_plain_directory_chain(root, description)
+    files: set[str] = set()
+    directories: set[str] = {"."}
+
+    def visit(directory: Path, relative: PurePosixPath) -> None:
+        try:
+            entries = list(os.scandir(directory))
+        except OSError as exc:
+            fail(f"cannot enumerate {description}: {exc}")
+        local_folded: set[str] = set()
+        for entry in entries:
+            folded = entry.name.casefold()
+            if folded in local_folded:
+                fail(f"{description} contains case-colliding entries")
+            local_folded.add(folded)
+            if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", entry.name) is None:
+                fail(f"{description} contains a non-portable entry name: {entry.name!r}")
+            try:
+                observed = Path(entry.path).lstat()
+            except OSError as exc:
+                fail(f"cannot inspect {description} entry {entry.name}: {exc}")
+            if entry.is_symlink() or _has_reparse_point(observed):
+                fail(f"{description} contains a link/reparse entry: {entry.name}")
+            name = str(relative / entry.name) if str(relative) != "." else entry.name
+            if stat.S_ISDIR(observed.st_mode):
+                directories.add(name)
+                visit(Path(entry.path), PurePosixPath(name))
+            elif stat.S_ISREG(observed.st_mode):
+                if observed.st_nlink != 1:
+                    fail(f"{description} contains a multiply-linked file: {name}")
+                files.add(name)
+            else:
+                fail(f"{description} contains a special filesystem entry: {name}")
+
+    visit(base, PurePosixPath("."))
+    folded_paths = [name.casefold() for name in (*files, *directories) if name != "."]
+    if len(folded_paths) != len(set(folded_paths)):
+        fail(f"{description} contains case-colliding paths")
+    return files, directories
+
+
+def ensure_exact_tree(
+    root: Path,
+    *,
+    expected_files: Iterable[str],
+    expected_directories: Iterable[str] = (".",),
+    description: str,
+) -> None:
+    files, directories = enumerate_plain_tree(root, description)
+    expected_file_set = set(expected_files)
+    expected_directory_set = set(expected_directories)
+    if files != expected_file_set or directories != expected_directory_set:
+        fail(
+            f"{description} exact tree mismatch: "
+            f"missing_files={sorted(expected_file_set - files)}, "
+            f"extra_files={sorted(files - expected_file_set)}, "
+            f"missing_directories={sorted(expected_directory_set - directories)}, "
+            f"extra_directories={sorted(directories - expected_directory_set)}"
+        )
+    final_files, final_directories = enumerate_plain_tree(
+        root, f"{description} final recheck"
+    )
+    if final_files != files or final_directories != directories:
+        fail(f"{description} changed during exact-tree validation")
 
 
 def validate_sha256_manifest_root(
@@ -1039,6 +1276,19 @@ class Configuration:
     public_output_root: Path
     expected_bryson_source_sha256: str
     maximum_parallel_shards: int
+    recovery_contract: Path | None = None
+    expected_recovery_contract_sha256: str | None = None
+    expected_recovery_contract_size_bytes: int | None = None
+    donor_work_shard_root: Path | None = None
+    donor_raw_root: Path | None = None
+    donor_evidence_root: Path | None = None
+    donor_attestation_contract: Path | None = None
+    donor_command_plan: Path | None = None
+    donor_numerical_runtime_manifest: Path | None = None
+    donor_source_archive: Path | None = None
+    source_transition_evidence: Path | None = None
+    recovery_qualification_report: Path | None = None
+    ssh_keygen_executable: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -1077,6 +1327,45 @@ class HostContractBinding:
     evidence: Mapping[str, Any]
 
 
+@dataclass(frozen=True)
+class RecoveryContractBinding:
+    contract: Mapping[str, Any]
+    snapshot: FileSnapshot
+    evidence_root: Path
+    evidence_root_identity: tuple[int, int, int, int, int]
+    evidence_snapshots: tuple[FileSnapshot, ...]
+    donor_attestation_contract: FileSnapshot
+    donor_plan: FileSnapshot
+    donor_runtime: FileSnapshot
+    donor_source_archive: SourceArchiveEvidence
+    source_transition: FileSnapshot
+    qualification_report: FileSnapshot
+    source_transition_value: Mapping[str, Any]
+    qualification_report_value: Mapping[str, Any]
+    donor_work_root: Path
+    donor_work_root_identity: tuple[int, int, int, int, int]
+    donor_raw_root: Path
+    donor_raw_root_identity: tuple[int, int, int, int, int]
+    manifest_snapshots: tuple[FileSnapshot, ...]
+    trusted_ssh_keygen: FileSnapshot
+    mcmc_policy_sha256: str
+
+
+@dataclass(frozen=True)
+class RecoveryImportEvidence:
+    snapshots: tuple[FileSnapshot, ...]
+    work_root: Path
+    work_root_identity: tuple[int, int, int, int, int]
+    work_file_count: int
+    work_size_bytes: int
+    work_tree_sha256: str
+    raw_root: Path
+    raw_root_identity: tuple[int, int, int, int, int]
+    raw_file_count: int
+    raw_size_bytes: int
+    raw_tree_sha256: str
+
+
 VARIANTS = (
     Variant(
         "corrected-constant",
@@ -1103,6 +1392,1216 @@ VARIANTS = (
         0,
     ),
 )
+
+
+def _recovery_mcmc_policy_snapshot(source: bytes, description: str) -> dict[str, Any]:
+    """Return a location-independent AST lock for all reused-MCMC semantics."""
+
+    try:
+        tree = ast.parse(source, filename=description, mode="exec")
+    except (SyntaxError, ValueError, TypeError) as exc:
+        fail(f"cannot parse {description} for its MCMC policy: {exc}")
+    assignments: dict[str, str] = {}
+    functions: dict[str, str] = {}
+    variant_class: str | None = None
+    wanted_assignments = set(RECOVERY_MCMC_POLICY_ASSIGNMENTS)
+    wanted_functions = set(RECOVERY_MCMC_POLICY_FUNCTIONS)
+    for node in tree.body:
+        assignment_name: str | None = None
+        assignment_value: ast.AST | None = None
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+            if isinstance(target, ast.Name):
+                assignment_name = target.id
+                assignment_value = node.value
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            assignment_name = node.target.id
+            assignment_value = node.value
+        if assignment_name in wanted_assignments and assignment_value is not None:
+            if assignment_name in assignments:
+                fail(f"{description} repeats MCMC policy assignment {assignment_name}")
+            assignments[assignment_name] = ast.dump(
+                assignment_value, annotate_fields=True, include_attributes=False
+            )
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in wanted_functions:
+            if node.name in functions:
+                fail(f"{description} repeats MCMC policy function {node.name}")
+            functions[node.name] = ast.dump(
+                node, annotate_fields=True, include_attributes=False
+            )
+        if isinstance(node, ast.ClassDef) and node.name == "Variant":
+            if variant_class is not None:
+                fail(f"{description} repeats the Variant policy class")
+            variant_class = ast.dump(node, annotate_fields=True, include_attributes=False)
+    missing_assignments = wanted_assignments - set(assignments)
+    missing_functions = wanted_functions - set(functions)
+    if missing_assignments or missing_functions or variant_class is None:
+        fail(
+            f"{description} lacks the exact MCMC policy surface: "
+            f"assignments={sorted(missing_assignments)}, "
+            f"functions={sorted(missing_functions)}, variant_class={variant_class is not None}"
+        )
+    return {
+        "assignments": {name: assignments[name] for name in sorted(assignments)},
+        "functions": {name: functions[name] for name in sorted(functions)},
+        "variant_class": variant_class,
+    }
+
+
+def _recovery_controller_invariant_snapshot(
+    source: bytes, description: str
+) -> dict[str, str]:
+    """Lock every unchanged controller node outside the explicit recovery surface."""
+
+    try:
+        tree = ast.parse(source, filename=description, mode="exec")
+    except (SyntaxError, ValueError, TypeError) as exc:
+        fail(f"cannot parse {description} for its invariant surface: {exc}")
+    allowed_classes = set(RECOVERY_CONTROLLER_ALLOWED_CLASSES)
+    allowed_functions = set(RECOVERY_CONTROLLER_ALLOWED_FUNCTIONS)
+    result: dict[str, str] = {}
+    for node in tree.body:
+        normalized: ast.AST | None = node
+        key: str
+        if isinstance(node, ast.Import):
+            names = [alias for alias in node.names if alias.name not in {"ast", "tempfile"}]
+            if not names:
+                continue
+            normalized = ast.Import(names=names)
+            key = "import:" + ",".join(
+                f"{alias.name}:{alias.asname or ''}" for alias in names
+            )
+        elif isinstance(node, ast.ImportFrom):
+            key = "import-from:" + ast.dump(
+                node, annotate_fields=True, include_attributes=False
+            )
+        elif isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(
+            node.targets[0], ast.Name
+        ):
+            name = node.targets[0].id
+            if name.startswith(("RECOVERY_", "DONOR_")):
+                continue
+            key = f"assignment:{name}"
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            name = node.target.id
+            if name.startswith(("RECOVERY_", "DONOR_")):
+                continue
+            key = f"annotated-assignment:{name}"
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name in allowed_functions:
+                continue
+            key = f"function:{node.name}"
+        elif isinstance(node, ast.ClassDef):
+            if node.name in allowed_classes:
+                continue
+            key = f"class:{node.name}"
+        elif isinstance(node, ast.If):
+            simple_main_guard = (
+                isinstance(node.test, ast.Compare)
+                and isinstance(node.test.left, ast.Name)
+                and node.test.left.id == "__name__"
+                and len(node.test.ops) == 1
+                and isinstance(node.test.ops[0], ast.Eq)
+                and len(node.test.comparators) == 1
+                and isinstance(node.test.comparators[0], ast.Constant)
+                and node.test.comparators[0].value == "__main__"
+            )
+            if simple_main_guard:
+                continue
+            key = "if:" + ast.dump(
+                node.test, annotate_fields=True, include_attributes=False
+            )
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(
+            node.value.value, str
+        ):
+            key = "module-docstring"
+        else:
+            key = "node:" + ast.dump(
+                node, annotate_fields=True, include_attributes=False
+            )
+        if normalized is None:
+            continue
+        if key in result:
+            fail(f"{description} repeats invariant controller node {key}")
+        result[key] = ast.dump(
+            normalized, annotate_fields=True, include_attributes=False
+        )
+    return {key: result[key] for key in sorted(result)}
+
+
+def _exact_object(value: Any, keys: set[str], description: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != keys:
+        observed = set(value) if isinstance(value, dict) else set()
+        fail(
+            f"{description} keys differ from the exact contract: "
+            f"missing={sorted(keys - observed)}, extra={sorted(observed - keys)}"
+        )
+    return value
+
+
+def _validate_recovery_evidence(
+    value: Any, description: str, *, allow_empty: bool = False
+) -> dict[str, Any]:
+    item = _exact_object(value, {"sha256", "size_bytes"}, description)
+    if not isinstance(item["sha256"], str) or SHA256_RE.fullmatch(item["sha256"]) is None:
+        fail(f"{description} SHA-256 is malformed")
+    if (
+        isinstance(item["size_bytes"], bool)
+        or not isinstance(item["size_bytes"], int)
+        or item["size_bytes"] < (0 if allow_empty else 1)
+    ):
+        fail(f"{description} size is invalid")
+    if (
+        item["size_bytes"] == 0
+        and item["sha256"] != hashlib.sha256(b"").hexdigest()
+    ):
+        fail(f"{description} empty-file SHA-256 is invalid")
+    return item
+
+
+def recovery_enabled(config: Configuration) -> bool:
+    values = (
+        config.recovery_contract,
+        config.expected_recovery_contract_sha256,
+        config.expected_recovery_contract_size_bytes,
+        config.donor_work_shard_root,
+        config.donor_raw_root,
+        config.donor_evidence_root,
+        config.donor_attestation_contract,
+        config.donor_command_plan,
+        config.donor_numerical_runtime_manifest,
+        config.donor_source_archive,
+        config.source_transition_evidence,
+        config.recovery_qualification_report,
+        config.ssh_keygen_executable,
+    )
+    populated = [value is not None for value in values]
+    if any(populated) and not all(populated):
+        fail("MCMC recovery configuration is only partially populated")
+    return all(populated)
+
+
+def _matches_recovery_evidence(
+    snapshot: FileSnapshot,
+    value: Any,
+    description: str,
+    *,
+    allow_empty: bool = False,
+) -> None:
+    expected = _validate_recovery_evidence(
+        value, description, allow_empty=allow_empty
+    )
+    if {
+        "sha256": snapshot.sha256,
+        "size_bytes": snapshot.size_bytes,
+    } != expected:
+        fail(f"{description} differs from the external recovery contract")
+
+
+def _validate_recovery_self_id(
+    value: Mapping[str, Any], field: str, description: str
+) -> None:
+    identifier = value.get(field)
+    if not isinstance(identifier, str) or SHA256_RE.fullmatch(identifier) is None:
+        fail(f"{description} {field} is malformed")
+    body = dict(value)
+    body.pop(field, None)
+    if hashlib.sha256(canonical_json_bytes(body)).hexdigest() != identifier:
+        fail(f"{description} {field} does not match its canonical body")
+
+
+def _source_archive_member_bytes(
+    evidence: SourceArchiveEvidence, name: str, description: str
+) -> bytes:
+    if evidence.snapshot.data is None or name not in evidence.files:
+        fail(f"{description} is absent from the donor source archive")
+    try:
+        with tarfile.open(fileobj=io.BytesIO(evidence.snapshot.data), mode="r:*") as bundle:
+            matches = [member for member in bundle.getmembers() if member.name == name]
+            if len(matches) != 1 or not matches[0].isfile():
+                fail(f"{description} is not one regular archive member")
+            handle = bundle.extractfile(matches[0])
+            if handle is None:
+                fail(f"cannot extract {description}")
+            data = handle.read()
+    except (tarfile.TarError, OSError) as exc:
+        fail(f"cannot read {description}: {exc}")
+    expected_sha256, expected_size = evidence.files[name]
+    if len(data) != expected_size or hashlib.sha256(data).hexdigest() != expected_sha256:
+        fail(f"{description} differs from the donor archive inventory")
+    return data
+
+
+def _write_exclusive_captured_bytes(
+    path: Path,
+    data: bytes,
+    description: str,
+    *,
+    executable: bool = False,
+) -> FileSnapshot:
+    """Materialize already captured bytes into one new private temporary file."""
+
+    destination = Path(path)
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_BINARY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    descriptor = -1
+    try:
+        descriptor = os.open(destination, flags, 0o500 if executable else 0o600)
+        offset = 0
+        while offset < len(data):
+            written = os.write(descriptor, data[offset:])
+            if written <= 0:
+                fail(f"cannot write {description}")
+            offset += written
+        os.fsync(descriptor)
+        observed = os.fstat(descriptor)
+        if not stat.S_ISREG(observed.st_mode) or observed.st_size != len(data):
+            fail(f"{description} temporary materialization is invalid")
+    except OSError as exc:
+        fail(f"cannot materialize {description}: {exc}")
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+    snapshot = snapshot_file(destination, description)
+    if (
+        snapshot.size_bytes != len(data)
+        or snapshot.sha256 != hashlib.sha256(data).hexdigest()
+    ):
+        fail(f"{description} temporary materialization differs from captured bytes")
+    return snapshot
+
+
+def _validate_source_transition(
+    value: Any,
+    *,
+    donor_source: SourceArchiveEvidence,
+    current_source: SourceArchiveEvidence,
+    donor_commit: str,
+    donor_tree: str,
+    current_git: GitCheckoutEvidence,
+) -> dict[str, Any]:
+    report = _exact_object(
+        value,
+        {
+            "schema_version",
+            "report_id",
+            "transition_id",
+            "status",
+            "from_source",
+            "to_source",
+            "protected_paths",
+        },
+        "MCMC source-transition report",
+    )
+    if (
+        type(report["schema_version"]) is not int
+        or report["schema_version"] != 1
+        or report["transition_id"] != "a7-to-a8-mcmc-source-equivalence-v4.0.4"
+        or report["status"] != "PASS"
+    ):
+        fail("MCMC source-transition report is not the exact schema-1 PASS report")
+    _validate_recovery_self_id(report, "report_id", "MCMC source-transition report")
+    expected_from = {
+        "commit": donor_commit,
+        "tree": donor_tree,
+        "archive_sha256": donor_source.snapshot.sha256,
+        "archive_size_bytes": donor_source.snapshot.size_bytes,
+    }
+    expected_to = {
+        "commit": current_git.head_sha,
+        "tree": current_git.tree_sha,
+        "archive_sha256": current_source.snapshot.sha256,
+        "archive_size_bytes": current_source.snapshot.size_bytes,
+    }
+    if report["from_source"] != expected_from or report["to_source"] != expected_to:
+        fail("MCMC source-transition endpoints differ from the verified A7/A8 archives")
+    donor_prefix = {
+        name for name in donor_source.files if name.startswith(RECOVERY_MCMC_SOURCE_PREFIX)
+    }
+    current_prefix = {
+        name for name in current_source.files if name.startswith(RECOVERY_MCMC_SOURCE_PREFIX)
+    }
+    if donor_prefix != current_prefix or not donor_prefix:
+        fail("tracked Bryson/MCMC source file-set changed across A7 to A8")
+    expected_paths = tuple(sorted(donor_prefix | set(RECOVERY_MCMC_SOURCE_FIXED_PATHS)))
+    if any(
+        name not in donor_source.files or name not in current_source.files
+        for name in expected_paths
+    ):
+        fail("MCMC source-transition archive lacks a protected dependency")
+    entries = report["protected_paths"]
+    if not isinstance(entries, list) or len(entries) != len(expected_paths):
+        fail("MCMC source-transition protected path count differs from policy")
+    for name, raw in zip(expected_paths, entries):
+        item = _exact_object(
+            raw,
+            {
+                "path",
+                "from_sha256",
+                "from_size_bytes",
+                "to_sha256",
+                "to_size_bytes",
+                "bit_identical",
+            },
+            f"MCMC source transition {name}",
+        )
+        from_sha256, from_size = donor_source.files[name]
+        to_sha256, to_size = current_source.files[name]
+        expected = {
+            "path": name,
+            "from_sha256": from_sha256,
+            "from_size_bytes": from_size,
+            "to_sha256": to_sha256,
+            "to_size_bytes": to_size,
+            "bit_identical": True,
+        }
+        if item != expected or (from_sha256, from_size) != (to_sha256, to_size):
+            fail(f"MCMC source/dependency bytes changed across A7 to A8: {name}")
+    return report
+
+
+def _validate_recovery_qualification(
+    value: Any,
+    *,
+    donor_run_id: str,
+    source_transition: FileSnapshot,
+) -> dict[str, Any]:
+    report = _exact_object(
+        value,
+        {
+            "schema_version",
+            "report_id",
+            "status",
+            "decision",
+            "donor_run_id",
+            "recovery_contract_id",
+            "source_transition_sha256",
+            "completion_attestation_present",
+            "work_manifest_count",
+            "raw_manifest_count",
+            "mcmc_realizations",
+            "total_file_count",
+            "total_size_bytes",
+        },
+        "MCMC recovery qualification report",
+    )
+    expected = {
+        "schema_version": 1,
+        "status": "PASS",
+        "decision": "REUSE_MCMC_RECOMPUTE_ALL_DOWNSTREAM",
+        "donor_run_id": donor_run_id,
+        "recovery_contract_id": RECOVERY_CONTRACT_ID,
+        "source_transition_sha256": source_transition.sha256,
+        "completion_attestation_present": False,
+        "work_manifest_count": len(VARIANTS) * SHARDS,
+        "raw_manifest_count": len(VARIANTS) * SHARDS,
+        "mcmc_realizations": len(VARIANTS) * SHARDS * TRIALS_PER_SHARD,
+        "total_file_count": RECOVERY_TOTAL_FILE_COUNT,
+        "total_size_bytes": RECOVERY_TOTAL_SIZE_BYTES,
+    }
+    if {key: report.get(key) for key in expected} != expected:
+        fail("MCMC recovery qualification report differs from the narrow recovery decision")
+    _validate_recovery_self_id(report, "report_id", "MCMC recovery qualification report")
+    return report
+
+
+def _parse_recovery_manifest(
+    snapshot: FileSnapshot,
+    *,
+    expected_targets: Sequence[str],
+    description: str,
+) -> dict[str, str]:
+    if snapshot.data is None:
+        fail(f"{description} bytes were not captured")
+    try:
+        lines = snapshot.data.decode("utf-8", errors="strict").splitlines()
+    except UnicodeDecodeError as exc:
+        fail(f"{description} is not strict UTF-8: {exc}")
+    entries: dict[str, str] = {}
+    folded: set[str] = set()
+    for line_number, line in enumerate(lines, start=1):
+        match = re.fullmatch(r"([0-9a-f]{64})  ([A-Za-z0-9][A-Za-z0-9_.-]*)", line)
+        if match is None:
+            fail(f"{description} line {line_number} is malformed")
+        digest, name = match.groups()
+        if name in entries or name.casefold() in folded:
+            fail(f"{description} repeats or case-collides target {name}")
+        entries[name] = digest
+        folded.add(name.casefold())
+    expected = tuple(expected_targets)
+    if len(expected) != len(set(expected)) or set(entries) != set(expected):
+        fail(f"{description} target set differs from the exact shard contract")
+    return entries
+
+
+def _recovery_tree_paths(*, raw: bool) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    files: list[str] = []
+    directories = ["."]
+    for variant in VARIANTS:
+        directories.append(variant.name)
+        for shard in range(SHARDS):
+            shard_directory = f"{variant.name}/shard-{shard:02d}"
+            directories.append(shard_directory)
+            label = f"production-shard-{shard}"
+            names = (
+                raw_output_names(variant.branch, label)
+                if raw
+                else (*runner_output_names(variant.branch, label), "numerical_environment.txt", "SHA256SUMS_complete.txt")
+            )
+            files.extend(f"{shard_directory}/{name}" for name in names)
+    return tuple(sorted(files)), tuple(sorted(directories))
+
+
+def _validate_recovery_donor_trees(
+    config: Configuration,
+    contract: Mapping[str, Any],
+) -> tuple[
+    Path,
+    tuple[int, int, int, int, int],
+    Path,
+    tuple[int, int, int, int, int],
+    tuple[FileSnapshot, ...],
+]:
+    if config.donor_work_shard_root is None or config.donor_raw_root is None:
+        fail("recovery donor work/raw roots are missing")
+    work_root, work_identity = snapshot_plain_directory_chain(
+        config.donor_work_shard_root, "donor MCMC work-shard root"
+    )
+    raw_root, raw_identity = snapshot_plain_directory_chain(
+        config.donor_raw_root, "donor MCMC raw-chain root"
+    )
+    if paths_overlap(work_root, raw_root):
+        fail("donor MCMC work and raw roots overlap")
+    work_files, work_directories = _recovery_tree_paths(raw=False)
+    raw_files, raw_directories = _recovery_tree_paths(raw=True)
+    ensure_exact_tree(
+        work_root,
+        expected_files=work_files,
+        expected_directories=work_directories,
+        description="donor MCMC work-shard tree",
+    )
+    ensure_exact_tree(
+        raw_root,
+        expected_files=raw_files,
+        expected_directories=raw_directories,
+        description="donor MCMC raw-chain tree",
+    )
+    manifest_snapshots: list[FileSnapshot] = []
+    total_size = 0
+    total_count = 0
+    contract_variants = contract["variants"]
+    for variant, contract_variant in zip(VARIANTS, contract_variants):
+        for shard, shard_contract in enumerate(contract_variant["shards"]):
+            label = f"production-shard-{shard}"
+            work_directory = work_root / variant.name / f"shard-{shard:02d}"
+            raw_directory = raw_root / variant.name / f"shard-{shard:02d}"
+            work_manifest = snapshot_file(
+                work_directory / "SHA256SUMS_complete.txt",
+                f"donor {variant.name} shard {shard} work manifest",
+                collect=True,
+                maximum_bytes=1_000_000,
+            )
+            raw_manifest_name = f"SHA256SUMS_raw_chain_{variant.branch}_{label}.txt"
+            raw_manifest = snapshot_file(
+                raw_directory / raw_manifest_name,
+                f"donor {variant.name} shard {shard} raw manifest",
+                collect=True,
+                maximum_bytes=1_000_000,
+            )
+            _matches_recovery_evidence(
+                work_manifest,
+                shard_contract["work_manifest"],
+                f"recovery {variant.name} shard {shard} work manifest",
+            )
+            _matches_recovery_evidence(
+                raw_manifest,
+                shard_contract["raw_manifest"],
+                f"recovery {variant.name} shard {shard} raw manifest",
+            )
+            work_entries = _parse_recovery_manifest(
+                work_manifest,
+                expected_targets=(*runner_output_names(variant.branch, label), "numerical_environment.txt"),
+                description=f"donor {variant.name} shard {shard} work manifest",
+            )
+            raw_entries = _parse_recovery_manifest(
+                raw_manifest,
+                expected_targets=tuple(
+                    name
+                    for name in raw_output_names(variant.branch, label)
+                    if name != raw_manifest_name
+                ),
+                description=f"donor {variant.name} shard {shard} raw manifest",
+            )
+            manifest_snapshots.extend((work_manifest, raw_manifest))
+            total_count += 2
+            total_size += work_manifest.size_bytes + raw_manifest.size_bytes
+            for directory, entries, tree_name in (
+                (work_directory, work_entries, "work"),
+                (raw_directory, raw_entries, "raw"),
+            ):
+                for name, expected_sha256 in sorted(entries.items()):
+                    target = snapshot_file(
+                        directory / name,
+                        f"donor {variant.name} shard {shard} {tree_name} file {name}",
+                    )
+                    if target.sha256 != expected_sha256:
+                        fail(
+                            f"donor {variant.name} shard {shard} {tree_name} file "
+                            f"{name} differs from its manifest"
+                        )
+                    total_count += 1
+                    total_size += target.size_bytes
+    if total_count != RECOVERY_TOTAL_FILE_COUNT or total_size != RECOVERY_TOTAL_SIZE_BYTES:
+        fail(
+            "donor MCMC file count/size differs from the qualified recovery set: "
+            f"count={total_count}, size={total_size}"
+        )
+    ensure_exact_tree(
+        work_root,
+        expected_files=work_files,
+        expected_directories=work_directories,
+        description="donor MCMC work-shard tree",
+    )
+    ensure_exact_tree(
+        raw_root,
+        expected_files=raw_files,
+        expected_directories=raw_directories,
+        description="donor MCMC raw-chain tree",
+    )
+    final_work_root, final_work_identity = snapshot_plain_directory_chain(
+        work_root, "donor MCMC work-shard root after validation"
+    )
+    final_raw_root, final_raw_identity = snapshot_plain_directory_chain(
+        raw_root, "donor MCMC raw-chain root after validation"
+    )
+    if (
+        final_work_root != work_root
+        or final_work_identity != work_identity
+        or final_raw_root != raw_root
+        or final_raw_identity != raw_identity
+    ):
+        fail("donor MCMC root identity changed during validation")
+    return (
+        work_root,
+        work_identity,
+        raw_root,
+        raw_identity,
+        tuple(manifest_snapshots),
+    )
+
+
+def validate_recovery_contract(
+    config: Configuration,
+    *,
+    current_source: SourceArchiveEvidence,
+    current_git: GitCheckoutEvidence,
+) -> RecoveryContractBinding:
+    """Validate the signed-start donor and exact external A7 MCMC artifact contract."""
+
+    if not recovery_enabled(config):
+        fail("recover-mcmc requires one complete external recovery contract binding")
+    required_paths = (
+        config.recovery_contract,
+        config.donor_evidence_root,
+        config.donor_attestation_contract,
+        config.donor_command_plan,
+        config.donor_numerical_runtime_manifest,
+        config.donor_source_archive,
+        config.source_transition_evidence,
+        config.recovery_qualification_report,
+        config.ssh_keygen_executable,
+    )
+    if any(path is None for path in required_paths):
+        fail("internal recovery binding state is incomplete")
+    if (
+        config.expected_recovery_contract_sha256 is None
+        or config.expected_recovery_contract_size_bytes is None
+    ):
+        fail("internal recovery contract lock is incomplete")
+    contract_snapshot = snapshot_file(
+        config.recovery_contract,
+        "external MCMC recovery contract",
+        collect=True,
+        maximum_bytes=4_000_000,
+    )
+    if (
+        contract_snapshot.sha256 != config.expected_recovery_contract_sha256
+        or contract_snapshot.size_bytes != config.expected_recovery_contract_size_bytes
+    ):
+        fail("external MCMC recovery contract differs from the signed plan lock")
+    if contract_snapshot.data is None:
+        fail("external MCMC recovery contract bytes were not captured")
+    contract = _exact_object(
+        load_strict_json_bytes(
+            contract_snapshot.data, "external MCMC recovery contract"
+        ),
+        {
+            "schema_version",
+            "contract_id",
+            "status",
+            "donor",
+            "policy",
+            "variants",
+            "source_transition",
+            "qualification_report",
+        },
+        "external MCMC recovery contract",
+    )
+    if (
+        type(contract["schema_version"]) is not int
+        or contract["schema_version"] != RECOVERY_CONTRACT_SCHEMA_VERSION
+        or contract["contract_id"] != RECOVERY_CONTRACT_ID
+        or contract["status"] != "ACCEPTED"
+    ):
+        fail("external MCMC recovery contract is not the exact schema-2 ACCEPTED contract")
+    donor = _exact_object(
+        contract["donor"],
+        {
+            "run_id",
+            "source_commit",
+            "source_tree",
+            "source_file_set_sha256",
+            "source_file_count",
+            "execution_environment",
+            "attestation_contract",
+            "source_archive",
+            "command_plan",
+            "numerical_runtime_manifest",
+            "start_challenge",
+            "start_signature",
+            "command_stdout",
+            "command_stderr",
+            "completion_attestation_present",
+        },
+        "recovery donor",
+    )
+    if not isinstance(donor["run_id"], str) or SHA256_RE.fullmatch(donor["run_id"]) is None:
+        fail("recovery donor run id is malformed")
+    for key in ("source_commit", "source_tree"):
+        if not isinstance(donor[key], str) or re.fullmatch(r"[0-9a-f]{40}", donor[key]) is None:
+            fail(f"recovery donor {key} is malformed")
+    if (
+        not isinstance(donor["source_file_set_sha256"], str)
+        or SHA256_RE.fullmatch(donor["source_file_set_sha256"]) is None
+        or type(donor["source_file_count"]) is not int
+        or donor["source_file_count"] <= 0
+        or not isinstance(donor["execution_environment"], str)
+        or SAFE_COMMAND_ID.fullmatch(donor["execution_environment"]) is None
+        or donor["completion_attestation_present"] is not False
+    ):
+        fail("recovery donor source or signed-start/no-completion state is invalid")
+    for key in (
+        "attestation_contract",
+        "source_archive",
+        "command_plan",
+        "numerical_runtime_manifest",
+        "start_challenge",
+        "start_signature",
+        "command_stdout",
+        "command_stderr",
+    ):
+        _validate_recovery_evidence(
+            donor[key],
+            f"recovery donor {key}",
+            allow_empty=key == "command_stdout",
+        )
+    policy = _exact_object(
+        contract["policy"],
+        {
+            "copy_policy",
+            "mcmc_reused",
+            "aggregates_and_downstream_recomputed",
+            "shards_per_variant",
+            "trials_per_shard",
+            "total_realizations",
+            "work_file_count",
+            "raw_file_count",
+            "total_file_count",
+            "total_size_bytes",
+        },
+        "MCMC recovery policy",
+    )
+    expected_policy = {
+        "copy_policy": RECOVERY_COPY_POLICY,
+        "mcmc_reused": True,
+        "aggregates_and_downstream_recomputed": True,
+        "shards_per_variant": SHARDS,
+        "trials_per_shard": TRIALS_PER_SHARD,
+        "total_realizations": len(VARIANTS) * SHARDS * TRIALS_PER_SHARD,
+        "work_file_count": RECOVERY_WORK_FILE_COUNT,
+        "raw_file_count": RECOVERY_RAW_FILE_COUNT,
+        "total_file_count": RECOVERY_TOTAL_FILE_COUNT,
+        "total_size_bytes": RECOVERY_TOTAL_SIZE_BYTES,
+    }
+    if policy != expected_policy:
+        fail("MCMC recovery policy differs from the exact v4.0.4 recovery policy")
+    raw_variants = contract["variants"]
+    if not isinstance(raw_variants, list) or len(raw_variants) != len(VARIANTS):
+        fail("MCMC recovery contract does not contain exactly three variants")
+    for expected_variant, raw_variant in zip(VARIANTS, raw_variants):
+        item = _exact_object(
+            raw_variant,
+            {"name", "branch", "measurement_error_mode", "maximum_steps", "shards"},
+            f"MCMC recovery variant {expected_variant.name}",
+        )
+        if (
+            item["name"] != expected_variant.name
+            or item["branch"] != expected_variant.branch
+            or item["measurement_error_mode"] != expected_variant.measurement_mode
+            or type(item["maximum_steps"]) is not int
+            or item["maximum_steps"] != expected_variant.maximum_steps
+        ):
+            fail(f"MCMC recovery variant policy mismatch: {expected_variant.name}")
+        shards = item["shards"]
+        if not isinstance(shards, list) or len(shards) != SHARDS:
+            fail(f"MCMC recovery shard count mismatch: {expected_variant.name}")
+        for shard, raw_shard in enumerate(shards):
+            shard_item = _exact_object(
+                raw_shard,
+                {"shard", "work_manifest", "raw_manifest"},
+                f"MCMC recovery {expected_variant.name} shard {shard}",
+            )
+            if type(shard_item["shard"]) is not int or shard_item["shard"] != shard:
+                fail(f"MCMC recovery shard order mismatch: {expected_variant.name}")
+            _validate_recovery_evidence(
+                shard_item["work_manifest"],
+                f"MCMC recovery {expected_variant.name} shard {shard} work manifest",
+            )
+            _validate_recovery_evidence(
+                shard_item["raw_manifest"],
+                f"MCMC recovery {expected_variant.name} shard {shard} raw manifest",
+            )
+    transition_lock = _validate_recovery_evidence(
+        contract["source_transition"], "MCMC source-transition report"
+    )
+    qualification_lock = _exact_object(
+        contract["qualification_report"],
+        {"report_id", "sha256", "size_bytes"},
+        "MCMC recovery qualification report lock",
+    )
+    _validate_recovery_evidence(
+        {"sha256": qualification_lock["sha256"], "size_bytes": qualification_lock["size_bytes"]},
+        "MCMC recovery qualification report",
+    )
+
+    evidence_root, evidence_identity = snapshot_plain_directory_chain(
+        config.donor_evidence_root, "donor failed-run evidence root"
+    )
+    ensure_exact_tree(
+        evidence_root,
+        expected_files=DONOR_EVIDENCE_FILES,
+        description="donor failed-run evidence",
+    )
+    evidence_snapshots_by_name = {
+        name: snapshot_file(
+            evidence_root / name,
+            f"donor failed-run evidence {name}",
+            collect=name in {DONOR_START_NAME, DONOR_START_SIGNATURE_NAME},
+            maximum_bytes=(
+                4_000_000
+                if name == DONOR_START_NAME
+                else 1_000_000
+                if name == DONOR_START_SIGNATURE_NAME
+                else None
+            ),
+        )
+        for name in DONOR_EVIDENCE_FILES
+    }
+    for name, key in (
+        (DONOR_START_NAME, "start_challenge"),
+        (DONOR_START_SIGNATURE_NAME, "start_signature"),
+        (DONOR_STDOUT_NAME, "command_stdout"),
+        (DONOR_STDERR_NAME, "command_stderr"),
+    ):
+        _matches_recovery_evidence(
+            evidence_snapshots_by_name[name],
+            donor[key],
+            f"recovery donor {key}",
+            allow_empty=key == "command_stdout",
+        )
+    ensure_exact_tree(
+        evidence_root,
+        expected_files=DONOR_EVIDENCE_FILES,
+        description="donor failed-run evidence",
+    )
+
+    donor_contract_snapshot = snapshot_file(
+        config.donor_attestation_contract,
+        "donor A7 attestation contract",
+        collect=True,
+        maximum_bytes=4_000_000,
+    )
+    donor_plan_snapshot = snapshot_file(
+        config.donor_command_plan,
+        "donor A7 command plan",
+        collect=True,
+        maximum_bytes=4_000_000,
+    )
+    donor_runtime_snapshot = snapshot_file(
+        config.donor_numerical_runtime_manifest,
+        "donor A7 numerical runtime",
+        collect=True,
+        maximum_bytes=4_000_000,
+    )
+    trusted_ssh_keygen = snapshot_file(
+        config.ssh_keygen_executable,
+        "trusted ssh-keygen executable",
+        collect=True,
+        maximum_bytes=4_000_000,
+    )
+    _matches_recovery_evidence(
+        donor_contract_snapshot, donor["attestation_contract"], "recovery donor attestation_contract"
+    )
+    _matches_recovery_evidence(donor_plan_snapshot, donor["command_plan"], "recovery donor command_plan")
+    _matches_recovery_evidence(
+        donor_runtime_snapshot,
+        donor["numerical_runtime_manifest"],
+        "recovery donor numerical_runtime_manifest",
+    )
+    donor_source = inspect_source_archive(
+        config.donor_source_archive, donor["source_archive"]["sha256"]
+    )
+    if donor_source.snapshot.size_bytes != donor["source_archive"]["size_bytes"]:
+        fail("donor A7 source archive size differs from the recovery contract")
+    donor_controller_source = _source_archive_member_bytes(
+        donor_source,
+        TRACKED_CONTROLLER_PATH,
+        "donor A7 production controller",
+    )
+    current_controller_source = _source_archive_member_bytes(
+        current_source,
+        TRACKED_CONTROLLER_PATH,
+        "current A8 production controller",
+    )
+    donor_mcmc_policy = _recovery_mcmc_policy_snapshot(
+        donor_controller_source, "donor A7 production controller"
+    )
+    current_mcmc_policy = _recovery_mcmc_policy_snapshot(
+        current_controller_source, "current A8 production controller"
+    )
+    if current_mcmc_policy != donor_mcmc_policy:
+        fail("A7 to A8 changed the protected MCMC or downstream scientific policy")
+    donor_controller_invariants = _recovery_controller_invariant_snapshot(
+        donor_controller_source, "donor A7 production controller"
+    )
+    current_controller_invariants = _recovery_controller_invariant_snapshot(
+        current_controller_source, "current A8 production controller"
+    )
+    if current_controller_invariants != donor_controller_invariants:
+        fail("A7 to A8 changed the protected non-recovery controller surface")
+    mcmc_policy_sha256 = hashlib.sha256(
+        canonical_json_bytes(
+            {
+                "scientific_policy": current_mcmc_policy,
+                "unchanged_controller_surface": current_controller_invariants,
+            }
+        )
+    ).hexdigest()
+    transition_snapshot = snapshot_file(
+        config.source_transition_evidence,
+        "MCMC source-transition report",
+        collect=True,
+        maximum_bytes=4_000_000,
+    )
+    _matches_recovery_evidence(
+        transition_snapshot, transition_lock, "MCMC source-transition report"
+    )
+    if transition_snapshot.data is None:
+        fail("MCMC source-transition report bytes were not captured")
+    transition_value = _validate_source_transition(
+        load_strict_json_bytes(transition_snapshot.data, "MCMC source-transition report"),
+        donor_source=donor_source,
+        current_source=current_source,
+        donor_commit=donor["source_commit"],
+        donor_tree=donor["source_tree"],
+        current_git=current_git,
+    )
+    qualification_snapshot = snapshot_file(
+        config.recovery_qualification_report,
+        "MCMC recovery qualification report",
+        collect=True,
+        maximum_bytes=4_000_000,
+    )
+    _matches_recovery_evidence(
+        qualification_snapshot,
+        {"sha256": qualification_lock["sha256"], "size_bytes": qualification_lock["size_bytes"]},
+        "MCMC recovery qualification report",
+    )
+    if qualification_snapshot.data is None:
+        fail("MCMC recovery qualification report bytes were not captured")
+    qualification_value = _validate_recovery_qualification(
+        load_strict_json_bytes(
+            qualification_snapshot.data, "MCMC recovery qualification report"
+        ),
+        donor_run_id=donor["run_id"],
+        source_transition=transition_snapshot,
+    )
+    if qualification_value["report_id"] != qualification_lock["report_id"]:
+        fail("MCMC recovery qualification report id differs from the contract lock")
+
+    verifier_source = _source_archive_member_bytes(
+        donor_source,
+        "scripts/verify_local_run_attestation.py",
+        "donor A7 local-run attestation verifier",
+    )
+    captured_inputs = {
+        "contract": donor_contract_snapshot,
+        "plan": donor_plan_snapshot,
+        "runtime": donor_runtime_snapshot,
+        "start": evidence_snapshots_by_name[DONOR_START_NAME],
+        "signature": evidence_snapshots_by_name[DONOR_START_SIGNATURE_NAME],
+        "ssh_keygen": trusted_ssh_keygen,
+    }
+    if any(snapshot.data is None for snapshot in captured_inputs.values()):
+        fail("donor signed-start inputs were not captured before verification")
+    with tempfile.TemporaryDirectory(prefix="exoearth-donor-attestation-") as temporary:
+        temporary_root = Path(temporary)
+        verifier_path = temporary_root / "verify_local_run_attestation.py"
+        contract_path = temporary_root / "donor-contract.json"
+        plan_path = temporary_root / "donor-plan.json"
+        runtime_path = temporary_root / "donor-runtime.json"
+        start_path = temporary_root / DONOR_START_NAME
+        signature_path = temporary_root / DONOR_START_SIGNATURE_NAME
+        ssh_keygen_path = temporary_root / "ssh-keygen"
+        _write_exclusive_captured_bytes(
+            verifier_path, verifier_source, "captured donor A7 attestation verifier"
+        )
+        for path, key, description in (
+            (contract_path, "contract", "captured donor A7 attestation contract"),
+            (plan_path, "plan", "captured donor A7 command plan"),
+            (runtime_path, "runtime", "captured donor A7 numerical runtime"),
+            (start_path, "start", "captured donor A7 start challenge"),
+            (signature_path, "signature", "captured donor A7 start signature"),
+        ):
+            data = captured_inputs[key].data
+            if data is None:
+                fail(f"{description} bytes are absent")
+            _write_exclusive_captured_bytes(path, data, description)
+        ssh_keygen_bytes = captured_inputs["ssh_keygen"].data
+        if ssh_keygen_bytes is None:
+            fail("captured trusted ssh-keygen bytes are absent")
+        _write_exclusive_captured_bytes(
+            ssh_keygen_path,
+            ssh_keygen_bytes,
+            "captured trusted ssh-keygen executable",
+            executable=True,
+        )
+        verifier, _verifier_snapshot = _load_module_from_snapshot(
+            verifier_path,
+            module_name="_exoearth_v404_donor_attestation_validator",
+            description="donor A7 local-run attestation verifier",
+        )
+        try:
+            donor_attestation, candidate, verified_contract_snapshot = verifier.select_contract(
+                contract_path, DONOR_CANDIDATE_ID
+            )
+            if verifier.snapshot_evidence(verified_contract_snapshot) != {
+                "sha256": donor_contract_snapshot.sha256,
+                "size_bytes": donor_contract_snapshot.size_bytes,
+            }:
+                fail("donor verifier did not use the captured attestation contract")
+            if donor_attestation["contract_id"] != DONOR_ATTESTATION_CONTRACT_ID:
+                fail("donor attestation contract id differs from v4.0.4")
+            verified_tool_snapshot = verifier.validate_tool(
+                ssh_keygen_path,
+                candidate["source_lock"]["ssh_keygen_executable"],
+                "donor trusted ssh-keygen executable",
+            )
+            if verifier.snapshot_evidence(verified_tool_snapshot) != {
+                "sha256": trusted_ssh_keygen.sha256,
+                "size_bytes": trusted_ssh_keygen.size_bytes,
+            }:
+                fail("donor verifier did not use the captured ssh-keygen executable")
+            runtime_value, runtime_snapshot = verifier.load_json_snapshot(
+                runtime_path, "donor numerical runtime"
+            )
+            runtime = verifier.validate_numerical_runtime(runtime_value)
+            plan_value, plan_snapshot = verifier.load_json_snapshot(
+                plan_path, "donor command plan"
+            )
+            verifier.validate_plan(plan_value, runtime)
+            if candidate["command_plan"] != verifier.snapshot_evidence(plan_snapshot):
+                fail("donor candidate does not bind the supplied command plan")
+            if candidate["numerical_runtime_manifest"] != verifier.snapshot_evidence(runtime_snapshot):
+                fail("donor candidate does not bind the supplied numerical runtime")
+            source_state = {
+                key: candidate["source_lock"][key]
+                for key in (
+                    "public_repository",
+                    "private_repository",
+                    "commit",
+                    "tree",
+                    "archive_sha256",
+                    "archive_size_bytes",
+                )
+            }
+            if source_state != {
+                "public_repository": EXPECTED_RELEASE_REPOSITORY,
+                "private_repository": EXPECTED_PRODUCTION_REPOSITORY,
+                "commit": donor["source_commit"],
+                "tree": donor["source_tree"],
+                "archive_sha256": donor_source.snapshot.sha256,
+                "archive_size_bytes": donor_source.snapshot.size_bytes,
+            }:
+                fail("donor A7 candidate source lock differs from the recovery contract")
+            files, _directories = verifier.archive_members(donor_source.snapshot.data)
+            source_manifest = verifier.source_manifest(files)
+            if (
+                source_manifest["file_set_sha256"] != donor["source_file_set_sha256"]
+                or source_manifest["file_count"] != donor["source_file_count"]
+            ):
+                fail("donor source archive inventory differs from the recovery contract")
+            challenge_value, start_snapshot = verifier.load_json_snapshot(
+                start_path, "donor start challenge"
+            )
+            challenge = verifier.validate_challenge(
+                challenge_value,
+                donor_attestation,
+                candidate,
+                source_state,
+                source_manifest,
+                plan_snapshot,
+                runtime_snapshot,
+                donor["execution_environment"],
+            )
+            if challenge["run_id"] != donor["run_id"]:
+                fail("donor signed start run id differs from the recovery contract")
+            start_signature = verifier.read_snapshot(
+                signature_path,
+                "donor start challenge signature",
+                maximum_bytes=verifier.MAX_SIGNATURE_BYTES,
+            )
+            for verified_snapshot, captured_snapshot, description in (
+                (plan_snapshot, donor_plan_snapshot, "donor command plan"),
+                (runtime_snapshot, donor_runtime_snapshot, "donor numerical runtime"),
+                (
+                    start_snapshot,
+                    evidence_snapshots_by_name[DONOR_START_NAME],
+                    "donor start challenge",
+                ),
+                (
+                    start_signature,
+                    evidence_snapshots_by_name[DONOR_START_SIGNATURE_NAME],
+                    "donor start signature",
+                ),
+            ):
+                if verifier.snapshot_evidence(verified_snapshot) != {
+                    "sha256": captured_snapshot.sha256,
+                    "size_bytes": captured_snapshot.size_bytes,
+                }:
+                    fail(f"donor verifier did not use the captured {description}")
+            signer = verifier.signer_by_id(
+                donor_attestation, challenge["start_signer_id"]
+            )
+            if signer != {
+                "signer_id": DONOR_START_SIGNER_ID,
+                "public_key": DONOR_START_PUBLIC_KEY,
+            }:
+                fail("donor signed start does not use the pinned signer A")
+            verifier.verify_signature(
+                ssh_keygen_path,
+                start_snapshot,
+                start_signature,
+                signer,
+                DONOR_START_NAMESPACE,
+                "donor start challenge",
+            )
+        except OrchestrationError:
+            raise
+        except Exception as exc:
+            fail(f"donor A7 signed-start verification failed: {exc}")
+
+    (
+        donor_work_root,
+        donor_work_identity,
+        donor_raw_root,
+        donor_raw_identity,
+        manifest_snapshots,
+    ) = _validate_recovery_donor_trees(config, contract)
+    for snapshot, description in (
+        (contract_snapshot, "external MCMC recovery contract"),
+        (donor_contract_snapshot, "donor A7 attestation contract"),
+        (donor_plan_snapshot, "donor A7 command plan"),
+        (donor_runtime_snapshot, "donor A7 numerical runtime"),
+        (donor_source.snapshot, "donor A7 source archive"),
+        (transition_snapshot, "MCMC source-transition report"),
+        (qualification_snapshot, "MCMC recovery qualification report"),
+        *(
+            (snapshot, f"donor failed-run evidence {snapshot.path.name}")
+            for snapshot in evidence_snapshots_by_name.values()
+        ),
+    ):
+        recheck_snapshot(snapshot, description)
+    ensure_exact_tree(
+        evidence_root,
+        expected_files=DONOR_EVIDENCE_FILES,
+        description="donor failed-run evidence",
+    )
+    return RecoveryContractBinding(
+        contract=dict(contract),
+        snapshot=contract_snapshot,
+        evidence_root=evidence_root,
+        evidence_root_identity=evidence_identity,
+        evidence_snapshots=tuple(evidence_snapshots_by_name.values()),
+        donor_attestation_contract=donor_contract_snapshot,
+        donor_plan=donor_plan_snapshot,
+        donor_runtime=donor_runtime_snapshot,
+        donor_source_archive=donor_source,
+        source_transition=transition_snapshot,
+        qualification_report=qualification_snapshot,
+        source_transition_value=dict(transition_value),
+        qualification_report_value=dict(qualification_value),
+        donor_work_root=donor_work_root,
+        donor_work_root_identity=donor_work_identity,
+        donor_raw_root=donor_raw_root,
+        donor_raw_root_identity=donor_raw_identity,
+        manifest_snapshots=manifest_snapshots,
+        trusted_ssh_keygen=trusted_ssh_keygen,
+        mcmc_policy_sha256=mcmc_policy_sha256,
+    )
+
+
+def validate_recovery_lineage(
+    git_executable: Path,
+    checkout: Path,
+    *,
+    expected_head: str,
+    donor_commit: str,
+    environment: Mapping[str, str],
+    description: str,
+) -> None:
+    """Require one exact HEAD with exactly donor A7 as its sole parent."""
+
+    result = subprocess.run(
+        [
+            str(git_executable),
+            "-C",
+            str(checkout),
+            "rev-list",
+            "--parents",
+            "-n",
+            "1",
+            "HEAD",
+        ],
+        cwd=str(checkout),
+        env=dict(environment),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=False,
+        check=False,
+    )
+    lineage = result.stdout.decode("ascii", errors="replace").strip().split()
+    if result.returncode != 0 or lineage != [expected_head, donor_commit]:
+        fail(
+            f"{description} A8 source is not the single-parent direct Git child "
+            "of donor A7"
+        )
 
 
 def script_path(config: Configuration, relative: str) -> str:
@@ -1698,20 +3197,28 @@ def _load_module_from_snapshot(path: Path, *, module_name: str, description: str
     module.__loader__ = None
     module.__spec__ = None
     module.__dict__["__source_only_sha256__"] = snapshot.sha256
+    missing = object()
+    previous = sys.modules.get(module_name, missing)
     sys.modules[module_name] = module
     try:
         code = compile(snapshot.data, str(snapshot.path), "exec")
         with _isolated_snapshot_import_path(snapshot.path):
             exec(code, module.__dict__)
+        recheck_snapshot(snapshot, description)
+        if (
+            module.__dict__.get("__source_only_sha256__") != snapshot.sha256
+            or module.__dict__.get("__cached__") is not None
+        ):
+            fail(f"{description} changed its source-only loader evidence")
     except Exception as exc:
-        sys.modules.pop(module_name, None)
+        if isinstance(exc, OrchestrationError):
+            raise
         fail(f"cannot load {description} from captured bytes: {exc}")
-    recheck_snapshot(snapshot, description)
-    if (
-        module.__dict__.get("__source_only_sha256__") != snapshot.sha256
-        or module.__dict__.get("__cached__") is not None
-    ):
-        fail(f"{description} changed its source-only loader evidence")
+    finally:
+        if previous is missing:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = previous
     return module, snapshot
 
 
@@ -1817,6 +3324,7 @@ def validate_configuration(
     GitCheckoutEvidence,
     GitCheckoutEvidence,
     HostContractBinding,
+    RecoveryContractBinding | None,
 ]:
     validate_ubuntu_2204_wsl()
     if not 1 <= config.maximum_parallel_shards <= MAXIMUM_PARALLEL_SHARDS:
@@ -1825,6 +3333,14 @@ def validate_configuration(
         fail("Bryson source SHA-256 differs from the v4.0.4 lock")
     if SHA256_RE.fullmatch(config.expected_host_contract_sha256) is None:
         fail("expected external host-contract SHA-256 is malformed")
+    is_recovery = recovery_enabled(config)
+    if is_recovery and (
+        config.expected_recovery_contract_sha256 is None
+        or SHA256_RE.fullmatch(config.expected_recovery_contract_sha256) is None
+        or type(config.expected_recovery_contract_size_bytes) is not int
+        or config.expected_recovery_contract_size_bytes <= 0
+    ):
+        fail("expected external recovery-contract hash/size is malformed")
     for description, path in (
         ("source root", config.source_root),
         ("source archive", config.source_archive),
@@ -1849,6 +3365,24 @@ def validate_configuration(
         ("public output root", config.public_output_root),
     ):
         require_absolute(path, description)
+    if is_recovery:
+        recovery_paths = (
+            ("external MCMC recovery contract", config.recovery_contract),
+            ("donor MCMC work-shard root", config.donor_work_shard_root),
+            ("donor MCMC raw-chain root", config.donor_raw_root),
+            ("donor failed-run evidence root", config.donor_evidence_root),
+            ("donor A7 attestation contract", config.donor_attestation_contract),
+            ("donor A7 command plan", config.donor_command_plan),
+            ("donor A7 numerical runtime", config.donor_numerical_runtime_manifest),
+            ("donor A7 source archive", config.donor_source_archive),
+            ("MCMC source-transition report", config.source_transition_evidence),
+            ("MCMC recovery qualification report", config.recovery_qualification_report),
+            ("trusted ssh-keygen executable", config.ssh_keygen_executable),
+        )
+        for description, path in recovery_paths:
+            if path is None:
+                fail(f"{description} is missing")
+            require_absolute(path, description)
     expected_controller = config.source_root / "scripts" / Path(__file__).name
     if not same_path(Path(__file__), expected_controller):
         fail("controller is not executing from the supplied source root")
@@ -1895,6 +3429,22 @@ def validate_configuration(
         "command_plan": config.command_plan,
         "git_executable": config.git_executable,
     }
+    if is_recovery:
+        protected_paths.update(
+            {
+                "recovery_contract": config.recovery_contract,
+                "donor_work_shard_root": config.donor_work_shard_root,
+                "donor_raw_root": config.donor_raw_root,
+                "donor_evidence_root": config.donor_evidence_root,
+                "donor_attestation_contract": config.donor_attestation_contract,
+                "donor_command_plan": config.donor_command_plan,
+                "donor_numerical_runtime_manifest": config.donor_numerical_runtime_manifest,
+                "donor_source_archive": config.donor_source_archive,
+                "source_transition_evidence": config.source_transition_evidence,
+                "recovery_qualification_report": config.recovery_qualification_report,
+                "ssh_keygen_executable": config.ssh_keygen_executable,
+            }
+        )
     protected_snapshots = [
         snapshot_file(config.command_plan, "signed local command plan"),
         snapshot_file(config.rate_model_source, "locked rate-model source"),
@@ -1956,6 +3506,70 @@ def validate_configuration(
             host_binding.qualification_report,
         )
     )
+    recovery_binding: RecoveryContractBinding | None = None
+    if is_recovery:
+        if config.ssh_keygen_executable is None:
+            fail("trusted ssh-keygen executable is missing")
+        if (
+            not config.ssh_keygen_executable.exists()
+            or not os.access(config.ssh_keygen_executable, os.X_OK)
+        ):
+            fail("trusted ssh-keygen executable is missing or not executable")
+        donor_roots = {
+            "donor MCMC work-shard root": config.donor_work_shard_root,
+            "donor MCMC raw-chain root": config.donor_raw_root,
+            "donor failed-run evidence root": config.donor_evidence_root,
+        }
+        protected_roots = {
+            "execution source A": config.source_root,
+            "private production checkout": config.production_checkout,
+            "public release checkout": config.release_checkout,
+            "host artifact root": config.host_artifact_root,
+            "metallicity audit root": config.metallicity_audit_root,
+        }
+        for donor_name, donor_root in donor_roots.items():
+            if donor_root is None:
+                fail(f"{donor_name} is missing")
+            for protected_name, protected_root in protected_roots.items():
+                if paths_overlap(donor_root, protected_root):
+                    fail(f"{donor_name} overlaps {protected_name}")
+        donor_items = list(donor_roots.items())
+        for index, (left_name, left) in enumerate(donor_items):
+            for right_name, right in donor_items[index + 1 :]:
+                if paths_overlap(left, right):
+                    fail(f"{left_name} overlaps {right_name}")
+        recovery_binding = validate_recovery_contract(
+            config,
+            current_source=evidence,
+            current_git=production_git,
+        )
+        donor_commit = recovery_binding.contract["donor"]["source_commit"]
+        for checkout_name, checkout, expected_head in (
+            ("private production", config.production_checkout, production_git.head_sha),
+            ("public release", config.release_checkout, release_git.head_sha),
+        ):
+            validate_recovery_lineage(
+                config.git_executable,
+                checkout,
+                expected_head=expected_head,
+                donor_commit=donor_commit,
+                environment=environment,
+                description=checkout_name,
+            )
+        protected_snapshots.extend(
+            (
+                recovery_binding.snapshot,
+                *recovery_binding.evidence_snapshots,
+                recovery_binding.donor_attestation_contract,
+                recovery_binding.donor_plan,
+                recovery_binding.donor_runtime,
+                recovery_binding.donor_source_archive.snapshot,
+                recovery_binding.source_transition,
+                recovery_binding.qualification_report,
+                *recovery_binding.manifest_snapshots,
+                recovery_binding.trusted_ssh_keygen,
+            )
+        )
     normalized_roots = validate_mutable_roots(
         {
             "private_work_root": config.private_work_root,
@@ -1968,7 +3582,14 @@ def validate_configuration(
         configured = getattr(config, name)
         if not same_path(configured, normalized):
             fail(f"cannot normalize mutable root {name}")
-    return evidence, protected_snapshots, production_git, release_git, host_binding
+    return (
+        evidence,
+        protected_snapshots,
+        production_git,
+        release_git,
+        host_binding,
+        recovery_binding,
+    )
 
 
 def create_numerical_environment(
@@ -2226,6 +3847,430 @@ def run_pilots(
         pilot_root / "legacy-pair-gate",
     )
     return results
+
+
+def _stable_copy_recovery_file(
+    source: Path,
+    destination: Path,
+    *,
+    expected_sha256: str,
+    expected_size_bytes: int | None,
+    description: str,
+) -> FileSnapshot:
+    """Byte-copy one immutable donor file into a fresh O_EXCL destination."""
+
+    if SHA256_RE.fullmatch(expected_sha256) is None:
+        fail(f"{description} expected SHA-256 is malformed")
+    if expected_size_bytes is not None and (
+        type(expected_size_bytes) is not int or expected_size_bytes <= 0
+    ):
+        fail(f"{description} expected size is malformed")
+    snapshot_plain_directory_chain(source.parent, f"{description} source parent")
+    snapshot_plain_directory_chain(destination.parent, f"{description} destination parent")
+    if destination.exists() or destination.is_symlink():
+        fail(f"{description} destination already exists")
+    try:
+        named_before = source.lstat()
+    except OSError as exc:
+        fail(f"cannot inspect {description} source: {exc}")
+    if (
+        stat.S_ISLNK(named_before.st_mode)
+        or _has_reparse_point(named_before)
+        or not stat.S_ISREG(named_before.st_mode)
+        or named_before.st_nlink != 1
+    ):
+        fail(f"{description} source is not one plain singly-linked regular file")
+    source_flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    destination_flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_BINARY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    source_descriptor = -1
+    destination_descriptor = -1
+    created = False
+    digest = hashlib.sha256()
+    size = 0
+    try:
+        source_descriptor = os.open(source, source_flags)
+        source_before = os.fstat(source_descriptor)
+        if (
+            not stat.S_ISREG(source_before.st_mode)
+            or source_before.st_nlink != 1
+            or _identity(source_before) != _identity(named_before)
+        ):
+            fail(f"{description} source changed before copy")
+        destination_descriptor = os.open(destination, destination_flags, 0o600)
+        created = True
+        destination_before = os.fstat(destination_descriptor)
+        if not stat.S_ISREG(destination_before.st_mode) or destination_before.st_nlink != 1:
+            fail(f"{description} destination is not one new regular file")
+        if (source_before.st_dev, source_before.st_ino) == (
+            destination_before.st_dev,
+            destination_before.st_ino,
+        ):
+            fail(f"{description} destination aliases donor storage")
+        while True:
+            block = os.read(source_descriptor, 1024 * 1024)
+            if not block:
+                break
+            digest.update(block)
+            size += len(block)
+            view = memoryview(block)
+            while view:
+                written = os.write(destination_descriptor, view)
+                if written <= 0:
+                    fail(f"{description} destination write made no progress")
+                view = view[written:]
+        os.fsync(destination_descriptor)
+        source_after = os.fstat(source_descriptor)
+        destination_after = os.fstat(destination_descriptor)
+    except OrchestrationError:
+        if destination_descriptor >= 0:
+            os.close(destination_descriptor)
+            destination_descriptor = -1
+        if source_descriptor >= 0:
+            os.close(source_descriptor)
+            source_descriptor = -1
+        if created:
+            try:
+                destination.unlink()
+            except OSError:
+                pass
+        raise
+    except OSError as exc:
+        if destination_descriptor >= 0:
+            os.close(destination_descriptor)
+            destination_descriptor = -1
+        if source_descriptor >= 0:
+            os.close(source_descriptor)
+            source_descriptor = -1
+        if created:
+            try:
+                destination.unlink()
+            except OSError:
+                pass
+        fail(f"cannot copy {description}: {exc}")
+    finally:
+        if destination_descriptor >= 0:
+            os.close(destination_descriptor)
+        if source_descriptor >= 0:
+            os.close(source_descriptor)
+    try:
+        source_named_after = source.lstat()
+        destination_named_after = destination.lstat()
+    except OSError as exc:
+        fail(f"cannot re-inspect {description} after copy: {exc}")
+    if (
+        _identity(source_before) != _identity(source_after)
+        or _identity(source_after) != _identity(source_named_after)
+        or _identity(destination_after) != _identity(destination_named_after)
+        or not stat.S_ISREG(destination_named_after.st_mode)
+        or destination_named_after.st_nlink != 1
+        or size != source_before.st_size
+        or size != destination_after.st_size
+        or digest.hexdigest() != expected_sha256
+        or (expected_size_bytes is not None and size != expected_size_bytes)
+    ):
+        try:
+            destination.unlink()
+        except OSError:
+            pass
+        fail(f"{description} failed stable byte-copy verification")
+    snapshot_plain_directory_chain(source.parent, f"{description} source parent after copy")
+    snapshot_plain_directory_chain(
+        destination.parent, f"{description} destination parent after copy"
+    )
+    destination_snapshot = snapshot_file(destination, f"{description} copied destination")
+    if (
+        destination_snapshot.sha256 != expected_sha256
+        or destination_snapshot.size_bytes != size
+        or destination_snapshot.identity[:2] == _identity(source_after)[:2]
+    ):
+        fail(f"{description} copied destination failed independent verification")
+    return destination_snapshot
+
+
+def import_recovery_shards(
+    config: Configuration,
+    binding: RecoveryContractBinding,
+    *,
+    numerical_environment: Path,
+) -> tuple[dict[str, tuple[Path, Path]], RecoveryImportEvidence]:
+    """Copy and independently rehash the exact 48+48 qualified donor shards."""
+
+    numerical_snapshot = snapshot_file(
+        numerical_environment, "fresh recovery numerical environment"
+    )
+    work_parent = make_empty_directory(
+        config.private_work_root / "shards", "recovery work-shard root"
+    )
+    raw_parent = config.private_raw_root
+    if any(raw_parent.iterdir()):
+        fail("fresh private raw root is not empty before MCMC recovery import")
+    roots: dict[str, tuple[Path, Path]] = {}
+    copied: list[FileSnapshot] = []
+    work_records: list[dict[str, Any]] = []
+    raw_records: list[dict[str, Any]] = []
+    contract_variants = binding.contract["variants"]
+    for variant, contract_variant in zip(VARIANTS, contract_variants):
+        destination_work_variant = make_empty_directory(
+            work_parent / variant.name, f"recovery {variant.name} work root"
+        )
+        destination_raw_variant = make_empty_directory(
+            raw_parent / variant.name, f"recovery {variant.name} raw root"
+        )
+        roots[variant.name] = (destination_work_variant, destination_raw_variant)
+        for shard, shard_contract in enumerate(contract_variant["shards"]):
+            label = f"production-shard-{shard}"
+            source_work = binding.donor_work_root / variant.name / f"shard-{shard:02d}"
+            source_raw = binding.donor_raw_root / variant.name / f"shard-{shard:02d}"
+            destination_work = make_empty_directory(
+                destination_work_variant / f"shard-{shard:02d}",
+                f"recovery {variant.name} work shard {shard}",
+            )
+            destination_raw = make_empty_directory(
+                destination_raw_variant / f"shard-{shard:02d}",
+                f"recovery {variant.name} raw shard {shard}",
+            )
+            work_manifest = snapshot_file(
+                source_work / "SHA256SUMS_complete.txt",
+                f"recovery {variant.name} shard {shard} work manifest",
+                collect=True,
+                maximum_bytes=1_000_000,
+            )
+            _matches_recovery_evidence(
+                work_manifest,
+                shard_contract["work_manifest"],
+                f"recovery {variant.name} shard {shard} work manifest",
+            )
+            work_targets = (*runner_output_names(variant.branch, label), "numerical_environment.txt")
+            work_entries = _parse_recovery_manifest(
+                work_manifest,
+                expected_targets=work_targets,
+                description=f"recovery {variant.name} shard {shard} work manifest",
+            )
+            if work_entries["numerical_environment.txt"] != numerical_snapshot.sha256:
+                fail(
+                    f"recovery {variant.name} shard {shard} numerical environment "
+                    "differs from the fresh runtime"
+                )
+            for name in sorted(work_targets):
+                snapshot = _stable_copy_recovery_file(
+                    source_work / name,
+                    destination_work / name,
+                    expected_sha256=work_entries[name],
+                    expected_size_bytes=None,
+                    description=f"recovery {variant.name} shard {shard} work file {name}",
+                )
+                copied.append(snapshot)
+                work_records.append(
+                    {
+                        "path": f"{variant.name}/shard-{shard:02d}/{name}",
+                        "sha256": snapshot.sha256,
+                        "size_bytes": snapshot.size_bytes,
+                    }
+                )
+            copied_work_manifest = _stable_copy_recovery_file(
+                work_manifest.path,
+                destination_work / work_manifest.path.name,
+                expected_sha256=work_manifest.sha256,
+                expected_size_bytes=work_manifest.size_bytes,
+                description=f"recovery {variant.name} shard {shard} work manifest",
+            )
+            copied.append(copied_work_manifest)
+            work_records.append(
+                {
+                    "path": f"{variant.name}/shard-{shard:02d}/{work_manifest.path.name}",
+                    "sha256": copied_work_manifest.sha256,
+                    "size_bytes": copied_work_manifest.size_bytes,
+                }
+            )
+            validate_sha256_manifest_root(
+                destination_work,
+                manifest_name="SHA256SUMS_complete.txt",
+                target_names=work_targets,
+                description=f"imported {variant.name} work shard {shard}",
+            )
+
+            raw_manifest_name = f"SHA256SUMS_raw_chain_{variant.branch}_{label}.txt"
+            raw_manifest = snapshot_file(
+                source_raw / raw_manifest_name,
+                f"recovery {variant.name} shard {shard} raw manifest",
+                collect=True,
+                maximum_bytes=1_000_000,
+            )
+            _matches_recovery_evidence(
+                raw_manifest,
+                shard_contract["raw_manifest"],
+                f"recovery {variant.name} shard {shard} raw manifest",
+            )
+            raw_targets = tuple(
+                name
+                for name in raw_output_names(variant.branch, label)
+                if name != raw_manifest_name
+            )
+            raw_entries = _parse_recovery_manifest(
+                raw_manifest,
+                expected_targets=raw_targets,
+                description=f"recovery {variant.name} shard {shard} raw manifest",
+            )
+            for name in sorted(raw_targets):
+                snapshot = _stable_copy_recovery_file(
+                    source_raw / name,
+                    destination_raw / name,
+                    expected_sha256=raw_entries[name],
+                    expected_size_bytes=None,
+                    description=f"recovery {variant.name} shard {shard} raw file {name}",
+                )
+                copied.append(snapshot)
+                raw_records.append(
+                    {
+                        "path": f"{variant.name}/shard-{shard:02d}/{name}",
+                        "sha256": snapshot.sha256,
+                        "size_bytes": snapshot.size_bytes,
+                    }
+                )
+            copied_raw_manifest = _stable_copy_recovery_file(
+                raw_manifest.path,
+                destination_raw / raw_manifest.path.name,
+                expected_sha256=raw_manifest.sha256,
+                expected_size_bytes=raw_manifest.size_bytes,
+                description=f"recovery {variant.name} shard {shard} raw manifest",
+            )
+            copied.append(copied_raw_manifest)
+            raw_records.append(
+                {
+                    "path": f"{variant.name}/shard-{shard:02d}/{raw_manifest.path.name}",
+                    "sha256": copied_raw_manifest.sha256,
+                    "size_bytes": copied_raw_manifest.size_bytes,
+                }
+            )
+            validate_sha256_manifest_root(
+                destination_raw,
+                manifest_name=raw_manifest_name,
+                target_names=raw_targets,
+                description=f"imported {variant.name} raw shard {shard}",
+            )
+            recheck_snapshot(work_manifest, f"donor {variant.name} shard {shard} work manifest")
+            recheck_snapshot(raw_manifest, f"donor {variant.name} shard {shard} raw manifest")
+
+    work_files, work_directories = _recovery_tree_paths(raw=False)
+    raw_files, raw_directories = _recovery_tree_paths(raw=True)
+    ensure_exact_tree(
+        work_parent,
+        expected_files=work_files,
+        expected_directories=work_directories,
+        description="imported MCMC work-shard tree",
+    )
+    ensure_exact_tree(
+        raw_parent,
+        expected_files=raw_files,
+        expected_directories=raw_directories,
+        description="imported MCMC raw-chain tree",
+    )
+    _validate_recovery_donor_trees(config, binding.contract)
+    if len(work_records) != RECOVERY_WORK_FILE_COUNT or len(raw_records) != RECOVERY_RAW_FILE_COUNT:
+        fail("imported MCMC file count differs from the exact recovery policy")
+    work_size = sum(item["size_bytes"] for item in work_records)
+    raw_size = sum(item["size_bytes"] for item in raw_records)
+    if work_size + raw_size != RECOVERY_TOTAL_SIZE_BYTES:
+        fail("imported MCMC bytes differ from the exact qualified donor size")
+    imported_work_root, imported_work_identity = snapshot_plain_directory_chain(
+        work_parent, "imported MCMC work-shard root"
+    )
+    imported_raw_root, imported_raw_identity = snapshot_plain_directory_chain(
+        raw_parent, "imported MCMC raw-chain root"
+    )
+    evidence = RecoveryImportEvidence(
+        snapshots=tuple(copied),
+        work_root=imported_work_root,
+        work_root_identity=imported_work_identity,
+        work_file_count=len(work_records),
+        work_size_bytes=work_size,
+        work_tree_sha256=hashlib.sha256(
+            canonical_json_bytes(sorted(work_records, key=lambda item: item["path"]))
+        ).hexdigest(),
+        raw_root=imported_raw_root,
+        raw_root_identity=imported_raw_identity,
+        raw_file_count=len(raw_records),
+        raw_size_bytes=raw_size,
+        raw_tree_sha256=hashlib.sha256(
+            canonical_json_bytes(sorted(raw_records, key=lambda item: item["path"]))
+        ).hexdigest(),
+    )
+    return roots, evidence
+
+
+def recheck_recovery_import(
+    evidence: RecoveryImportEvidence,
+    description: str,
+    *,
+    rehash_files: bool,
+) -> None:
+    """Reassert imported-root identity, exact set, and optionally every byte hash."""
+
+    work_files, work_directories = _recovery_tree_paths(raw=False)
+    raw_files, raw_directories = _recovery_tree_paths(raw=True)
+    for name, root, identity, files, directories in (
+        (
+            "work",
+            evidence.work_root,
+            evidence.work_root_identity,
+            work_files,
+            work_directories,
+        ),
+        (
+            "raw",
+            evidence.raw_root,
+            evidence.raw_root_identity,
+            raw_files,
+            raw_directories,
+        ),
+    ):
+        current_root, current_identity = snapshot_plain_directory_chain(
+            root, f"{description} {name} root"
+        )
+        if current_root != root or current_identity != identity:
+            fail(f"{description} {name} root identity changed")
+        ensure_exact_tree(
+            root,
+            expected_files=files,
+            expected_directories=directories,
+            description=f"{description} {name} tree",
+        )
+    if rehash_files:
+        for index, snapshot in enumerate(evidence.snapshots):
+            recheck_snapshot(snapshot, f"{description} artifact {index}")
+    for name, root, identity, files, directories in (
+        (
+            "work",
+            evidence.work_root,
+            evidence.work_root_identity,
+            work_files,
+            work_directories,
+        ),
+        (
+            "raw",
+            evidence.raw_root,
+            evidence.raw_root_identity,
+            raw_files,
+            raw_directories,
+        ),
+    ):
+        ensure_exact_tree(
+            root,
+            expected_files=files,
+            expected_directories=directories,
+            description=f"{description} {name} tree after rehash",
+        )
+        final_root, final_identity = snapshot_plain_directory_chain(
+            root, f"{description} {name} root after recheck"
+        )
+        if final_root != root or final_identity != identity:
+            fail(f"{description} {name} root changed during recheck")
 
 
 def run_production_shards(
@@ -2981,7 +5026,11 @@ def finalize_public_output(
     host_binding: HostContractBinding,
     command_results: Sequence[CommandResult],
     started: float,
+    recovery_binding: RecoveryContractBinding | None = None,
+    recovery_import: RecoveryImportEvidence | None = None,
 ) -> None:
+    if (recovery_binding is None) != (recovery_import is None):
+        fail("final recovery evidence is only partially populated")
     for name, aggregate in aggregate_roots.items():
         recheck_exact_aggregate(aggregate, f"{name} aggregate before finalization")
     recheck_host_contract_binding(host_binding, "host inputs before finalization")
@@ -2995,6 +5044,49 @@ def finalize_public_output(
     for result in command_results:
         stage = result.command_id.split("-", 1)[0]
         stage_runtime[stage] = stage_runtime.get(stage, 0.0) + result.runtime_seconds
+    recovery_report: dict[str, Any]
+    if recovery_binding is None or recovery_import is None:
+        recovery_report = {
+            "mcmc_reused": False,
+            "aggregates_and_downstream_recomputed": True,
+        }
+    else:
+        donor = recovery_binding.contract["donor"]
+        recovery_report = {
+            "mcmc_reused": True,
+            "fresh_preflight_runtime_and_pilots_recomputed": True,
+            "aggregates_and_downstream_recomputed": True,
+            "donor_completion_attestation_present_in_qualified_evidence_set": False,
+            "donor_run_id": donor["run_id"],
+            "donor_source_commit": donor["source_commit"],
+            "donor_source_tree": donor["source_tree"],
+            "donor_source_archive_sha256": donor["source_archive"]["sha256"],
+            "donor_source_archive_size_bytes": donor["source_archive"]["size_bytes"],
+            "donor_source_file_set_sha256": donor["source_file_set_sha256"],
+            "donor_source_file_count": donor["source_file_count"],
+            "donor_attestation_contract_sha256": recovery_binding.donor_attestation_contract.sha256,
+            "donor_attestation_contract_size_bytes": recovery_binding.donor_attestation_contract.size_bytes,
+            "donor_command_plan_sha256": recovery_binding.donor_plan.sha256,
+            "donor_numerical_runtime_sha256": recovery_binding.donor_runtime.sha256,
+            "donor_start_challenge_sha256": donor["start_challenge"]["sha256"],
+            "donor_start_signature_sha256": donor["start_signature"]["sha256"],
+            "recovery_contract_sha256": recovery_binding.snapshot.sha256,
+            "recovery_contract_size_bytes": recovery_binding.snapshot.size_bytes,
+            "mcmc_policy_sha256": recovery_binding.mcmc_policy_sha256,
+            "recovery_source_commit": recovery_binding.source_transition_value["to_source"]["commit"],
+            "recovery_source_tree": recovery_binding.source_transition_value["to_source"]["tree"],
+            "source_transition_report_id": recovery_binding.source_transition_value["report_id"],
+            "source_transition_report_sha256": recovery_binding.source_transition.sha256,
+            "qualification_report_id": recovery_binding.qualification_report_value["report_id"],
+            "qualification_report_sha256": recovery_binding.qualification_report.sha256,
+            "reused_realizations": len(VARIANTS) * SHARDS * TRIALS_PER_SHARD,
+            "imported_work_file_count": recovery_import.work_file_count,
+            "imported_work_size_bytes": recovery_import.work_size_bytes,
+            "imported_work_tree_sha256": recovery_import.work_tree_sha256,
+            "imported_raw_file_count": recovery_import.raw_file_count,
+            "imported_raw_size_bytes": recovery_import.raw_size_bytes,
+            "imported_raw_tree_sha256": recovery_import.raw_tree_sha256,
+        }
     report = {
         "schema_version": SCHEMA_VERSION,
         "status": "PASS",
@@ -3018,6 +5110,7 @@ def finalize_public_output(
             "accepted_aggregate_profiles": {
                 variant.name: variant.acceptance_profile for variant in VARIANTS
             },
+            "mcmc_recovery": recovery_report,
         },
         "acceptance": {
             "corrected_seed_stability_passed": ["constant", "zero"],
@@ -3068,18 +5161,108 @@ def finalize_public_output(
     for name, aggregate in aggregate_roots.items():
         recheck_exact_aggregate(aggregate, f"{name} aggregate after finalization")
     recheck_host_contract_binding(host_binding, "host inputs after finalization")
+    if recovery_binding is not None and recovery_import is not None:
+        recheck_recovery_import(
+            recovery_import,
+            "imported MCMC evidence after finalization",
+            rehash_files=True,
+        )
+        evidence_root, evidence_identity = snapshot_plain_directory_chain(
+            recovery_binding.evidence_root,
+            "donor failed-run evidence root after finalization",
+        )
+        if (
+            evidence_root != recovery_binding.evidence_root
+            or evidence_identity != recovery_binding.evidence_root_identity
+        ):
+            fail("donor failed-run evidence root identity changed during recovery")
+        ensure_exact_tree(
+            evidence_root,
+            expected_files=DONOR_EVIDENCE_FILES,
+            description="donor failed-run evidence after finalization",
+        )
+        work_root, work_identity = snapshot_plain_directory_chain(
+            recovery_binding.donor_work_root, "donor MCMC work root after finalization"
+        )
+        raw_root, raw_identity = snapshot_plain_directory_chain(
+            recovery_binding.donor_raw_root, "donor MCMC raw root after finalization"
+        )
+        if (
+            work_root != recovery_binding.donor_work_root
+            or work_identity != recovery_binding.donor_work_root_identity
+            or raw_root != recovery_binding.donor_raw_root
+            or raw_identity != recovery_binding.donor_raw_root_identity
+        ):
+            fail("donor MCMC root identity changed during recovery")
+        _validate_recovery_donor_trees(config, recovery_binding.contract)
+        final_evidence_root, final_evidence_identity = snapshot_plain_directory_chain(
+            recovery_binding.evidence_root,
+            "donor failed-run evidence root after donor revalidation",
+        )
+        if (
+            final_evidence_root != recovery_binding.evidence_root
+            or final_evidence_identity != recovery_binding.evidence_root_identity
+        ):
+            fail("donor failed-run evidence root changed during final recovery checks")
+        ensure_exact_tree(
+            final_evidence_root,
+            expected_files=DONOR_EVIDENCE_FILES,
+            description="donor failed-run evidence after donor revalidation",
+        )
+    recheck_snapshot(source_evidence.snapshot, "source archive after finalization")
+    for index, snapshot in enumerate(protected_snapshots):
+        recheck_snapshot(snapshot, f"protected final input {index}")
+    final_public_snapshots = {
+        relative: snapshot_file(
+            config.public_output_root / PurePosixPath(relative),
+            f"final public output {relative}",
+        )
+        for relative in manifest_targets
+    }
+    final_manifest = snapshot_file(
+        manifest_path,
+        "final public production manifest",
+        collect=True,
+        maximum_bytes=1_000_000,
+    )
+    expected_manifest_bytes = "".join(
+        f"{final_public_snapshots[relative].sha256}  {relative}\n"
+        for relative in sorted(manifest_targets)
+    ).encode("utf-8")
+    if final_manifest.data != expected_manifest_bytes:
+        fail("final public production manifest differs from the rehashed output")
+    for relative, snapshot in final_public_snapshots.items():
+        recheck_snapshot(snapshot, f"final public output {relative} after manifest check")
+    recheck_snapshot(final_manifest, "final public production manifest")
+    ensure_exact_files(
+        config.public_output_root,
+        expected_public_files(final=True),
+        "final public production output after all recovery checks",
+    )
 
 
 def execute(config: Configuration) -> None:
     started = time.monotonic()
     environment = production_environment()
-    (
-        source_evidence,
-        protected_snapshots,
-        production_git,
-        release_git,
-        host_binding,
-    ) = validate_configuration(config, environment=environment)
+    validated_configuration = validate_configuration(config, environment=environment)
+    if len(validated_configuration) == 5:  # compatibility for isolated stage-test mocks
+        (
+            source_evidence,
+            protected_snapshots,
+            production_git,
+            release_git,
+            host_binding,
+        ) = validated_configuration
+        recovery_binding = None
+    else:
+        (
+            source_evidence,
+            protected_snapshots,
+            production_git,
+            release_git,
+            host_binding,
+            recovery_binding,
+        ) = validated_configuration
     logs = make_empty_directory(config.private_work_root / "logs", "private log root")
     command_results: list[CommandResult] = []
     command_results.extend(
@@ -3114,15 +5297,33 @@ def execute(config: Configuration) -> None:
     )
     verify_source_tree(config.source_root, source_evidence)
     aggregate_roots: dict[str, ExactAggregateRoot] = {}
-    for variant in VARIANTS:
-        shard_root, raw_root, shard_results = run_production_shards(
+    recovery_import: RecoveryImportEvidence | None = None
+    recovery_roots: dict[str, tuple[Path, Path]] = {}
+    if recovery_binding is not None:
+        recovery_roots, recovery_import = import_recovery_shards(
             config,
-            variant,
-            bryson_root=bryson_root,
+            recovery_binding,
             numerical_environment=numerical_environment,
-            environment=environment,
-            log_root=logs,
         )
+        recheck_recovery_import(
+            recovery_import,
+            "imported MCMC evidence before aggregation",
+            rehash_files=False,
+        )
+        verify_source_tree(config.source_root, source_evidence)
+    for variant in VARIANTS:
+        if recovery_binding is None:
+            shard_root, raw_root, shard_results = run_production_shards(
+                config,
+                variant,
+                bryson_root=bryson_root,
+                numerical_environment=numerical_environment,
+                environment=environment,
+                log_root=logs,
+            )
+        else:
+            shard_root, raw_root = recovery_roots[variant.name]
+            shard_results = []
         command_results.extend(shard_results)
         verify_source_tree(config.source_root, source_evidence)
         aggregate_root, aggregate_results = aggregate_and_verify(
@@ -3216,6 +5417,8 @@ def execute(config: Configuration) -> None:
         host_binding=host_binding,
         command_results=command_results,
         started=started,
+        recovery_binding=recovery_binding,
+        recovery_import=recovery_import,
     )
     print(
         "PASS local v4.0.4 production orchestration "
@@ -3291,10 +5494,10 @@ def local_production_run_argv(
     def path(value: Path) -> str:
         return str(_canonical_absolute_path(Path(value), "run path argument"))
 
-    return (
+    base = (
         str(python),
         TRACKED_CONTROLLER_PATH,
-        "run",
+        "recover-mcmc" if recovery_enabled(config) else "run",
         "--source-root",
         str(execution_root),
         "--source-archive",
@@ -3345,6 +5548,52 @@ def local_production_run_argv(
         config.expected_bryson_source_sha256,
         "--maximum-parallel-shards",
         str(config.maximum_parallel_shards),
+    )
+    if not recovery_enabled(config):
+        return base
+    if (
+        config.recovery_contract is None
+        or config.expected_recovery_contract_sha256 is None
+        or config.expected_recovery_contract_size_bytes is None
+        or config.donor_work_shard_root is None
+        or config.donor_raw_root is None
+        or config.donor_evidence_root is None
+        or config.donor_attestation_contract is None
+        or config.donor_command_plan is None
+        or config.donor_numerical_runtime_manifest is None
+        or config.donor_source_archive is None
+        or config.source_transition_evidence is None
+        or config.recovery_qualification_report is None
+        or config.ssh_keygen_executable is None
+    ):
+        fail("internal recovery argv binding is incomplete")
+    return base + (
+        "--recovery-contract",
+        path(config.recovery_contract),
+        "--expected-recovery-contract-sha256",
+        config.expected_recovery_contract_sha256,
+        "--expected-recovery-contract-size-bytes",
+        str(config.expected_recovery_contract_size_bytes),
+        "--donor-work-shard-root",
+        path(config.donor_work_shard_root),
+        "--donor-raw-root",
+        path(config.donor_raw_root),
+        "--donor-evidence-root",
+        path(config.donor_evidence_root),
+        "--donor-attestation-contract",
+        path(config.donor_attestation_contract),
+        "--donor-command-plan",
+        path(config.donor_command_plan),
+        "--donor-numerical-runtime-manifest",
+        path(config.donor_numerical_runtime_manifest),
+        "--donor-source-archive",
+        path(config.donor_source_archive),
+        "--source-transition-evidence",
+        path(config.source_transition_evidence),
+        "--recovery-qualification-report",
+        path(config.recovery_qualification_report),
+        "--ssh-keygen-executable",
+        path(config.ssh_keygen_executable),
     )
 
 
@@ -3434,6 +5683,53 @@ def build_plan_document(
         fail("Bryson source SHA-256 differs from the v4.0.4 lock")
     if not 1 <= config.maximum_parallel_shards <= MAXIMUM_PARALLEL_SHARDS:
         fail("maximum parallel shard processes must be between 1 and 4")
+    if recovery_enabled(config):
+        if (
+            config.expected_recovery_contract_sha256 is None
+            or SHA256_RE.fullmatch(config.expected_recovery_contract_sha256) is None
+            or type(config.expected_recovery_contract_size_bytes) is not int
+            or config.expected_recovery_contract_size_bytes <= 0
+        ):
+            fail("expected recovery-contract hash/size is malformed")
+        recovery_protected = {
+            "recovery contract": config.recovery_contract,
+            "donor work-shard root": config.donor_work_shard_root,
+            "donor raw-chain root": config.donor_raw_root,
+            "donor failed-run evidence root": config.donor_evidence_root,
+            "donor attestation contract": config.donor_attestation_contract,
+            "donor command plan": config.donor_command_plan,
+            "donor numerical runtime": config.donor_numerical_runtime_manifest,
+            "donor source archive": config.donor_source_archive,
+            "source-transition report": config.source_transition_evidence,
+            "recovery qualification report": config.recovery_qualification_report,
+            "ssh-keygen executable": config.ssh_keygen_executable,
+        }
+        canonical_recovery: dict[str, Path] = {}
+        for description, raw_path in recovery_protected.items():
+            if raw_path is None:
+                fail(f"{description} is missing")
+            path_value = _canonical_absolute_path(raw_path, description)
+            canonical_recovery[description] = path_value
+            for root_name, root in future_roots.items():
+                if paths_overlap(path_value, root):
+                    fail(f"{description} overlaps the future {root_name}")
+            for checkout_name, checkout_value in (
+                ("private production checkout", config.production_checkout),
+                ("public release checkout", config.release_checkout),
+            ):
+                if paths_overlap(path_value, checkout_value):
+                    fail(f"{description} overlaps the {checkout_name}")
+        donor_root_names = (
+            "donor work-shard root",
+            "donor raw-chain root",
+            "donor failed-run evidence root",
+        )
+        for index, left_name in enumerate(donor_root_names):
+            for right_name in donor_root_names[index + 1 :]:
+                if paths_overlap(
+                    canonical_recovery[left_name], canonical_recovery[right_name]
+                ):
+                    fail(f"{left_name} overlaps {right_name}")
 
     validator, validator_snapshot = _load_attestation_validator()
     try:
@@ -3460,10 +5756,14 @@ def build_plan_document(
         )
         plan = {
             "schema_version": 1,
-            "plan_label": PLAN_LABEL,
+            "plan_label": RECOVERY_PLAN_LABEL if recovery_enabled(config) else PLAN_LABEL,
             "commands": [
                 {
-                    "command_id": PLAN_COMMAND_ID,
+                    "command_id": (
+                        RECOVERY_PLAN_COMMAND_ID
+                        if recovery_enabled(config)
+                        else PLAN_COMMAND_ID
+                    ),
                     "argv": list(
                         local_production_run_argv(
                             config,
@@ -3492,6 +5792,7 @@ def build_plan_document(
             config.production_checkout,
             config.release_checkout,
             require_extracted_programs=False,
+            trusted_ssh_keygen_executable=config.ssh_keygen_executable,
         )
         encoded = validator.canonical_json_bytes(validated)
         validator.recheck_snapshot(runtime_snapshot, "numerical runtime manifest")
@@ -3563,6 +5864,7 @@ def write_local_command_plan(
             config.production_checkout,
             config.release_checkout,
             require_extracted_programs=False,
+            trusted_ssh_keygen_executable=config.ssh_keygen_executable,
         )
         validator.recheck_snapshot(runtime_snapshot, "numerical runtime manifest")
         validator.recheck_snapshot(plan_snapshot, "generated local command plan")
@@ -3606,6 +5908,28 @@ def _add_run_arguments(command: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_recovery_arguments(command: argparse.ArgumentParser) -> None:
+    command.add_argument("--recovery-contract", required=True, type=Path)
+    command.add_argument("--expected-recovery-contract-sha256", required=True)
+    command.add_argument(
+        "--expected-recovery-contract-size-bytes", required=True, type=int
+    )
+    command.add_argument("--donor-work-shard-root", required=True, type=Path)
+    command.add_argument("--donor-raw-root", required=True, type=Path)
+    command.add_argument("--donor-evidence-root", required=True, type=Path)
+    command.add_argument("--donor-attestation-contract", required=True, type=Path)
+    command.add_argument("--donor-command-plan", required=True, type=Path)
+    command.add_argument(
+        "--donor-numerical-runtime-manifest", required=True, type=Path
+    )
+    command.add_argument("--donor-source-archive", required=True, type=Path)
+    command.add_argument("--source-transition-evidence", required=True, type=Path)
+    command.add_argument(
+        "--recovery-qualification-report", required=True, type=Path
+    )
+    command.add_argument("--ssh-keygen-executable", required=True, type=Path)
+
+
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser()
     subparsers = root.add_subparsers(dest="mode", required=True)
@@ -3621,8 +5945,23 @@ def parser() -> argparse.ArgumentParser:
     build.add_argument("--execution-root", required=True, type=Path)
     build.add_argument("--runtime-manifest", required=True, type=Path)
     build.add_argument("--output", required=True, type=Path)
+    recovery_build = subparsers.add_parser(
+        "build-recovery-plan",
+        help="exclusively create the exact signed-start MCMC recovery plan",
+    )
+    _add_run_arguments(recovery_build)
+    _add_recovery_arguments(recovery_build)
+    recovery_build.add_argument("--execution-root", required=True, type=Path)
+    recovery_build.add_argument("--runtime-manifest", required=True, type=Path)
+    recovery_build.add_argument("--output", required=True, type=Path)
     run = subparsers.add_parser("run", help="execute the complete local production plan")
     _add_run_arguments(run)
+    recovery_run = subparsers.add_parser(
+        "recover-mcmc",
+        help="reuse only the qualified MCMC shards and recompute every downstream stage",
+    )
+    _add_run_arguments(recovery_run)
+    _add_recovery_arguments(recovery_run)
     return root
 
 
@@ -3653,6 +5992,33 @@ def configuration_from_args(args: argparse.Namespace) -> Configuration:
         public_output_root=args.public_output_root,
         expected_bryson_source_sha256=args.expected_bryson_source_sha256.strip().lower(),
         maximum_parallel_shards=args.maximum_parallel_shards,
+        recovery_contract=getattr(args, "recovery_contract", None),
+        expected_recovery_contract_sha256=(
+            getattr(args, "expected_recovery_contract_sha256", None).strip().lower()
+            if getattr(args, "expected_recovery_contract_sha256", None) is not None
+            else None
+        ),
+        expected_recovery_contract_size_bytes=getattr(
+            args, "expected_recovery_contract_size_bytes", None
+        ),
+        donor_work_shard_root=getattr(args, "donor_work_shard_root", None),
+        donor_raw_root=getattr(args, "donor_raw_root", None),
+        donor_evidence_root=getattr(args, "donor_evidence_root", None),
+        donor_attestation_contract=getattr(
+            args, "donor_attestation_contract", None
+        ),
+        donor_command_plan=getattr(args, "donor_command_plan", None),
+        donor_numerical_runtime_manifest=getattr(
+            args, "donor_numerical_runtime_manifest", None
+        ),
+        donor_source_archive=getattr(args, "donor_source_archive", None),
+        source_transition_evidence=getattr(
+            args, "source_transition_evidence", None
+        ),
+        recovery_qualification_report=getattr(
+            args, "recovery_qualification_report", None
+        ),
+        ssh_keygen_executable=getattr(args, "ssh_keygen_executable", None),
     )
 
 
@@ -3662,7 +6028,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(json.dumps(list(expected_public_files()), indent=2))
         return
     try:
-        if args.mode == "build-plan":
+        if args.mode in {"build-plan", "build-recovery-plan"}:
             snapshot = write_local_command_plan(
                 configuration_from_args(args),
                 execution_root=args.execution_root,

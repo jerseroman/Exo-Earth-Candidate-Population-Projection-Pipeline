@@ -13,7 +13,7 @@
     "require_exact_output_file_set": true,
     "require_shell_false": true,
     "public_report_disclosure": "hashes_status_counts_and_timings_only",
-    "controller_sha256": "0a95401d2ad651240c3a95090b3d9fdadd0b0af9877fdf926b9a2dae91b4bc23",
+    "controller_sha256": "9c63468713c1eebd4023ecb1bbd7ca91ce6f7c9fa8f9e0c58017daf446bda121",
     "allowed_execution_environments": [
       "local_ubuntu_22_04_wsl2"
     ]
