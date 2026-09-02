@@ -41,6 +41,58 @@ def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+RECOVERY_MANIFEST_LOCK_FIXTURE = (
+    ("484ee95e0f7eba4da867f96892b5f1e1cd760883d19e099ad705946c8da6fc5d", 782, "8a9f6b9e481b51e8fe197c204c897f1683db5e3d613d97c8162c6c2ff8f0f864", 3340),
+    ("fde2db800710ee1e1131e6616ebc0a2a45d8d365ef9a85fb15d07a7a9a53ffbc", 782, "b9963e2e2d76817545b5825d14250af9791628972df9c6e19bce57776ed2d47d", 3340),
+    ("e881f824a8e4c30c4c410ce4ba3adfbbe21c4bf8e396618f90d914d665fc6e16", 782, "0972a76c3d16dfe61788784e9af5176d8b9dd89d0302272d73d7627435c518b6", 3340),
+    ("6cddb61b194f6a78ec7a1f66fd2f8cddebd77c62d17e2cee7408ae5cdf3acd5c", 782, "c93a53fd421e1699aacf7d122eecf0c5d653b0ecefded59391af41a937263c08", 3340),
+    ("1b4787ba61e299b32e89772b6dfc4d66d9bd5daea49695895d0c9515f5b05ddb", 782, "7657082af13fe9e0da981ecc8a063cf26abc9a9c0bb5053bbfdb27bf716e1c87", 3340),
+    ("76e60423ac14d0965335eb3e2e072c8f6d290f06f57c5749781a2138e70afbe2", 782, "7404a164cb5855052990e7ef39799844c607ffbe6bc60854375f6d1f5779beef", 3340),
+    ("a2eac7d1c698dbbec637bf220d185c6b215e968aac8e0a1faf892848ac9f56ea", 782, "05ded53f781d9c91d2b86e1b944b762bfe602d13132d0ac1261f43ce85da10e1", 3340),
+    ("687a03be3adbeb4614d6a015b4abf5aaada47ade7723958d1071ddfc3c4da4e7", 782, "667846e630a041abeaed516c3750e2b3d8ed9231a4ccf99a3ce62ddaa5d374e1", 3340),
+    ("f97e3cc271e6681a06ce464553084e942db9c23aba6f715c6efd1ac5a7765d59", 782, "76337bf4df0b71b1d0cc7885107a2ee901df470d3401ff5ecb95938e59cfafd2", 3340),
+    ("8bfe5cf84b2b01d7bcf7914e1d97cf4ed45fa227dd05a548175a68259ed711e4", 782, "a17d2cef638ba4aa85065333628a241ac70aca0080ea1ccdaf5ec84e0189e10a", 3340),
+    ("43cdce45a5c5ea6aa1e4a58d474a8c2a6e5a61a5b84e07cdc62341a0200c5614", 788, "07319b2d89fea87240ad45081539fa8037e9785690bb81f8942ef6c5dfdd324c", 3366),
+    ("2c825e124eb833efe1254eb99424a20ab15d802a8ce6cb31c849a7698483e190", 788, "5ad39d02f904c435b2e5410f0a88cd1130213b569518455b6716887080f412bc", 3366),
+    ("4b6c3a6ec972d3abb986911c85001b29ed60d28ad793ca8fa8f700c69372f987", 788, "ea9e9668a411cbae5df2397e6f0b8bb95fa2cf4603c1c3c73fbec79de3d92635", 3366),
+    ("bc33fe1f8a161d4fb0eb104379c0943ff18c2a2a802171d73350947a98a271ac", 788, "3a4dec0fa2df022eea43d6274bed8946444acf03730ece09c9d33893fb297a21", 3366),
+    ("97235e68315e071bd71b6b93fbb9842c97eb5a8baadac4a397759be6e27dc2f6", 788, "d5ffb19599d7cddcfe055e217a7b731a917715ccbfc6a2cf8c9dc8849ab1e802", 3366),
+    ("308aee7ed2a20ac3984c53690b91533367aaa55cce9e3041d5bcd10a99d5b182", 788, "9250dbf4e402efca36d8789b378384cc702e6b8ffc78d70cc6dcffa3b3bacb7a", 3366),
+    ("2cfa06beac4a7962e7a16a46998ae97e7400bf5dda8d17c074eb7ea17e9160c0", 758, "1926f1bd4e3b840b0671e9befd211fd82cf2405cd4557cc7dcf5bffcff6bcad3", 3236),
+    ("1dd18c11a5cda8b2dc08457e8729c41f5daed326d244b62131e35365ec6d4486", 758, "78006c7217f06d5958166dd3c56328567ec3382a4e6ed49b03beeeddc004ee0e", 3236),
+    ("770fc815a87929e8788558da75b6d722e98a10804451ebcd92d105ddbe3748e2", 758, "8c2969980e23f3d3bb7ea3b10ba1c73820f350052fe58cd3e5b701ff2b3f1665", 3236),
+    ("4e15742592ba708d44c26bc4e5689ac39204fe9ce73b07c64c70abb2a3b376fd", 758, "bf126bddbf5cc2fcdae853308446c09f8f22fa741bcce391b00ea4dc6edc6f90", 3236),
+    ("eb6026290639790537f6cceeeadfca7ac60923995763d277e47b7b6bd7650a2d", 758, "8c7854554754ad8435a1dff29efcdd59ec22b9b562acc5e30633559a1aac41eb", 3236),
+    ("bfa78642edfb6318af4cd5fed333ca60aebcd894653ae8b487b1cabda2bf9601", 758, "da7dadc9cb304083eed014a4466c57f3afde28caef66149cf31c3c2cfbd748bb", 3236),
+    ("69449aa89919dbe1c7f092cb0f2afc9323b67d1347ee5d4f72c14addac1fdb15", 758, "19fd9190aa21458fe36f16586ba8565e5f628f7e91aee70722c02fb70904584b", 3236),
+    ("ad25788f41266c836ee38c21b9ea5442ae6d3d4fcad02a1892461b6cd1c9e438", 758, "ec3988ccf79bb904aa3badc4cca8e880e5e4279de8c82f37b0ceeabd97712a2b", 3236),
+    ("807a281b2af205d8ef08c6c06121e8de6be431d028a03fc941135766d31208ea", 758, "b13c069be632fd1370348f94b435d8f075c944bbbe6995d99d071c51003c3231", 3236),
+    ("a8bc68fe2aed9af4b0535876b9395f12137cea7076d9ce10bfcba1fdc6c57fa6", 758, "ecfacdda42e5af5c801019cf201920995be23c24902276b7632fe4d1af835893", 3236),
+    ("d3067fbd6055fcee6dfb5559a71530ce87ac7da6fe94d97b7c3f49fefc9207e2", 764, "a4c467fb9002c97bce8cd254f977cf00a3131305d76e46e8970b699de8426e23", 3262),
+    ("78909c53f94de62b62733d464c71e2b2a6d6a5193a514b764c4a8c2c05d482f8", 764, "ec2bc2d52790f95fe8bb10c6e8084ee531594178f544a0cdc9d2ca115e8fbf12", 3262),
+    ("492b920970f1e33c127e828235b7ba88450805433cbed1f06b61919fa1feef79", 764, "09ad9247ea3f61e0052c940ac4aaa6aa206f6f57721f3193865c7ba6fd948b68", 3262),
+    ("e184a777c132e86be3809621ada34d42f1038fee5db3d607b0b2dce6685c1aa5", 764, "9feeecda056f9857d6577c32aba6e97373d56e1957de51dfb2f1f5dc4df35934", 3262),
+    ("f85f901b122c34be11d409cb1ce6f3af60d639afb9dcda801f631e746f016800", 764, "6a2a1e713c7f512d4c0f29d60201568b4e267e3bc09bea53affd592bd2a3aef9", 3262),
+    ("b35c7c56337fac3cb88b65f6ff2f7c98674c02cb1128f8514255f5f5dc993935", 764, "e1960ee098f879f66de090dca0980c779e96e1f05b8dec8289d13dba7fd26a60", 3262),
+    ("8e481d1f78a85241e892b1c0abba240da0b9ca6131ea60713e7cf993545f2dbe", 782, "c767f2e2174e91403ee6aeb7a455bdadb94750f40b5e460423d1d63ded44373e", 3340),
+    ("40e56fd52499ade7a5b76e32423bb02c7fe16b80cb6185152de5b9abc8133fac", 782, "74e9b321bfec0e19afa160244dd96ff2d9a28c34db6af52cb8a598aa76535da4", 3340),
+    ("0ee0e79c2702b89d0a26c6d7d178da397f82b97d42feda617e75a9b8f7941926", 782, "4f3d1a694eaa56e6919cb7ccb606a6417947b644d4bf660c84f30992bd8f072c", 3340),
+    ("7a1205e45b72d326a49ec39c3096373b7444a6850cfc4bceb63d0b90cacb92dc", 782, "7672571c05f9655949c3c2dd1dda9a4e785ff6f4b51a579f7955b35016944b51", 3340),
+    ("eb52c77a302169dca25bfb25a7ee1ae363720c0ae2645ea34fc40abb65faf1f4", 782, "f772f80496271c4757e00b75e854500467ef7ba2635694fa20c8a978379e3911", 3340),
+    ("aebb521d09eec8203923df53999db5b1ca5a013bbfb33256aa1aec9f168bafad", 782, "8e752f868586394dcf83e7787219e73a3f3a73813b7ecb55f6ba2dd15c68b926", 3340),
+    ("7b5949c03940e8477172b45cadc76eb131c2ab0f1f58bd7a737f5c3c48511452", 782, "898172e3a05439d6223f70238e7423bcc053f1478d12703ed26a753abdcb476c", 3340),
+    ("f45130b6d82f2b6eb02251f9741cbafbe6760205bd173c891a4a564cc558c3b9", 782, "0bd238c33495ac4ee7844fd4864c8206dfe28075ee5ca88f170953a442794543", 3340),
+    ("025145bbf34cf19591ad807a00c62fbbd8512aa7db9473ce020a3f8c9127ede0", 782, "c24f1b44ce638e72f7fddc0c74805b246250e7858ed4f800e7566d4ff4ad4ffe", 3340),
+    ("85f22a01f3bccfa1fa63ca45054baf2d8fc1938f35af1910025459ec48f66171", 782, "5957a2bedeb8f57f3073458476b3d826e0b88d4ba97bad42444e09db0b1b8a83", 3340),
+    ("30e0340c03238cb5fa7b8dd8093472f27cac76fa098939bece57e507ca7c578b", 788, "8f9ce7e3e63b2fe533e1fd09387f544b00149ce63de7d465e29ae9e6d7642464", 3366),
+    ("886f7e3764d21cf1265187835ff87549cd83fb0d08afb13e908b6b49a9dde065", 788, "96bf017b2e17e92a435ae4dfd38a194fd1b8edf979d9bcf73d8dd8393d78d7c7", 3366),
+    ("52e2b2d12e51b37293dbda029290f24c558fe638554fc7e069a73a0d54c96d1a", 788, "da99f9819a7781fcb246349fc41bfe1e3ff6170656fd3011eceab2c58bf17eb0", 3366),
+    ("0dee1a096f8e99dfeaeeed99e41481cb8a5b2de72236d5fbcc14713040bc4dbf", 788, "2c403f07e8d736e7a2f94a62128ae8502d4b7447a5553356a363ebec5dac6130", 3366),
+    ("17482f6b20e2907df6782483f5b12861e7dbef86565334c57fc4856cc6e10ce1", 788, "5f3f7795eed99fd8964d2857e06c3a319c4a21aa4c6d834bac70a6fdbf1d3bf2", 3366),
+    ("f3366b0b90e91dbdf36b7e7826230ba6d5a280b045d0072e9d70c711c6e7aafb", 788, "02c7820633a43fb6a7ca6f71b58384f75dc050a1ab074f1b6aa083a6de2a9737", 3366),
+)
+
+
 def read_json(path: Path) -> dict[str, object]:
     return gate.load_json_bytes(path.read_bytes(), path.name)
 
@@ -153,6 +205,7 @@ class ReleaseFixture:
             self.verifier_bytes
         )
         (self.root / "README.md").write_bytes(b"fixture release payload\n")
+        self.recovery_disclosure: dict[str, object] | None = None
         self._prepare_results_assets()
         self._write_reports_and_contracts()
         self._write_freezes()
@@ -229,6 +282,11 @@ class ReleaseFixture:
             ).encode("utf-8")
         )
         path.write_bytes(data)
+
+    def _write_recovery_json(self, relative: str, value: object) -> None:
+        path = self.root / Path(*PurePosixPath(relative).parts)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(gate._recovery_canonical_json_bytes(value))
 
     def _local_report(self) -> dict[str, object]:
         body: dict[str, object] = {
@@ -342,7 +400,15 @@ class ReleaseFixture:
                 "regular_files_verified": 10,
                 "execution_tree_byte_identical": True,
             },
-            "production_design": {"fixture": True},
+            "production_design": {
+                "fixture": True,
+                "mcmc_recovery": copy.deepcopy(self.recovery_disclosure)
+                if self.recovery_disclosure is not None
+                else {
+                    "mcmc_reused": False,
+                    "aggregates_and_downstream_recomputed": True,
+                },
+            },
             "acceptance": {"fixture": True},
             "public_boundary": {
                 "third_party_input_files_copied": False,
@@ -710,6 +776,189 @@ class ReleaseFixture:
         self._write_json(gate.ACCEPTANCE_PATH, acceptance)
         self.rebuild_repository_manifest()
 
+    @staticmethod
+    def _with_self_id(value: dict[str, object]) -> dict[str, object]:
+        report = copy.deepcopy(value)
+        report["report_id"] = digest(gate._recovery_canonical_json_bytes(value))
+        return report
+
+    def enable_recovery(self) -> None:
+        donor_source = {
+            "commit": gate.RECOVERY_DONOR["source_commit"],
+            "tree": gate.RECOVERY_DONOR["source_tree"],
+            "archive_sha256": gate.RECOVERY_DONOR["source_archive"]["sha256"],
+            "archive_size_bytes": gate.RECOVERY_DONOR["source_archive"][
+                "size_bytes"
+            ],
+        }
+        donor = copy.deepcopy(gate.RECOVERY_DONOR)
+        protected = []
+        for relative in gate.RECOVERY_PROTECTED_PATHS:
+            source_path = ROOT / Path(*PurePosixPath(relative).parts)
+            source_data = source_path.read_bytes()
+            file_digest = digest(source_data)
+            file_size = len(source_data)
+            protected.append(
+                {
+                    "path": relative,
+                    "from_sha256": file_digest,
+                    "from_size_bytes": file_size,
+                    "to_sha256": file_digest,
+                    "to_size_bytes": file_size,
+                    "bit_identical": True,
+                }
+            )
+        transition = self._with_self_id(
+            {
+                "schema_version": 1,
+                "transition_id": gate.RECOVERY_TRANSITION_ID,
+                "status": "PASS",
+                "from_source": donor_source,
+                "to_source": copy.deepcopy(self.computational_source),
+                "protected_paths": protected,
+            }
+        )
+        transition_data = gate._recovery_canonical_json_bytes(transition)
+        transition_lock = {
+            "sha256": digest(transition_data),
+            "size_bytes": len(transition_data),
+        }
+        qualification = self._with_self_id(
+            {
+                "schema_version": 1,
+                "status": "PASS",
+                "decision": gate.RECOVERY_DECISION,
+                "donor_run_id": donor["run_id"],
+                "recovery_contract_id": gate.RECOVERY_CONTRACT_ID,
+                "source_transition_sha256": transition_lock["sha256"],
+                "completion_attestation_present": False,
+                "work_manifest_count": 48,
+                "raw_manifest_count": 48,
+                "mcmc_realizations": gate.RECOVERY_REALIZATIONS,
+                "total_file_count": gate.RECOVERY_TOTAL_FILE_COUNT,
+                "total_size_bytes": gate.RECOVERY_TOTAL_SIZE_BYTES,
+            }
+        )
+        qualification_data = gate._recovery_canonical_json_bytes(qualification)
+        qualification_lock = {
+            "report_id": qualification["report_id"],
+            "sha256": digest(qualification_data),
+            "size_bytes": len(qualification_data),
+        }
+        variants = []
+        for variant_index, (
+            name,
+            branch,
+            measurement_mode,
+            maximum_steps,
+        ) in enumerate(gate.RECOVERY_VARIANTS):
+            shards = []
+            for shard in range(gate.RECOVERY_SHARDS_PER_VARIANT):
+                work_sha, work_size, raw_sha, raw_size = (
+                    RECOVERY_MANIFEST_LOCK_FIXTURE[
+                        variant_index * gate.RECOVERY_SHARDS_PER_VARIANT + shard
+                    ]
+                )
+                shards.append(
+                    {
+                        "shard": shard,
+                        "work_manifest": {
+                            "sha256": work_sha,
+                            "size_bytes": work_size,
+                        },
+                        "raw_manifest": {
+                            "sha256": raw_sha,
+                            "size_bytes": raw_size,
+                        },
+                    }
+                )
+            variants.append(
+                {
+                    "name": name,
+                    "branch": branch,
+                    "measurement_error_mode": measurement_mode,
+                    "maximum_steps": maximum_steps,
+                    "shards": shards,
+                }
+            )
+        contract = {
+            "schema_version": 2,
+            "contract_id": gate.RECOVERY_CONTRACT_ID,
+            "status": "ACCEPTED",
+            "donor": donor,
+            "policy": {
+                "copy_policy": gate.RECOVERY_COPY_POLICY,
+                "mcmc_reused": True,
+                "aggregates_and_downstream_recomputed": True,
+                "shards_per_variant": gate.RECOVERY_SHARDS_PER_VARIANT,
+                "trials_per_shard": gate.RECOVERY_TRIALS_PER_SHARD,
+                "total_realizations": gate.RECOVERY_REALIZATIONS,
+                "work_file_count": gate.RECOVERY_WORK_FILE_COUNT,
+                "raw_file_count": gate.RECOVERY_RAW_FILE_COUNT,
+                "total_file_count": gate.RECOVERY_TOTAL_FILE_COUNT,
+                "total_size_bytes": gate.RECOVERY_TOTAL_SIZE_BYTES,
+                "mcmc_policy_sha256": gate.RECOVERY_MCMC_POLICY_SHA256,
+                "work_size_bytes": gate.RECOVERY_WORK_SIZE_BYTES,
+                "raw_size_bytes": gate.RECOVERY_RAW_SIZE_BYTES,
+                "work_tree_sha256": gate.RECOVERY_WORK_TREE_SHA256,
+                "raw_tree_sha256": gate.RECOVERY_RAW_TREE_SHA256,
+            },
+            "variants": variants,
+            "source_transition": transition_lock,
+            "qualification_report": qualification_lock,
+        }
+        contract_data = gate._recovery_canonical_json_bytes(contract)
+        evidence = {
+            "contract": (contract, contract_data),
+            "source_transition": (transition, transition_data),
+            "qualification": (qualification, qualification_data),
+        }
+        for role, (_value, data) in evidence.items():
+            relative = gate.RECOVERY_PUBLIC_EVIDENCE_PATHS[role]
+            path = self.root / Path(*PurePosixPath(relative).parts)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+
+        self.recovery_disclosure = {
+            "mcmc_reused": True,
+            "fresh_preflight_runtime_and_pilots_recomputed": True,
+            "aggregates_and_downstream_recomputed": True,
+            "donor_completion_attestation_present_in_qualified_evidence_set": False,
+            "donor_run_id": donor["run_id"],
+            "donor_source_commit": donor["source_commit"],
+            "donor_source_tree": donor["source_tree"],
+            "donor_source_archive_sha256": donor["source_archive"]["sha256"],
+            "donor_source_archive_size_bytes": donor["source_archive"]["size_bytes"],
+            "donor_source_file_set_sha256": donor["source_file_set_sha256"],
+            "donor_source_file_count": donor["source_file_count"],
+            "donor_attestation_contract_sha256": donor["attestation_contract"]["sha256"],
+            "donor_attestation_contract_size_bytes": donor["attestation_contract"]["size_bytes"],
+            "donor_command_plan_sha256": donor["command_plan"]["sha256"],
+            "donor_numerical_runtime_sha256": donor["numerical_runtime_manifest"]["sha256"],
+            "donor_start_challenge_sha256": donor["start_challenge"]["sha256"],
+            "donor_start_signature_sha256": donor["start_signature"]["sha256"],
+            "recovery_contract_sha256": digest(contract_data),
+            "recovery_contract_size_bytes": len(contract_data),
+            "mcmc_policy_sha256": gate.RECOVERY_MCMC_POLICY_SHA256,
+            "recovery_source_commit": self.computational_source["commit"],
+            "recovery_source_tree": self.computational_source["tree"],
+            "source_transition_report_id": transition["report_id"],
+            "source_transition_report_sha256": transition_lock["sha256"],
+            "qualification_report_id": qualification["report_id"],
+            "qualification_report_sha256": qualification_lock["sha256"],
+            "reused_realizations": gate.RECOVERY_REALIZATIONS,
+            "imported_work_file_count": gate.RECOVERY_WORK_FILE_COUNT,
+            "imported_work_size_bytes": gate.RECOVERY_WORK_SIZE_BYTES,
+            "imported_work_tree_sha256": gate.RECOVERY_WORK_TREE_SHA256,
+            "imported_raw_file_count": gate.RECOVERY_RAW_FILE_COUNT,
+            "imported_raw_size_bytes": gate.RECOVERY_RAW_SIZE_BYTES,
+            "imported_raw_tree_sha256": gate.RECOVERY_RAW_TREE_SHA256,
+        }
+        self._prepare_results_assets()
+        self._write_reports_and_contracts()
+        self._write_freezes()
+        self._write_acceptance()
+
     def manifest_files(self, *, include_acceptance: bool) -> list[Path]:
         files = [
             self.root / "README.md",
@@ -723,6 +972,11 @@ class ReleaseFixture:
         for role, spec in gate.FREEZE_SPECS.items():
             freeze_root = self.root / Path(*spec["root"].split("/"))
             files.extend(freeze_root / name for name in (*spec["targets"], spec["manifest"]))
+        files.extend(
+            self.root / Path(*PurePosixPath(relative).parts)
+            for relative in gate.RECOVERY_PUBLIC_EVIDENCE_PATHS.values()
+            if os.path.lexists(self.root / Path(*PurePosixPath(relative).parts))
+        )
         return sorted(set(files), key=lambda item: item.relative_to(self.root).as_posix())
 
     def payload_manifest_sha256(self) -> str:
@@ -1182,6 +1436,353 @@ class ReleaseAcceptanceTests(unittest.TestCase):
         sidecar = self.fixture.root / "dist" / gate.RESULTS_CHECKSUM_NAME
         sidecar.write_text("0" * 64 + f"  {gate.RESULTS_ARCHIVE_NAME}\n", encoding="ascii")
         with self.assertRaisesRegex(gate.ReleaseAcceptanceError, "sidecar differs"):
+            self.verify()
+
+    def test_recovery_disclosure_is_exact_and_not_self_asserted(self) -> None:
+        archive_path = self.fixture.root / "dist" / gate.RESULTS_ARCHIVE_NAME
+        with zipfile.ZipFile(archive_path, "r") as archive:
+            members = {
+                info.filename.split("/", 1)[1]: archive.read(info)
+                for info in archive.infolist()
+            }
+        observed = {
+            relative: (digest(data), len(data)) for relative, data in members.items()
+        }
+        report = gate.load_json_bytes(
+            members[gate.PUBLIC_RESULTS_REPORT_NAME], "fixture public report"
+        )
+        report["production_design"]["mcmc_recovery"] = {
+            "mcmc_reused": True,
+            "aggregates_and_downstream_recomputed": True,
+        }
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError, "recovery MCMC disclosure"
+        ):
+            gate._validate_public_results_report(
+                gate.canonical_json_bytes(report),
+                observed,
+                self.fixture.computational_source,
+            )
+
+    def test_complete_recovery_disclosure_is_accepted_and_binds_current_source(self) -> None:
+        archive_path = self.fixture.root / "dist" / gate.RESULTS_ARCHIVE_NAME
+        with zipfile.ZipFile(archive_path, "r") as archive:
+            members = {
+                info.filename.split("/", 1)[1]: archive.read(info)
+                for info in archive.infolist()
+            }
+        observed = {
+            relative: (digest(data), len(data)) for relative, data in members.items()
+        }
+        report = gate.load_json_bytes(
+            members[gate.PUBLIC_RESULTS_REPORT_NAME], "fixture public report"
+        )
+        current = self.fixture.computational_source
+        hash_value = "1" * 64
+        report["production_design"]["mcmc_recovery"] = {
+            "mcmc_reused": True,
+            "fresh_preflight_runtime_and_pilots_recomputed": True,
+            "aggregates_and_downstream_recomputed": True,
+            "donor_completion_attestation_present_in_qualified_evidence_set": False,
+            "donor_run_id": "2" * 64,
+            "donor_source_commit": "3" * 40,
+            "donor_source_tree": "4" * 40,
+            "donor_source_archive_sha256": hash_value,
+            "donor_source_archive_size_bytes": 100,
+            "donor_source_file_set_sha256": hash_value,
+            "donor_source_file_count": 183,
+            "donor_attestation_contract_sha256": hash_value,
+            "donor_attestation_contract_size_bytes": 100,
+            "donor_command_plan_sha256": hash_value,
+            "donor_numerical_runtime_sha256": hash_value,
+            "donor_start_challenge_sha256": hash_value,
+            "donor_start_signature_sha256": hash_value,
+            "recovery_contract_sha256": hash_value,
+            "recovery_contract_size_bytes": 100,
+            "mcmc_policy_sha256": hash_value,
+            "recovery_source_commit": current["commit"],
+            "recovery_source_tree": current["tree"],
+            "source_transition_report_id": "5" * 64,
+            "source_transition_report_sha256": hash_value,
+            "qualification_report_id": "6" * 64,
+            "qualification_report_sha256": hash_value,
+            "reused_realizations": 1_200,
+            "imported_work_file_count": 384,
+            "imported_work_size_bytes": 3_498_332_085,
+            "imported_work_tree_sha256": hash_value,
+            "imported_raw_file_count": 1_296,
+            "imported_raw_size_bytes": 10_002_742_894,
+            "imported_raw_tree_sha256": hash_value,
+        }
+        gate._validate_public_results_report(
+            gate.canonical_json_bytes(report), observed, current
+        )
+        report["production_design"]["mcmc_recovery"]["recovery_source_tree"] = "7" * 40
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError, "does not bind the release source"
+        ):
+            gate._validate_public_results_report(
+                gate.canonical_json_bytes(report), observed, current
+            )
+
+    def test_public_recovery_evidence_is_fully_bound_and_keeps_88_outputs(self) -> None:
+        self.fixture.enable_recovery()
+        evidence = self.verify()
+        self.assertEqual(len(gate._expected_results_paths()), 88)
+        self.assertEqual(
+            evidence["mcmc_recovery_evidence"],
+            {
+                "status": "PASS",
+                "mcmc_reused": True,
+                "contract_sha256": self.fixture.recovery_disclosure[
+                    "recovery_contract_sha256"
+                ],
+                "source_transition_sha256": self.fixture.recovery_disclosure[
+                    "source_transition_report_sha256"
+                ],
+                "qualification_sha256": self.fixture.recovery_disclosure[
+                    "qualification_report_sha256"
+                ],
+            },
+        )
+
+    def test_results_assets_are_rechecked_after_recovery_verification(self) -> None:
+        cases = (
+            (gate.RESULTS_ARCHIVE_NAME, "results ZIP archive"),
+            (gate.RESULTS_CHECKSUM_NAME, "results SHA-256 sidecar"),
+        )
+        for case_index, (filename, label) in enumerate(cases):
+            with self.subTest(filename=filename):
+                if case_index:
+                    self.fixture.cleanup()
+                    self.fixture = ReleaseFixture()
+                self.fixture.enable_recovery()
+                target = self.fixture.root / "dist" / filename
+                original = gate._verify_public_recovery_evidence
+
+                def remove_result_asset(*args: object, **kwargs: object):
+                    target.unlink()
+                    return original(*args, **kwargs)
+
+                with mock.patch.object(
+                    gate,
+                    "_verify_public_recovery_evidence",
+                    side_effect=remove_result_asset,
+                ), self.assertRaisesRegex(
+                    gate.ReleaseAcceptanceError, f"cannot recheck {label}"
+                ):
+                    self.verify()
+
+    def test_public_recovery_contract_rejects_noncanonical_bytes(self) -> None:
+        self.fixture.enable_recovery()
+        relative = gate.RECOVERY_PUBLIC_EVIDENCE_PATHS["contract"]
+        path = self.fixture.root / Path(*PurePosixPath(relative).parts)
+        value = read_json(path)
+        path.write_bytes(gate.canonical_json_bytes(value))
+        self.fixture._write_acceptance()
+        with self.assertRaisesRegex(gate.ReleaseAcceptanceError, "not canonical JSON"):
+            self.verify()
+
+    def test_public_recovery_contract_rejects_wrong_qualified_donor(self) -> None:
+        self.fixture.enable_recovery()
+        relative = gate.RECOVERY_PUBLIC_EVIDENCE_PATHS["contract"]
+        path = self.fixture.root / Path(*PurePosixPath(relative).parts)
+        value = read_json(path)
+        value["donor"]["command_plan"]["sha256"] = "f" * 64
+        self.fixture._write_recovery_json(relative, value)
+        self.fixture._write_acceptance()
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError, "differs from the exact qualified A7 evidence"
+        ):
+            self.verify()
+
+    def test_public_recovery_contract_hash_must_match_signed_report(self) -> None:
+        self.fixture.enable_recovery()
+        self.fixture.recovery_disclosure["recovery_contract_sha256"] = "f" * 64
+        self.fixture._prepare_results_assets()
+        self.fixture._write_reports_and_contracts()
+        self.fixture._write_freezes()
+        self.fixture._write_acceptance()
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError,
+            "does not bind signed field recovery_contract_sha256",
+        ):
+            self.verify()
+
+    def test_public_recovery_rejects_coherently_rebound_shard_manifest_lock(self) -> None:
+        self.fixture.enable_recovery()
+        relative = gate.RECOVERY_PUBLIC_EVIDENCE_PATHS["contract"]
+        path = self.fixture.root / Path(*PurePosixPath(relative).parts)
+        contract = read_json(path)
+        contract["variants"][0]["shards"][0]["work_manifest"]["sha256"] = "f" * 64
+        contract_data = gate._recovery_canonical_json_bytes(contract)
+        path.write_bytes(contract_data)
+        self.fixture.recovery_disclosure["recovery_contract_sha256"] = digest(
+            contract_data
+        )
+        self.fixture.recovery_disclosure["recovery_contract_size_bytes"] = len(
+            contract_data
+        )
+        self.fixture._prepare_results_assets()
+        self.fixture._write_reports_and_contracts()
+        self.fixture._write_freezes()
+        self.fixture._write_acceptance()
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError,
+            "shard-manifest locks differ from the exact A7 donor set",
+        ):
+            self.verify()
+
+    def test_public_recovery_report_rejects_wrong_mcmc_policy_hash(self) -> None:
+        self.fixture.enable_recovery()
+        self.fixture.recovery_disclosure["mcmc_policy_sha256"] = "f" * 64
+        self.fixture._prepare_results_assets()
+        self.fixture._write_reports_and_contracts()
+        self.fixture._write_freezes()
+        self.fixture._write_acceptance()
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError,
+            "does not bind signed field mcmc_policy_sha256",
+        ):
+            self.verify()
+
+    def test_public_recovery_contract_rejects_all_split_tree_policy_mutations(self) -> None:
+        self.fixture.enable_recovery()
+        relative = gate.RECOVERY_PUBLIC_EVIDENCE_PATHS["contract"]
+        path = self.fixture.root / Path(*PurePosixPath(relative).parts)
+        contract = read_json(path)
+        mutations = {
+            "mcmc_policy_sha256": "f" * 64,
+            "work_size_bytes": gate.RECOVERY_WORK_SIZE_BYTES + 1,
+            "raw_size_bytes": gate.RECOVERY_RAW_SIZE_BYTES + 1,
+            "work_tree_sha256": "f" * 64,
+            "raw_tree_sha256": "f" * 64,
+        }
+        for field, replacement in mutations.items():
+            with self.subTest(field=field):
+                changed = copy.deepcopy(contract)
+                changed["policy"][field] = replacement
+                with self.assertRaisesRegex(
+                    gate.ReleaseAcceptanceError,
+                    "policy differs from the qualified donor",
+                ):
+                    gate._validate_public_recovery_contract(changed)
+
+    def test_public_recovery_report_rejects_wrong_imported_tree_hash(self) -> None:
+        self.fixture.enable_recovery()
+        self.fixture.recovery_disclosure["imported_work_tree_sha256"] = "f" * 64
+        self.fixture._prepare_results_assets()
+        self.fixture._write_reports_and_contracts()
+        self.fixture._write_freezes()
+        self.fixture._write_acceptance()
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError,
+            "does not bind signed field imported_work_tree_sha256",
+        ):
+            self.verify()
+
+    def test_public_recovery_transition_requires_exact_sorted_path_set(self) -> None:
+        self.fixture.enable_recovery()
+        relative = gate.RECOVERY_PUBLIC_EVIDENCE_PATHS["source_transition"]
+        path = self.fixture.root / Path(*PurePosixPath(relative).parts)
+        value = read_json(path)
+        value["protected_paths"][0], value["protected_paths"][1] = (
+            value["protected_paths"][1],
+            value["protected_paths"][0],
+        )
+        body = dict(value)
+        body.pop("report_id")
+        value["report_id"] = digest(gate._recovery_canonical_json_bytes(body))
+        self.fixture._write_recovery_json(relative, value)
+        self.fixture._write_acceptance()
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError, "protected source changed across A7 to A8"
+        ):
+            self.verify()
+
+    def test_public_recovery_transition_requires_exact_a7_source_record_hash(self) -> None:
+        self.fixture.enable_recovery()
+        relative = gate.RECOVERY_PUBLIC_EVIDENCE_PATHS["source_transition"]
+        path = self.fixture.root / Path(*PurePosixPath(relative).parts)
+        value = read_json(path)
+        value["protected_paths"][0]["from_sha256"] = "f" * 64
+        value["protected_paths"][0]["to_sha256"] = "f" * 64
+        body = dict(value)
+        body.pop("report_id")
+        value["report_id"] = digest(gate._recovery_canonical_json_bytes(body))
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError, "differ from the exact A7/A8 set"
+        ):
+            gate._validate_public_source_transition(
+                value,
+                donor=gate.RECOVERY_DONOR,
+                source=self.fixture.computational_source,
+            )
+
+    def test_public_recovery_git_lineage_requires_exact_a8_to_a7_parent(self) -> None:
+        (self.fixture.root / ".git").mkdir()
+        source = self.fixture.computational_source
+        donor = gate.RECOVERY_DONOR
+
+        def git_result(arguments: list[str]) -> subprocess.CompletedProcess[bytes]:
+            command = arguments[3:]
+            if command == ["rev-list", "--parents", "-n", "1", source["commit"]]:
+                output = f"{source['commit']} {donor['source_commit']}\n".encode("ascii")
+            elif command == ["rev-parse", f"{source['commit']}^{{tree}}"]:
+                output = f"{source['tree']}\n".encode("ascii")
+            elif command == ["rev-parse", f"{donor['source_commit']}^{{tree}}"]:
+                output = f"{donor['source_tree']}\n".encode("ascii")
+            else:
+                self.fail(f"unexpected Git command: {command}")
+            return subprocess.CompletedProcess(arguments, 0, output, b"")
+
+        with mock.patch.object(gate.shutil, "which", return_value="git"), mock.patch.object(
+            gate.subprocess,
+            "run",
+            side_effect=lambda arguments, **_kwargs: git_result(arguments),
+        ):
+            gate._verify_recovery_git_lineage_if_available(
+                self.fixture.root, source, donor
+            )
+
+        def wrong_parent(arguments: list[str], **_kwargs: object):
+            result = git_result(arguments)
+            if arguments[3:5] == ["rev-list", "--parents"]:
+                result.stdout = f"{source['commit']} {'f' * 40}\n".encode("ascii")
+            return result
+
+        with mock.patch.object(gate.shutil, "which", return_value="git"), mock.patch.object(
+            gate.subprocess, "run", side_effect=wrong_parent
+        ), self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError, "exact sole child of donor A7"
+        ):
+            gate._verify_recovery_git_lineage_if_available(
+                self.fixture.root, source, donor
+            )
+
+    def test_public_recovery_qualification_rejects_false_transition(self) -> None:
+        self.fixture.enable_recovery()
+        relative = gate.RECOVERY_PUBLIC_EVIDENCE_PATHS["qualification"]
+        path = self.fixture.root / Path(*PurePosixPath(relative).parts)
+        value = read_json(path)
+        value["source_transition_sha256"] = "f" * 64
+        body = dict(value)
+        body.pop("report_id")
+        value["report_id"] = digest(gate._recovery_canonical_json_bytes(body))
+        self.fixture._write_recovery_json(relative, value)
+        self.fixture._write_acceptance()
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError, "qualification decision changed"
+        ):
+            self.verify()
+
+    def test_full_run_rejects_stale_recovery_evidence(self) -> None:
+        relative = gate.RECOVERY_PUBLIC_EVIDENCE_PATHS["qualification"]
+        self.fixture._write_json(relative, {"stale": True}, canonical=True)
+        self.fixture._write_acceptance()
+        with self.assertRaisesRegex(
+            gate.ReleaseAcceptanceError, "unexpected MCMC recovery evidence"
+        ):
             self.verify()
 
     def test_internally_rebased_zip_cannot_escape_signed_local_output(self) -> None:
