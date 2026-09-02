@@ -241,6 +241,8 @@ def load_source_population_bytes(pc_data: bytes, stellar_data: bytes) -> pd.Data
         "totalReliability",
         "gaia_iso_prad",
         "gaia_iso_insol",
+        "gaia_iso_insol_errm",
+        "gaia_iso_insol_errp",
         "teff",
     }
     missing = required.difference(source.columns)
@@ -250,12 +252,24 @@ def load_source_population_bytes(pc_data: bytes, stellar_data: bytes) -> pd.Data
         "totalReliability",
         "gaia_iso_prad",
         "gaia_iso_insol",
+        "gaia_iso_insol_errm",
+        "gaia_iso_insol_errp",
         "teff",
     ):
         source[column] = pd.to_numeric(source[column], errors="raise")
     reliability = source.totalReliability.to_numpy(dtype=float)
     if np.any(~np.isfinite(reliability)) or np.any((reliability < 0.0) | (reliability > 1.0)):
         raise RuntimeError("Invalid totalReliability outside [0, 1]")
+    lower = source.gaia_iso_insol_errm.to_numpy(dtype=float)
+    upper = source.gaia_iso_insol_errp.to_numpy(dtype=float)
+    if (
+        np.any(np.isinf(lower))
+        or np.any(np.isinf(upper))
+        or np.any(np.isfinite(lower) & (lower < 0.0))
+        or np.any(np.isfinite(upper) & (upper < 0.0))
+        or not np.array_equal(np.isnan(lower), np.isnan(upper))
+    ):
+        raise RuntimeError("Invalid or one-sided-missing DR25 instellation uncertainties")
     return source
 
 
@@ -294,6 +308,9 @@ def analyze_perturbation_branch(
         "source_row",
         "kepoi_name",
         "retained_by_active_policy",
+        "instellation_in_source_domain",
+        "radius_in_source_domain",
+        "teff_in_source_domain",
         "perturbed_flux",
         "perturbed_radius",
         "perturbed_teff",
@@ -325,22 +342,66 @@ def analyze_perturbation_branch(
     if not np.array_equal(audit.kepoi_name.to_numpy(dtype=str), expected_names):
         raise RuntimeError(f"Source-row identity mismatch in {branch}")
 
+    raw_flux = audit.perturbed_flux.astype(str).to_numpy()
+    canonical_missing_flux = raw_flux == ""
     try:
         radius = pd.to_numeric(audit.perturbed_radius, errors="raise").to_numpy(dtype=float)
-        instellation = pd.to_numeric(audit.perturbed_flux, errors="raise").to_numpy(dtype=float)
+        instellation = pd.to_numeric(
+            audit.perturbed_flux.mask(audit.perturbed_flux.eq("")), errors="raise"
+        ).to_numpy(dtype=float)
         teff = pd.to_numeric(audit.perturbed_teff, errors="raise").to_numpy(dtype=float)
     except (TypeError, ValueError) as error:
         raise RuntimeError(f"Non-numeric DR25 perturbation values for {branch}") from error
-    if not finite_mask(radius, instellation, teff).all():
-        raise RuntimeError(f"Non-finite DR25 perturbation values for {branch}")
+    source_lower = source.gaia_iso_insol_errm.to_numpy(dtype=float)[source_rows]
+    source_upper = source.gaia_iso_insol_errp.to_numpy(dtype=float)[source_rows]
+    source_missing_flux_uncertainty = np.isnan(source_lower) & np.isnan(source_upper)
+    if (
+        np.any(~np.isfinite(radius))
+        or np.any(~np.isfinite(teff))
+        or np.any(np.isinf(instellation))
+        or np.any((~np.isfinite(instellation)) & ~canonical_missing_flux)
+        or not np.array_equal(canonical_missing_flux, source_missing_flux_uncertainty)
+    ):
+        raise RuntimeError(
+            f"Non-canonical or unexplained DR25 perturbation values for {branch}"
+        )
     audit["perturbed_radius"] = radius
     audit["perturbed_flux"] = instellation
     audit["perturbed_teff"] = teff
+    instellation_flag = _parse_boolean_column(audit, "instellation_in_source_domain")
+    radius_flag = _parse_boolean_column(audit, "radius_in_source_domain")
+    teff_flag = _parse_boolean_column(audit, "teff_in_source_domain")
+    expected_instellation = (
+        np.isfinite(instellation)
+        & (SOURCE_INSTELLATION[0] <= instellation)
+        & (instellation <= SOURCE_INSTELLATION[1])
+    )
+    expected_radius = (
+        np.isfinite(radius)
+        & (SOURCE_RADIUS[0] <= radius)
+        & (radius <= SOURCE_RADIUS[1])
+    )
+    expected_teff = (
+        np.isfinite(teff)
+        & (SOURCE_TEMPERATURE[0] <= teff)
+        & (teff <= SOURCE_TEMPERATURE[1])
+    )
+    if (
+        not np.array_equal(instellation_flag, expected_instellation)
+        or not np.array_equal(radius_flag, expected_radius)
+        or not np.array_equal(teff_flag, expected_teff)
+    ):
+        raise RuntimeError(f"DR25 perturbation domain flags differ for {branch}")
     rectangle = rectangular_target_mask(radius, instellation, teff)
     earth_analog = earth_analog_target_mask(radius, instellation, teff)
     if np.any(earth_analog & ~rectangle):
         raise RuntimeError("Earth-analog mask is not a subset of its rectangle")
     retained = _parse_boolean_column(audit, "retained_by_active_policy")
+    expected_retained = expected_instellation & expected_radius & expected_teff
+    if not np.array_equal(retained, expected_retained):
+        raise RuntimeError(f"DR25 retained flags differ from corrected policy for {branch}")
+    if np.any(canonical_missing_flux & retained):
+        raise RuntimeError(f"Missing-uncertainty DR25 row was retained for {branch}")
     if np.any(earth_analog & ~retained):
         raise RuntimeError("A target-domain row was removed by the active source policy")
 
@@ -431,6 +492,9 @@ def analyze_perturbation_branch(
         "input_sha256": snapshot.sha256,
         "realization_count": EXPECTED_TRIALS,
         "audit_rows": int(len(audit)),
+        "missing_instellation_uncertainty_exclusions": int(
+            np.sum(canonical_missing_flux)
+        ),
         "reliability_selected_before_domain": count_summary(selected_counts),
         "retained_in_source_domain": count_summary(retained_counts),
         "rectangular_target_candidates": count_summary(rectangle_counts),

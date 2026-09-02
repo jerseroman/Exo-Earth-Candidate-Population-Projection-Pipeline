@@ -1,0 +1,231 @@
+{
+  "excluded_files": [
+    {
+      "path": "aggregates/corrected-constant/joint_posterior_constant_full.csv.gz",
+      "reason": "MCMC_CHAIN"
+    },
+    {
+      "path": "aggregates/corrected-constant/perturbation_audit_constant_full.csv.gz",
+      "reason": "ROW_LEVEL_DR25"
+    },
+    {
+      "path": "aggregates/corrected-zero/joint_posterior_zero_full.csv.gz",
+      "reason": "MCMC_CHAIN"
+    },
+    {
+      "path": "aggregates/corrected-zero/perturbation_audit_zero_full.csv.gz",
+      "reason": "ROW_LEVEL_DR25"
+    },
+    {
+      "path": "aggregates/legacy-measurement-constant/joint_posterior_constant_full.csv.gz",
+      "reason": "MCMC_CHAIN"
+    },
+    {
+      "path": "aggregates/legacy-measurement-constant/perturbation_audit_constant_full.csv.gz",
+      "reason": "ROW_LEVEL_DR25"
+    },
+    {
+      "path": "qualification/seed-stability/constant/joint_posterior_constant_corrected-pilot-seed-1.csv",
+      "reason": "MCMC_CHAIN"
+    },
+    {
+      "path": "qualification/seed-stability/constant/joint_posterior_constant_corrected-pilot-seed-2.csv",
+      "reason": "MCMC_CHAIN"
+    },
+    {
+      "path": "qualification/seed-stability/constant/perturbation_audit_constant_corrected-pilot-seed-1.csv",
+      "reason": "ROW_LEVEL_DR25"
+    },
+    {
+      "path": "qualification/seed-stability/constant/perturbation_audit_constant_corrected-pilot-seed-2.csv",
+      "reason": "ROW_LEVEL_DR25"
+    },
+    {
+      "path": "qualification/seed-stability/constant/perturbed_planets_constant_corrected-pilot-seed-1.csv",
+      "reason": "ROW_LEVEL_DR25"
+    },
+    {
+      "path": "qualification/seed-stability/constant/perturbed_planets_constant_corrected-pilot-seed-2.csv",
+      "reason": "ROW_LEVEL_DR25"
+    },
+    {
+      "path": "qualification/seed-stability/zero/joint_posterior_zero_corrected-pilot-seed-1.csv",
+      "reason": "MCMC_CHAIN"
+    },
+    {
+      "path": "qualification/seed-stability/zero/joint_posterior_zero_corrected-pilot-seed-2.csv",
+      "reason": "MCMC_CHAIN"
+    },
+    {
+      "path": "qualification/seed-stability/zero/perturbation_audit_zero_corrected-pilot-seed-1.csv",
+      "reason": "ROW_LEVEL_DR25"
+    },
+    {
+      "path": "qualification/seed-stability/zero/perturbation_audit_zero_corrected-pilot-seed-2.csv",
+      "reason": "ROW_LEVEL_DR25"
+    },
+    {
+      "path": "qualification/seed-stability/zero/perturbed_planets_zero_corrected-pilot-seed-1.csv",
+      "reason": "ROW_LEVEL_DR25"
+    },
+    {
+      "path": "qualification/seed-stability/zero/perturbed_planets_zero_corrected-pilot-seed-2.csv",
+      "reason": "ROW_LEVEL_DR25"
+    }
+  ],
+  "policy_id": "v4.0.4-public-results-boundary-v1",
+  "private_evidence_file_count": 88,
+  "public_file_count": 70,
+  "retained_derived_files": [
+    {
+      "class": "AGGREGATE_CORRELATION_TABLE",
+      "path": "aggregates/corrected-constant/joint_posterior_constant_correlation.csv"
+    },
+    {
+      "class": "OCCURRENCE_POSTERIOR_FOR_PROPAGATION",
+      "path": "aggregates/corrected-constant/joint_posterior_constant_for_galactic_propagation.csv.gz"
+    },
+    {
+      "class": "AGGREGATE_CORRELATION_TABLE",
+      "path": "aggregates/corrected-zero/joint_posterior_zero_correlation.csv"
+    },
+    {
+      "class": "OCCURRENCE_POSTERIOR_FOR_PROPAGATION",
+      "path": "aggregates/corrected-zero/joint_posterior_zero_for_galactic_propagation.csv.gz"
+    },
+    {
+      "class": "AGGREGATE_CORRELATION_TABLE",
+      "path": "aggregates/legacy-measurement-constant/joint_posterior_constant_correlation.csv"
+    },
+    {
+      "class": "OCCURRENCE_POSTERIOR_FOR_PROPAGATION",
+      "path": "aggregates/legacy-measurement-constant/joint_posterior_constant_for_galactic_propagation.csv.gz"
+    },
+    {
+      "class": "GALACTIC_DERIVED_DRAWS",
+      "path": "propagations/corrected-constant/canonical/galactic_posterior_draws_constant.csv.gz"
+    },
+    {
+      "class": "GALACTIC_DERIVED_DRAWS",
+      "path": "propagations/corrected-constant/legacy/galactic_posterior_draws_constant.csv.gz"
+    },
+    {
+      "class": "GALACTIC_DERIVED_DRAWS",
+      "path": "propagations/corrected-zero/canonical/galactic_posterior_draws_zero.csv.gz"
+    },
+    {
+      "class": "GALACTIC_DERIVED_DRAWS",
+      "path": "propagations/corrected-zero/legacy/galactic_posterior_draws_zero.csv.gz"
+    },
+    {
+      "class": "GALACTIC_DERIVED_DRAWS",
+      "path": "propagations/legacy-measurement-constant/canonical/galactic_posterior_draws_constant.csv.gz"
+    },
+    {
+      "class": "LIKELIHOOD_GRID_PARAMETER_POINTS",
+      "path": "qualification/likelihood-grid/constant/selected_joint_parameter_points.csv"
+    },
+    {
+      "class": "LIKELIHOOD_GRID_PARAMETER_POINTS",
+      "path": "qualification/likelihood-grid/zero/selected_joint_parameter_points.csv"
+    }
+  ],
+  "rewritten_scoped_manifests": [
+    {
+      "path": "aggregates/corrected-constant/SHA256SUMS_constant_aggregate.txt",
+      "private_targets": [
+        "aggregates/corrected-constant/joint_posterior_constant_aggregate_summary.json",
+        "aggregates/corrected-constant/joint_posterior_constant_correlation.csv",
+        "aggregates/corrected-constant/joint_posterior_constant_for_galactic_propagation.csv.gz",
+        "aggregates/corrected-constant/joint_posterior_constant_full.csv.gz",
+        "aggregates/corrected-constant/perturbation_audit_constant_full.csv.gz",
+        "aggregates/corrected-constant/raw_unthinned_chain_audit_constant.json",
+        "aggregates/corrected-constant/trial_diagnostics_constant_full.jsonl"
+      ],
+      "public_targets": [
+        "aggregates/corrected-constant/joint_posterior_constant_aggregate_summary.json",
+        "aggregates/corrected-constant/joint_posterior_constant_correlation.csv",
+        "aggregates/corrected-constant/joint_posterior_constant_for_galactic_propagation.csv.gz",
+        "aggregates/corrected-constant/raw_unthinned_chain_audit_constant.json",
+        "aggregates/corrected-constant/trial_diagnostics_constant_full.jsonl"
+      ]
+    },
+    {
+      "path": "aggregates/corrected-zero/SHA256SUMS_zero_aggregate.txt",
+      "private_targets": [
+        "aggregates/corrected-zero/joint_posterior_zero_aggregate_summary.json",
+        "aggregates/corrected-zero/joint_posterior_zero_correlation.csv",
+        "aggregates/corrected-zero/joint_posterior_zero_for_galactic_propagation.csv.gz",
+        "aggregates/corrected-zero/joint_posterior_zero_full.csv.gz",
+        "aggregates/corrected-zero/perturbation_audit_zero_full.csv.gz",
+        "aggregates/corrected-zero/raw_unthinned_chain_audit_zero.json",
+        "aggregates/corrected-zero/trial_diagnostics_zero_full.jsonl"
+      ],
+      "public_targets": [
+        "aggregates/corrected-zero/joint_posterior_zero_aggregate_summary.json",
+        "aggregates/corrected-zero/joint_posterior_zero_correlation.csv",
+        "aggregates/corrected-zero/joint_posterior_zero_for_galactic_propagation.csv.gz",
+        "aggregates/corrected-zero/raw_unthinned_chain_audit_zero.json",
+        "aggregates/corrected-zero/trial_diagnostics_zero_full.jsonl"
+      ]
+    },
+    {
+      "path": "aggregates/legacy-measurement-constant/SHA256SUMS_constant_aggregate.txt",
+      "private_targets": [
+        "aggregates/legacy-measurement-constant/joint_posterior_constant_aggregate_summary.json",
+        "aggregates/legacy-measurement-constant/joint_posterior_constant_correlation.csv",
+        "aggregates/legacy-measurement-constant/joint_posterior_constant_for_galactic_propagation.csv.gz",
+        "aggregates/legacy-measurement-constant/joint_posterior_constant_full.csv.gz",
+        "aggregates/legacy-measurement-constant/perturbation_audit_constant_full.csv.gz",
+        "aggregates/legacy-measurement-constant/raw_unthinned_chain_audit_constant.json",
+        "aggregates/legacy-measurement-constant/trial_diagnostics_constant_full.jsonl"
+      ],
+      "public_targets": [
+        "aggregates/legacy-measurement-constant/joint_posterior_constant_aggregate_summary.json",
+        "aggregates/legacy-measurement-constant/joint_posterior_constant_correlation.csv",
+        "aggregates/legacy-measurement-constant/joint_posterior_constant_for_galactic_propagation.csv.gz",
+        "aggregates/legacy-measurement-constant/raw_unthinned_chain_audit_constant.json",
+        "aggregates/legacy-measurement-constant/trial_diagnostics_constant_full.jsonl"
+      ]
+    },
+    {
+      "path": "qualification/seed-stability/constant/SHA256SUMS_mcmc_seed_stability_constant.txt",
+      "private_targets": [
+        "qualification/seed-stability/constant/joint_posterior_constant_corrected-pilot-seed-1.csv",
+        "qualification/seed-stability/constant/joint_posterior_constant_corrected-pilot-seed-2.csv",
+        "qualification/seed-stability/constant/mcmc_seed_stability_constant.json",
+        "qualification/seed-stability/constant/perturbation_audit_constant_corrected-pilot-seed-1.csv",
+        "qualification/seed-stability/constant/perturbation_audit_constant_corrected-pilot-seed-2.csv",
+        "qualification/seed-stability/constant/perturbed_planets_constant_corrected-pilot-seed-1.csv",
+        "qualification/seed-stability/constant/perturbed_planets_constant_corrected-pilot-seed-2.csv",
+        "qualification/seed-stability/constant/trial_diagnostics_constant_corrected-pilot-seed-1.json",
+        "qualification/seed-stability/constant/trial_diagnostics_constant_corrected-pilot-seed-2.json"
+      ],
+      "public_targets": [
+        "qualification/seed-stability/constant/mcmc_seed_stability_constant.json",
+        "qualification/seed-stability/constant/trial_diagnostics_constant_corrected-pilot-seed-1.json",
+        "qualification/seed-stability/constant/trial_diagnostics_constant_corrected-pilot-seed-2.json"
+      ]
+    },
+    {
+      "path": "qualification/seed-stability/zero/SHA256SUMS_mcmc_seed_stability_zero.txt",
+      "private_targets": [
+        "qualification/seed-stability/zero/joint_posterior_zero_corrected-pilot-seed-1.csv",
+        "qualification/seed-stability/zero/joint_posterior_zero_corrected-pilot-seed-2.csv",
+        "qualification/seed-stability/zero/mcmc_seed_stability_zero.json",
+        "qualification/seed-stability/zero/perturbation_audit_zero_corrected-pilot-seed-1.csv",
+        "qualification/seed-stability/zero/perturbation_audit_zero_corrected-pilot-seed-2.csv",
+        "qualification/seed-stability/zero/perturbed_planets_zero_corrected-pilot-seed-1.csv",
+        "qualification/seed-stability/zero/perturbed_planets_zero_corrected-pilot-seed-2.csv",
+        "qualification/seed-stability/zero/trial_diagnostics_zero_corrected-pilot-seed-1.json",
+        "qualification/seed-stability/zero/trial_diagnostics_zero_corrected-pilot-seed-2.json"
+      ],
+      "public_targets": [
+        "qualification/seed-stability/zero/mcmc_seed_stability_zero.json",
+        "qualification/seed-stability/zero/trial_diagnostics_zero_corrected-pilot-seed-1.json",
+        "qualification/seed-stability/zero/trial_diagnostics_zero_corrected-pilot-seed-2.json"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

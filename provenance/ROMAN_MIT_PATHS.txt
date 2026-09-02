@@ -33,6 +33,7 @@ provenance/LICENSE_MATRIX.csv
 provenance/LOCAL_RUN_ATTESTATION_CONTRACT_v4_0_4.json
 provenance/MIGRATION_RECORD.json
 provenance/PUBLIC_EXCLUSIONS.csv
+provenance/PUBLIC_RESULTS_POLICY_v4_0_4.json
 provenance/RADIAL_SSP_CONTRACT_v4_0_4.json
 provenance/RELEASE_4_0_1_CHANGE_RECORD.json
 provenance/RELEASE_4_0_2_CHANGE_RECORD.json

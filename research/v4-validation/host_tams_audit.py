@@ -119,6 +119,28 @@ HOST_CONTRACT_FILES = (
     "jj_g_hosts_raw_eligible_padova.csv",
     "jj_g_hosts_summary_padova.json",
 )
+HOST_CONTRACT_PARENT_NAME = "jj_g_hosts_parent_prelogg_padova.csv"
+HOST_CONTRACT_LEGACY_MANIFEST_NAME = "SHA256SUMS_padova_legacy_logg43.txt"
+HOST_CONTRACT_LEGACY_FILES = tuple(
+    f"{Path(name).stem}_legacy_logg43{Path(name).suffix}"
+    for name in HOST_CONTRACT_FILES
+)
+HOST_CONTRACT_AUXILIARY_FILES = ("tams_ab_radial.csv", "tams_ab_results.json")
+HOST_CONTRACT_RUNTIME_FILES = (
+    "JJ_tutorial2_parameters_original.txt",
+    "JJ_tutorial2_parameters_runtime.txt",
+    "JJ_tutorial2_sfr_peaks_parameters.txt",
+    "NUMERICAL_RUNTIME_POLICY.json",
+)
+HOST_CONTRACT_SNAPSHOT_FILES = (
+    HOST_CONTRACT_PARENT_NAME,
+    HOST_CONTRACT_MANIFEST_NAME,
+    *HOST_CONTRACT_FILES,
+    HOST_CONTRACT_LEGACY_MANIFEST_NAME,
+    *HOST_CONTRACT_LEGACY_FILES,
+    *HOST_CONTRACT_AUXILIARY_FILES,
+    *HOST_CONTRACT_RUNTIME_FILES,
+)
 
 
 def _tams_dr_tag(dr: float) -> str:
@@ -155,14 +177,25 @@ def _load_python_module_from_snapshot(
     module = types.ModuleType(module_name)
     module.__file__ = str(snapshot.path)
     module.__package__ = ""
+    missing = object()
+    previous = sys.modules.get(module_name, missing)
+    sys.modules[module_name] = module
     try:
-        code = compile(snapshot.data, str(snapshot.path), "exec")
-        exec(code, module.__dict__)
-    except Exception as error:
-        raise RuntimeError(f"{label} could not be loaded from its captured bytes") from error
-    if Path(str(module.__file__)).resolve() != snapshot.path.resolve():
-        raise RuntimeError(f"{label} changed its source identity while loading")
-    return module, snapshot
+        try:
+            code = compile(snapshot.data, str(snapshot.path), "exec")
+            exec(code, module.__dict__)
+        except Exception as error:
+            raise RuntimeError(
+                f"{label} could not be loaded from its captured bytes"
+            ) from error
+        if Path(str(module.__file__)).resolve() != snapshot.path.resolve():
+            raise RuntimeError(f"{label} changed its source identity while loading")
+        return module, snapshot
+    finally:
+        if previous is missing:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = previous
 
 
 def independent_occurrence_fractions(
@@ -646,17 +679,31 @@ def validate_posterior_artifact(
 ) -> tuple[pd.DataFrame, FileSnapshot, dict[str, Any]]:
     if isinstance(path, FileSnapshot):
         snapshot = path
-        frame = read_csv_bytes(
-            snapshot.data,
-            f"{branch} posterior samples",
-            compressed=snapshot.path.name.endswith(".gz"),
-        )
     else:
-        frame, snapshot = read_csv_snapshot(path, f"{branch} posterior samples")
+        snapshot = read_file_snapshot(path, f"{branch} posterior samples")
+    compressed = snapshot.path.name.endswith(".gz")
+    strict_frame = read_csv_bytes(
+        snapshot.data,
+        f"{branch} posterior samples",
+        compressed=compressed,
+    )
+    frame = read_csv_bytes(
+        snapshot.data,
+        f"{branch} posterior samples for propagation parity",
+        compressed=compressed,
+        float_precision=None,
+    )
+    _validate_realization_layout(
+        strict_frame,
+        branch=branch,
+        label=f"{branch} posterior samples (round-trip parse)",
+        required_numeric={"F0", "alpha", "beta", "gamma"},
+        expected_columns=POSTERIOR_COLUMNS,
+    )
     _validate_realization_layout(
         frame,
         branch=branch,
-        label=f"{branch} posterior samples",
+        label=f"{branch} posterior samples for propagation parity",
         required_numeric={"F0", "alpha", "beta", "gamma"},
         expected_columns=POSTERIOR_COLUMNS,
     )
@@ -710,8 +757,19 @@ def validate_host_artifact(
     path: Path, *, selector: str
 ) -> tuple[pd.DataFrame, pd.DataFrame, FileSnapshot, dict[str, Any]]:
     frame, snapshot = read_csv_snapshot(path, f"{selector} host rows")
+    # The propagation producer uses pandas' default floating-point parser.
+    # Retain the round-trip parse above for exact parent-row validation, but
+    # derive the frozen collapsed measure from the same captured bytes and
+    # parser semantics as the authoritative producer.
+    propagation_frame = read_csv_bytes(
+        snapshot.data,
+        f"{selector} host rows for propagation parity",
+        float_precision=None,
+    )
     collapsed = _validate_host_frame(
-        frame, selector=selector, label=f"{selector} host rows"
+        propagation_frame,
+        selector=selector,
+        label=f"{selector} host rows for propagation parity",
     )
     return frame, collapsed, snapshot, {
         "path": str(snapshot.path),
@@ -1436,13 +1494,19 @@ def attach_radial_weights(frame: pd.DataFrame) -> pd.DataFrame:
     coefficients[-1] = 0.5 * (nodes[-1] - nodes[-2])
     coefficients[1:-1] = 0.5 * (nodes[2:] - nodes[:-2])
     coefficient_by_radius = dict(zip(nodes, coefficients))
+    # Reproduce the authoritative propagation implementation's evaluation
+    # order exactly.  Algebraically equivalent reorderings can change the
+    # final floating-point bits and therefore cannot validate its frozen CSV.
+    radial_coefficient = selected.R_kpc.map(coefficient_by_radius).to_numpy(
+        dtype=float
+    )
     selected["integrated_weight"] = (
-        selected.N_surface_pc_2
+        selected.N_surface_pc_2.to_numpy(dtype=float)
+        * radial_coefficient
         * 2.0
         * math.pi
-        * selected.R_kpc
+        * selected.R_kpc.to_numpy(dtype=float)
         * 1.0e6
-        * selected.R_kpc.map(coefficient_by_radius)
     )
     if not np.isfinite(selected.integrated_weight).all():
         raise RuntimeError("Non-finite integrated host weight")
@@ -1485,7 +1549,10 @@ def derived_collapsed_host_measure(
     frame: pd.DataFrame,
     mask: np.ndarray,
 ) -> dict[str, Any]:
-    collapsed = collapsed_host_measure_frame(frame, mask)
+    return collapsed_host_measure_summary(collapsed_host_measure_frame(frame, mask))
+
+
+def collapsed_host_measure_summary(collapsed: pd.DataFrame) -> dict[str, Any]:
     encoded = collapsed_frame_bytes(collapsed)
     return {
         "row_count": int(len(collapsed)),
@@ -1733,12 +1800,9 @@ def verify_host_artifact_contract_binding(
     root = Path(artifact_root)
     if root.is_symlink() or not root.is_dir():
         raise RuntimeError("Host artifact root must be a non-symlink directory")
-    manifest_snapshot = read_file_snapshot(
-        root / HOST_CONTRACT_MANIFEST_NAME, "host artifact manifest"
-    )
     artifact_snapshots = {
         name: read_file_snapshot(root / name, f"host contract target {name}")
-        for name in HOST_CONTRACT_FILES
+        for name in HOST_CONTRACT_SNAPSHOT_FILES
     }
     verifier, verifier_snapshot = _load_python_module_from_snapshot(
         repository_root / "scripts" / "verify_host_artifact_contract.py",
@@ -1798,7 +1862,6 @@ def verify_host_artifact_contract_binding(
             (stable / name).write_bytes(snapshot.data)
         stable_root = stable / "artifact"
         stable_root.mkdir()
-        (stable_root / HOST_CONTRACT_MANIFEST_NAME).write_bytes(manifest_snapshot.data)
         for name, snapshot in artifact_snapshots.items():
             (stable_root / name).write_bytes(snapshot.data)
         verified = verifier.verify_artifact(stable_contract, stable_root)
@@ -1890,7 +1953,9 @@ def verify_host_artifact_contract_binding(
         "contract_size_bytes": contract_snapshot.size_bytes,
         "contract_verifier_sha256": verifier_snapshot.sha256,
         "artifact_root": str(root.resolve()),
-        "manifest_sha256": manifest_snapshot.sha256,
+        "manifest_sha256": artifact_snapshots[
+            HOST_CONTRACT_MANIFEST_NAME
+        ].sha256,
         "artifact_set_id": artifact_set.get("id"),
         "representation_match": verified.get("representation_match"),
         "production_accepted": True,
@@ -2085,10 +2150,25 @@ def validate_parent_artifact(
             & (weighted.logg.to_numpy(dtype=float) < 7.0)
         ),
     }
-    collapsed = {
-        selector: collapsed_host_measure_frame(weighted, mask)
-        for selector, mask in masks.items()
-    }
+    collapsed: dict[str, pd.DataFrame] = {}
+    for selector, selected in selected_host_frames.items():
+        # The validated parent rows are the semantic authority.  Re-serialize
+        # their exact projection and parse it with the producer's pandas
+        # semantics so the independent audit can compare frozen bytes without
+        # substituting a different floating-point CSV parser.
+        projected_bytes = selected.to_csv(
+            index=False, lineterminator="\n"
+        ).encode("utf-8")
+        producer_frame = read_csv_bytes(
+            projected_bytes,
+            f"parent-derived {selector} host rows for propagation parity",
+            float_precision=None,
+        )
+        collapsed[selector] = _validate_host_frame(
+            producer_frame,
+            selector=selector,
+            label=f"parent-derived {selector} host rows for propagation parity",
+        )
     for selector in ("canonical", "legacy"):
         if len(collapsed[selector]) != EXPECTED_SELECTOR_TEMPERATURE_COUNTS[selector]:
             raise RuntimeError(f"Derived {selector} host temperature count changed")
@@ -3414,8 +3494,8 @@ def main() -> None:
             f"Legacy host count mismatch: {legacy_plugin_summary['N_star']}"
         )
     derived_host_measures = {
-        "canonical": derived_collapsed_host_measure(parent, canonical),
-        "legacy": derived_collapsed_host_measure(parent, legacy),
+        selector: collapsed_host_measure_summary(parent_collapsed[selector])
+        for selector in ("canonical", "legacy")
     }
 
     jj_radius = parent.loc[canonical, "Rstar_g_Rsun"].to_numpy(dtype=float)

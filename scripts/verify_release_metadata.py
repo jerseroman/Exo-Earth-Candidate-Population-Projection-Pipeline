@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = "4.0.4"
-RELEASE_DATE = "2026-08-30"
+RELEASE_DATE = "2026-09-02"
 DOI = "10.5281/zenodo.22168215"
 ORCID = "https://orcid.org/0009-0001-5003-5354"
 BASE_RELEASE_VERSION = "4.0.3"

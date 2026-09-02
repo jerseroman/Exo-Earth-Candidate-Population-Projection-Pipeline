@@ -18,6 +18,92 @@ import host_tams_audit as audit
 
 
 class HostTamsAuditTests(unittest.TestCase):
+    def test_snapshot_module_loader_supports_dataclass_decorators(self) -> None:
+        module_name = "_host_test_snapshot_dataclass"
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "dataclass_fixture.py"
+            source.write_text(
+                "from dataclasses import dataclass\n"
+                "@dataclass(frozen=True)\n"
+                "class Record:\n"
+                "    value: int\n"
+                "INSTANCE = Record(7)\n",
+                encoding="utf-8",
+            )
+            try:
+                module, snapshot = audit._load_python_module_from_snapshot(
+                    source,
+                    module_name=module_name,
+                    label="dataclass loader fixture",
+                )
+                self.assertEqual(module.INSTANCE.value, 7)
+                self.assertEqual(snapshot.data, source.read_bytes())
+            finally:
+                sys.modules.pop(module_name, None)
+        self.assertNotIn(module_name, sys.modules)
+
+    def test_snapshot_module_loader_loads_exact_dataclass_verifiers(self) -> None:
+        repository_root = Path(audit.__file__).resolve().parents[2]
+        fixtures = (
+            (
+                repository_root / "scripts" / "verify_host_artifact_contract.py",
+                "_host_test_exact_host_contract_verifier",
+                "FileSnapshot",
+            ),
+            (
+                repository_root / "scripts" / "verify_local_run_attestation.py",
+                "_host_test_exact_local_run_verifier",
+                "DirectoryComponentSnapshot",
+            ),
+        )
+        for path, module_name, dataclass_name in fixtures:
+            with self.subTest(path=path.name):
+                self.assertNotIn(module_name, sys.modules)
+                module, snapshot = audit._load_python_module_from_snapshot(
+                    path,
+                    module_name=module_name,
+                    label=f"exact {path.name} fixture",
+                )
+                self.assertTrue(
+                    hasattr(getattr(module, dataclass_name), "__dataclass_fields__")
+                )
+                self.assertEqual(snapshot.data, path.read_bytes())
+                self.assertNotIn(module_name, sys.modules)
+
+    def test_snapshot_module_loader_restores_preexisting_registration(self) -> None:
+        for outcome in ("success", "failure"):
+            with self.subTest(
+                outcome=outcome
+            ), tempfile.TemporaryDirectory() as temporary:
+                module_name = f"_host_test_snapshot_restore_{outcome}"
+                previous = object()
+                sys.modules[module_name] = previous
+                source = Path(temporary) / f"{outcome}_fixture.py"
+                source.write_text(
+                    "VALUE = 7\n"
+                    if outcome == "success"
+                    else "raise RuntimeError('fixture failure')\n",
+                    encoding="utf-8",
+                )
+                try:
+                    if outcome == "success":
+                        module, _ = audit._load_python_module_from_snapshot(
+                            source,
+                            module_name=module_name,
+                            label="successful loader fixture",
+                        )
+                        self.assertEqual(module.VALUE, 7)
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, "captured bytes"):
+                            audit._load_python_module_from_snapshot(
+                                source,
+                                module_name=module_name,
+                                label="failing loader fixture",
+                            )
+                    self.assertIs(sys.modules[module_name], previous)
+                finally:
+                    sys.modules.pop(module_name, None)
+
     def test_json_loader_rejects_overflow_and_nonfinite_literals(self) -> None:
         for payload in (b'{"x":1e999}', b'{"x":NaN}', b'{"x":Infinity}'):
             with self.subTest(payload=payload), self.assertRaises(RuntimeError):
@@ -28,14 +114,18 @@ class HostTamsAuditTests(unittest.TestCase):
         rows = []
         for radius in audit.EXPECTED_RADIAL_NODES:
             rows += [
-                [radius, "thin", 5500.0, 5.0, 4.5, 1.0],
+                [radius, "thin", 5500.0, 5.0, 4.5, 0.12345678901234567],
                 [
                     radius,
                     "thick",
                     5700.0 if selector == "canonical" else 5800.0,
                     7.0,
                     4.6,
-                    2.0 if selector == "canonical" else 1.5,
+                    (
+                        0.10000000000000009
+                        if selector == "canonical"
+                        else 0.0000009999999999999997
+                    ),
                 ],
             ]
         return pd.DataFrame(rows, columns=audit.HOST_COLUMNS)
@@ -64,7 +154,11 @@ class HostTamsAuditTests(unittest.TestCase):
                 "branch": [branch] * 16,
                 "global_trial": trial,
                 "F0": 0.8 + offset + 0.1 * phase,
-                "alpha": -1.3 + 0.05 * phase,
+                "alpha": np.where(
+                    phase == 0.0,
+                    0.12345678901234567,
+                    0.10000000000000009,
+                ),
                 "beta": -1.2 + 0.05 * phase,
                 "gamma": -3.0 + 0.05 * phase,
             },
@@ -102,13 +196,15 @@ class HostTamsAuditTests(unittest.TestCase):
     ) -> None:
         root.mkdir()
         posterior = pd.read_csv(posterior_path)
-        collapsed = cls.collapsed(pd.read_csv(host_path))
-        collapsed_path = root / audit.GALACTIC_ARTIFACT_STEMS["collapsed"]
-        collapsed.to_csv(collapsed_path, index=False, lineterminator="\n")
         bryson = Path(audit.__file__).resolve().parents[1] / "bryson-joint-posterior"
         if str(bryson) not in sys.path:
             sys.path.insert(0, str(bryson))
         propagation = __import__("propagate_hab2_joint_posterior")
+        collapsed = propagation.collapse_host_measure(
+            host_path, expected_distinct_temperatures=None
+        )
+        collapsed_path = root / audit.GALACTIC_ARTIFACT_STEMS["collapsed"]
+        collapsed.to_csv(collapsed_path, index=False, lineterminator="\n")
         count = float(collapsed.integrated_host_weight.sum())
         hz, ee = propagation.propagate_chunk(
             posterior,
@@ -217,11 +313,17 @@ class HostTamsAuditTests(unittest.TestCase):
             cls.posterior(branch, offset).to_csv(path, index=False, lineterminator="\n")
             posterior_paths[branch] = path
         counts, temperatures = {}, {}
+        bryson = Path(audit.__file__).resolve().parents[1] / "bryson-joint-posterior"
+        if str(bryson) not in sys.path:
+            sys.path.insert(0, str(bryson))
+        propagation = __import__("propagate_hab2_joint_posterior")
         for selector in ("canonical", "legacy"):
             path = root / f"hosts-{selector}.csv"
             frame = cls.host_frame(selector)
             frame.to_csv(path, index=False, lineterminator="\n")
-            collapsed = cls.collapsed(frame)
+            collapsed = propagation.collapse_host_measure(
+                path, expected_distinct_temperatures=None
+            )
             host_paths[selector] = path
             counts[selector] = float(collapsed.integrated_host_weight.sum())
             temperatures[selector] = len(collapsed)
@@ -292,6 +394,35 @@ class HostTamsAuditTests(unittest.TestCase):
                     posterior_paths=fixture["posterior_paths"],
                     host_paths=fixture["host_paths"],
                 )
+                for selector in ("canonical", "legacy"):
+                    _, expected, _, _ = audit.validate_host_artifact(
+                        fixture["host_paths"][selector], selector=selector
+                    )
+                    expected_bytes = audit.collapsed_frame_bytes(expected)
+                    round_trip_frame = audit.read_csv_bytes(
+                        fixture["host_paths"][selector].read_bytes(),
+                        f"{selector} round-trip regression fixture",
+                    )
+                    round_trip_collapsed = audit._validate_host_frame(
+                        round_trip_frame,
+                        selector=selector,
+                        label=f"{selector} round-trip regression fixture",
+                    )
+                    self.assertNotEqual(
+                        audit.collapsed_frame_bytes(round_trip_collapsed),
+                        expected_bytes,
+                        "regression fixture must distinguish the old parser semantics",
+                    )
+                    for branch in ("constant", "zero"):
+                        collapsed = (
+                            fixture["roots"][(selector, branch)]
+                            / audit.GALACTIC_ARTIFACT_STEMS["collapsed"]
+                        )
+                        self.assertEqual(
+                            collapsed.read_bytes(),
+                            expected_bytes,
+                            f"{selector}:{branch} collapsed measure must be bit-exact",
+                        )
         self.assertEqual(summaries[("canonical", "constant")]["branch"], "constant")
         self.assertEqual(evidence["legacy"]["zero"]["posterior_row_count"], 16)
 
@@ -573,7 +704,7 @@ class HostTamsAuditTests(unittest.TestCase):
                     index=False,
                     lineterminator="\n",
                 )
-                for name in audit.HOST_CONTRACT_FILES:
+                for name in audit.HOST_CONTRACT_SNAPSHOT_FILES:
                     path = root / name
                     if path.exists():
                         continue
@@ -581,19 +712,29 @@ class HostTamsAuditTests(unittest.TestCase):
                         path.write_text("{}\n", encoding="utf-8")
                     else:
                         path.write_text("fixture\n", encoding="utf-8")
-                (root / audit.HOST_CONTRACT_MANIFEST_NAME).write_text(
-                    "fixture manifest\n", encoding="utf-8"
-                )
-                verifier = SimpleNamespace(
-                    load_json_bytes=lambda *_: contract_document,
-                    validate_contract=lambda value: value,
-                    verify_artifact=lambda _contract, _root: {
+
+                def verify_artifact(_contract: Path, stable_root: Path) -> dict:
+                    self.assertEqual(
+                        {path.name for path in stable_root.iterdir()},
+                        set(audit.HOST_CONTRACT_SNAPSHOT_FILES),
+                    )
+                    for name in audit.HOST_CONTRACT_SNAPSHOT_FILES:
+                        self.assertEqual(
+                            (stable_root / name).read_bytes(),
+                            (root / name).read_bytes(),
+                        )
+                    return {
                         "artifact_set": {
                             "id": "qualified-r4",
                             "production_accepted": accepted,
                         },
                         "representation_match": "exact",
-                    },
+                    }
+
+                verifier = SimpleNamespace(
+                    load_json_bytes=lambda *_: contract_document,
+                    validate_contract=lambda value: value,
+                    verify_artifact=verify_artifact,
                     _validate_qualification_report=lambda *_args, **_kwargs: {
                         "report": {"qualification_id": "sha256:" + "d" * 64},
                         "source_state": {

@@ -6,7 +6,9 @@ import argparse
 import base64
 import binascii
 import csv
+import gzip
 import importlib
+import io
 import json
 import math
 import re
@@ -68,6 +70,16 @@ GALACTIC_QUANTITIES = (
     "Lambda_EE_over_Lambda_HZ",
 )
 QUANTILES = ("q2.5", "q16", "q50", "q84", "q97.5")
+LOCAL_PUBLIC_PROJECTION_FIELDS = (
+    "public_projection_policy_sha256",
+    "public_projection_file_count",
+    "public_projection_excluded_file_count",
+    "public_projection_excluded_file_set_sha256",
+    "public_projection_passthrough_file_count",
+    "public_projection_passthrough_total_size_bytes",
+    "public_projection_passthrough_file_set_sha256",
+    "public_projection_rewritten_manifest_count",
+)
 HOST_AUDIT_NAME = "host_tams_audit.json"
 HOST_SELECTOR_TABLE_NAME = "host_selector_sensitivity.csv"
 HOST_AUDIT_MANIFEST_NAME = "SHA256SUMS_host_tams_audit.txt"
@@ -213,6 +225,119 @@ PILOT_PERTURBATION_COUNT_KEYS = {
     "n_retained_by_active_policy",
     "n_retained_with_teff_outside_source_domain",
 }
+AUDIT_NULLABLE_FLUX_COLUMNS = (
+    "gaia_iso_insol_errm",
+    "gaia_iso_insol_errp",
+    "perturbed_flux",
+)
+AUDIT_NUMERIC_COLUMNS = (
+    "kepid_x",
+    "totalReliability",
+    "koi_period",
+    "gaia_iso_insol",
+    *AUDIT_NULLABLE_FLUX_COLUMNS[:2],
+    "gaia_iso_prad",
+    "gaia_iso_prad_errm",
+    "gaia_iso_prad_errp",
+    "teff",
+    "teff_err2",
+    "teff_err1",
+    "perturbed_flux",
+    "perturbed_radius",
+    "perturbed_teff",
+)
+AUDIT_STRICT_FINITE_COLUMNS = tuple(
+    column for column in AUDIT_NUMERIC_COLUMNS if column not in AUDIT_NULLABLE_FLUX_COLUMNS
+)
+
+
+def _raw_nullable_flux_columns(
+    data: bytes, *, compressed: bool, label: str
+) -> pd.DataFrame:
+    try:
+        raw = pd.read_csv(
+            io.BytesIO(data),
+            compression="gzip" if compressed else None,
+            dtype=str,
+            keep_default_na=False,
+            usecols=list(AUDIT_NULLABLE_FLUX_COLUMNS),
+        )
+    except Exception as error:
+        raise RuntimeError(f"Cannot parse raw nullable flux columns for {label}") from error
+    if tuple(raw.columns) != AUDIT_NULLABLE_FLUX_COLUMNS:
+        raise RuntimeError(f"Raw nullable flux-column order changed for {label}")
+    return raw
+
+
+def _validate_perturbation_audit_numeric_policy(
+    audit: pd.DataFrame,
+    raw_nullable: pd.DataFrame,
+    flags: dict[str, np.ndarray],
+    *,
+    label: str,
+) -> int:
+    """Allow only audit-consistent missing flux draws in rejected audit rows."""
+
+    if len(raw_nullable) != len(audit):
+        raise RuntimeError(f"Raw nullable flux row count changed for {label}")
+    try:
+        for column in AUDIT_NUMERIC_COLUMNS:
+            audit[column] = pd.to_numeric(audit[column], errors="raise")
+    except (TypeError, ValueError) as error:
+        raise RuntimeError(f"Audit contains non-numeric values for {label}") from error
+    if not np.isfinite(
+        audit.loc[:, list(AUDIT_STRICT_FINITE_COLUMNS)].to_numpy(dtype=float)
+    ).all():
+        raise RuntimeError(f"Audit contains non-finite required values for {label}")
+
+    nullable = {
+        column: audit[column].to_numpy(dtype=float)
+        for column in AUDIT_NULLABLE_FLUX_COLUMNS
+    }
+    for column, values in nullable.items():
+        canonical_missing = raw_nullable[column].eq("").to_numpy(dtype=bool)
+        nonfinite = ~np.isfinite(values)
+        if np.any(np.isinf(values)) or not np.array_equal(nonfinite, canonical_missing):
+            raise RuntimeError(f"Audit contains non-canonical non-finite {column} for {label}")
+    missing_lower = np.isnan(nullable["gaia_iso_insol_errm"])
+    missing_upper = np.isnan(nullable["gaia_iso_insol_errp"])
+    missing_flux = np.isnan(nullable["perturbed_flux"])
+    if (
+        not np.array_equal(missing_lower, missing_upper)
+        or not np.array_equal(missing_lower, missing_flux)
+        or np.any(
+            np.isfinite(nullable["gaia_iso_insol_errm"])
+            & (nullable["gaia_iso_insol_errm"] < 0.0)
+        )
+        or np.any(
+            np.isfinite(nullable["gaia_iso_insol_errp"])
+            & (nullable["gaia_iso_insol_errp"] < 0.0)
+        )
+    ):
+        raise RuntimeError(f"Audit missing-flux provenance is inconsistent for {label}")
+
+    flux = nullable["perturbed_flux"]
+    radius = audit.perturbed_radius.to_numpy(dtype=float)
+    teff = audit.perturbed_teff.to_numpy(dtype=float)
+    expected_flags = {
+        "instellation_in_source_domain": (
+            np.isfinite(flux) & (0.2 <= flux) & (flux <= 2.2)
+        ),
+        "radius_in_source_domain": (
+            np.isfinite(radius) & (0.5 <= radius) & (radius <= 2.5)
+        ),
+        "teff_in_source_domain": (
+            np.isfinite(teff) & (3900.0 <= teff) & (teff <= 6300.0)
+        ),
+    }
+    if any(
+        not np.array_equal(flags[name], expected)
+        for name, expected in expected_flags.items()
+    ):
+        raise RuntimeError(f"Audit coordinate-domain flags differ for {label}")
+    if np.any(missing_flux & flags["retained_by_active_policy"]):
+        raise RuntimeError(f"Audit retained a missing-flux row for {label}")
+    return int(np.sum(missing_flux))
 
 
 def validate_external_evidence_lock(
@@ -508,6 +633,34 @@ def local_qualification_source_identity(
     if public_projection != identity:
         raise RuntimeError("local public report differs from its exact source lock")
     return identity
+
+
+def local_public_projection_binding(report: dict[str, Any]) -> dict[str, Any]:
+    """Carry the exact signed 88-to-70 release projection into each freeze."""
+
+    binding = {field: report.get(field) for field in LOCAL_PUBLIC_PROJECTION_FIELDS}
+    for field in (
+        "public_projection_policy_sha256",
+        "public_projection_excluded_file_set_sha256",
+        "public_projection_passthrough_file_set_sha256",
+    ):
+        if not isinstance(binding[field], str) or SHA256_PATTERN.fullmatch(
+            binding[field]
+        ) is None:
+            raise RuntimeError(f"local public-projection {field} is invalid")
+    exact_counts = {
+        "public_projection_file_count": 70,
+        "public_projection_excluded_file_count": 18,
+        "public_projection_passthrough_file_count": 63,
+        "public_projection_rewritten_manifest_count": 5,
+    }
+    for field, expected in exact_counts.items():
+        if type(binding[field]) is not int or binding[field] != expected:
+            raise RuntimeError(f"local public-projection {field} changed")
+    size = binding["public_projection_passthrough_total_size_bytes"]
+    if type(size) is not int or size <= 0:
+        raise RuntimeError("local public-projection passthrough byte total is invalid")
+    return binding
 
 
 def host_source_lock_from_local_contract(
@@ -1505,22 +1658,11 @@ def validate_aggregate_posterior_artifacts(
     propagation, _, _ = validate_posterior_artifact(
         propagation_snapshot, branch=branch
     )
-    within = full.groupby("global_trial", sort=False).cumcount().to_numpy()
-    expected_propagation = full.loc[
-        within % 2 == 0, list(PROPAGATION_POSTERIOR_COLUMNS)
-    ].reset_index(drop=True)
-    if len(expected_propagation) != len(propagation) or not np.array_equal(
-        expected_propagation.branch.astype(str).to_numpy(),
-        propagation.branch.astype(str).to_numpy(),
-    ) or not np.array_equal(
-        expected_propagation.loc[:, PROPAGATION_POSTERIOR_COLUMNS[1:]].to_numpy(
-            dtype=float
-        ),
-        propagation.loc[:, PROPAGATION_POSTERIOR_COLUMNS[1:]].to_numpy(dtype=float),
-    ):
-        raise RuntimeError(
-            f"{branch} propagation posterior is not the exact stride-2 subset of full"
-        )
+    validate_exact_stride_two_csv_subset(
+        full_snapshot,
+        propagation_snapshot,
+        branch=branch,
+    )
     _compare_quantiles_to_frame(branch, data, "posterior_quantiles", full)
     _compare_quantiles_to_frame(
         branch,
@@ -1536,6 +1678,99 @@ def validate_aggregate_posterior_artifacts(
         "propagation_row_count": len(propagation),
         "propagation_stride": 2,
     }, full
+
+
+def _open_snapshot_csv_text(snapshot: FileSnapshot) -> io.TextIOWrapper:
+    """Open captured CSV bytes without changing their decimal tokens."""
+
+    raw = io.BytesIO(snapshot.data)
+    stream = (
+        gzip.GzipFile(fileobj=raw, mode="rb")
+        if snapshot.path.name.endswith(".gz")
+        else raw
+    )
+    return io.TextIOWrapper(stream, encoding="utf-8", errors="strict", newline="")
+
+
+def validate_exact_stride_two_csv_subset(
+    full_snapshot: FileSnapshot,
+    propagation_snapshot: FileSnapshot,
+    *,
+    branch: str,
+) -> None:
+    """Require the propagation CSV to contain every second full CSV record.
+
+    The full artifact is parsed with pandas' round-trip converter for strict
+    posterior validation, while propagation deliberately uses pandas' default
+    converter to reproduce the downstream producer. Comparing those two
+    floating-point arrays can differ by one or a few ULPs even when both CSVs
+    contain identical decimal tokens. The stride invariant concerns the
+    serialized records, so verify it directly from the captured CSV text.
+    """
+
+    try:
+        with (
+            _open_snapshot_csv_text(full_snapshot) as full_handle,
+            _open_snapshot_csv_text(propagation_snapshot) as propagation_handle,
+        ):
+            full_reader = csv.DictReader(full_handle)
+            propagation_reader = csv.DictReader(propagation_handle)
+            if tuple(full_reader.fieldnames or ()) != FULL_POSTERIOR_COLUMNS:
+                raise RuntimeError(
+                    f"Full aggregate posterior columns changed for {branch}"
+                )
+            if tuple(propagation_reader.fieldnames or ()) != PROPAGATION_POSTERIOR_COLUMNS:
+                raise RuntimeError(
+                    f"Propagation posterior columns changed for {branch}"
+                )
+
+            propagation_rows = iter(propagation_reader)
+            previous_trial: str | None = None
+            within_trial = 0
+            for full_row in full_reader:
+                if None in full_row or any(
+                    value is None for value in full_row.values()
+                ):
+                    raise RuntimeError(f"Malformed full aggregate CSV row for {branch}")
+                trial = full_row["global_trial"]
+                if trial != previous_trial:
+                    previous_trial = trial
+                    within_trial = 0
+                else:
+                    within_trial += 1
+                if within_trial % 2:
+                    continue
+                try:
+                    propagation_row = next(propagation_rows)
+                except StopIteration as error:
+                    raise RuntimeError(
+                        f"{branch} propagation posterior ended before the stride-2 subset"
+                    ) from error
+                if (
+                    None in propagation_row
+                    or any(value is None for value in propagation_row.values())
+                    or tuple(
+                        full_row[column] for column in PROPAGATION_POSTERIOR_COLUMNS
+                    )
+                    != tuple(
+                        propagation_row[column]
+                        for column in PROPAGATION_POSTERIOR_COLUMNS
+                    )
+                ):
+                    raise RuntimeError(
+                        f"{branch} propagation posterior is not the exact "
+                        "stride-2 subset of full"
+                    )
+            if next(propagation_rows, None) is not None:
+                raise RuntimeError(
+                    f"{branch} propagation posterior extends beyond the stride-2 subset"
+                )
+    except RuntimeError:
+        raise
+    except (csv.Error, OSError, UnicodeError) as error:
+        raise RuntimeError(
+            f"Cannot compare {branch} full and propagation posterior CSV records: {error}"
+        ) from error
 
 
 def _require_numeric_vector(
@@ -1919,29 +2154,6 @@ def validate_aggregate_perturbation_audit(
     ) or audit.duplicated(["global_trial", "source_row"]).any():
         raise RuntimeError(f"Aggregate perturbation-audit order/uniqueness failed for {branch}")
 
-    numeric_columns = [
-        "kepid_x",
-        "totalReliability",
-        "koi_period",
-        "gaia_iso_insol",
-        "gaia_iso_insol_errm",
-        "gaia_iso_insol_errp",
-        "gaia_iso_prad",
-        "gaia_iso_prad_errm",
-        "gaia_iso_prad_errp",
-        "teff",
-        "teff_err2",
-        "teff_err1",
-        "perturbed_flux",
-        "perturbed_radius",
-        "perturbed_teff",
-    ]
-    for column in numeric_columns:
-        audit[column] = pd.to_numeric(audit[column], errors="raise")
-    if not np.isfinite(audit[numeric_columns].to_numpy(dtype=float)).all():
-        raise RuntimeError(f"Aggregate perturbation audit contains non-finite values for {branch}")
-    if np.any((audit.totalReliability < 0.0) | (audit.totalReliability > 1.0)):
-        raise RuntimeError(f"Aggregate perturbation-audit reliability is outside [0,1]")
     boolean_columns = (
         "instellation_in_source_domain",
         "radius_in_source_domain",
@@ -1954,6 +2166,21 @@ def validate_aggregate_perturbation_audit(
         name: _require_exact_boolean_column(audit, name, "aggregate perturbation audit")
         for name in boolean_columns
     }
+    raw_nullable = _raw_nullable_flux_columns(
+        audit_snapshot.data,
+        compressed=True,
+        label=f"{branch} aggregate perturbation audit",
+    )
+    missing_instellation_uncertainty_exclusions = (
+        _validate_perturbation_audit_numeric_policy(
+            audit,
+            raw_nullable,
+            flags,
+            label=f"{branch} aggregate perturbation audit",
+        )
+    )
+    if np.any((audit.totalReliability < 0.0) | (audit.totalReliability > 1.0)):
+        raise RuntimeError(f"Aggregate perturbation-audit reliability is outside [0,1]")
     expected_teff_filter = expected_measurement_mode == QUANTILE_MATCHED_TWO_SIDED
     if not np.all(flags["teff_filter_active"] == expected_teff_filter) or not flags[
         "period_passes_optional_cutoff"
@@ -2061,6 +2288,9 @@ def validate_aggregate_perturbation_audit(
         "sha256": audit_snapshot.sha256,
         "row_count": len(audit),
         "outer_realizations": EXPECTED_OUTER_REALIZATIONS,
+        "missing_instellation_uncertainty_exclusions": (
+            missing_instellation_uncertainty_exclusions
+        ),
         "all_counts_recomputed": True,
     }, audit
 
@@ -2385,35 +2615,12 @@ def _validate_pilot_family_artifacts(
         "perturbed_radius_rearth",
         "perturbed_teff_K",
     ]
-    audit_numeric = [
-        "kepid_x",
-        "totalReliability",
-        "koi_period",
-        "gaia_iso_insol",
-        "gaia_iso_insol_errm",
-        "gaia_iso_insol_errp",
-        "gaia_iso_prad",
-        "gaia_iso_prad_errm",
-        "gaia_iso_prad_errp",
-        "teff",
-        "teff_err2",
-        "teff_err1",
-        "perturbed_flux",
-        "perturbed_radius",
-        "perturbed_teff",
-    ]
-    for frame, columns, label in (
-        (planets, planet_numeric, "pilot planets"),
-        (audit, audit_numeric, "pilot audit"),
-    ):
-        for column in columns:
-            frame[column] = pd.to_numeric(frame[column], errors="raise")
-        if not np.isfinite(frame[columns].to_numpy(dtype=float)).all():
-            raise RuntimeError(f"{label} contains non-finite values")
+    for column in planet_numeric:
+        planets[column] = pd.to_numeric(planets[column], errors="raise")
+    if not np.isfinite(planets[planet_numeric].to_numpy(dtype=float)).all():
+        raise RuntimeError("pilot planets contains non-finite values")
     if np.any((planets.total_reliability < 0.0) | (planets.total_reliability > 1.0)):
         raise RuntimeError("Pilot planet reliability is outside [0,1]")
-    if np.any((audit.totalReliability < 0.0) | (audit.totalReliability > 1.0)):
-        raise RuntimeError("Pilot audit reliability is outside [0,1]")
     if audit.measurement_error_mode.astype(str).ne(QUANTILE_MATCHED_TWO_SIDED).any():
         raise RuntimeError("Pilot audit measurement-error mode changed")
     boolean_columns = (
@@ -2428,6 +2635,19 @@ def _validate_pilot_family_artifacts(
         column: _require_exact_boolean_column(audit, column, "pilot audit")
         for column in boolean_columns
     }
+    raw_nullable = _raw_nullable_flux_columns(
+        snapshots[family["perturbation_audit_file"]].data,
+        compressed=False,
+        label=f"{branch}:{family_name} pilot audit",
+    )
+    _validate_perturbation_audit_numeric_policy(
+        audit,
+        raw_nullable,
+        audit_flags,
+        label=f"{branch}:{family_name} pilot audit",
+    )
+    if np.any((audit.totalReliability < 0.0) | (audit.totalReliability > 1.0)):
+        raise RuntimeError("Pilot audit reliability is outside [0,1]")
     if not audit_flags["teff_filter_active"].all() or not audit_flags[
         "period_passes_optional_cutoff"
     ].all():
@@ -3081,6 +3301,7 @@ def main() -> None:
         {
             **external_pairs["local"],
             "computational_source": dict(computational_sources["local"]),
+            **local_public_projection_binding(local_report_document),
         }
     )
     age_verifier, age_verifier_snapshot = _load_python_module_from_snapshot(

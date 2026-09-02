@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import csv
+import gzip
 import hashlib
+import io
 import json
 import subprocess
 import sys
@@ -32,6 +35,15 @@ CORRECTION_POLICY = {
 
 class FreezeV4NumericalResultsTests(unittest.TestCase):
     @staticmethod
+    def snapshot(name: str, data: bytes) -> freeze.FileSnapshot:
+        return freeze.FileSnapshot(
+            path=Path(name),
+            data=data,
+            sha256=hashlib.sha256(data).hexdigest(),
+            size_bytes=len(data),
+        )
+
+    @staticmethod
     def computational_source(digit: str = "1") -> dict[str, object]:
         return {
             "commit": digit * 40,
@@ -39,6 +51,31 @@ class FreezeV4NumericalResultsTests(unittest.TestCase):
             "archive_sha256": "3" * 64,
             "archive_size_bytes": 1234,
         }
+
+    def test_local_public_projection_binding_is_exact_and_fail_closed(self) -> None:
+        report = {
+            "public_projection_policy_sha256": "1" * 64,
+            "public_projection_file_count": 70,
+            "public_projection_excluded_file_count": 18,
+            "public_projection_excluded_file_set_sha256": "2" * 64,
+            "public_projection_passthrough_file_count": 63,
+            "public_projection_passthrough_total_size_bytes": 1234,
+            "public_projection_passthrough_file_set_sha256": "3" * 64,
+            "public_projection_rewritten_manifest_count": 5,
+        }
+        self.assertEqual(freeze.local_public_projection_binding(report), report)
+        for field, value in (
+            ("public_projection_file_count", 69),
+            ("public_projection_excluded_file_count", 17),
+            ("public_projection_passthrough_file_count", 62),
+            ("public_projection_rewritten_manifest_count", 4),
+            ("public_projection_policy_sha256", "not-a-hash"),
+        ):
+            with self.subTest(field=field):
+                changed = dict(report)
+                changed[field] = value
+                with self.assertRaises(RuntimeError):
+                    freeze.local_public_projection_binding(changed)
 
     @classmethod
     def source_state(cls, digit: str = "1") -> dict[str, object]:
@@ -61,6 +98,415 @@ class FreezeV4NumericalResultsTests(unittest.TestCase):
             encoding="utf-8",
             newline="\n",
         )
+
+    @staticmethod
+    def nullable_flux_audit_fixture() -> tuple[
+        pd.DataFrame, pd.DataFrame, dict[str, np.ndarray]
+    ]:
+        values = {column: [1.0] for column in freeze.AUDIT_NUMERIC_COLUMNS}
+        values.update(
+            {
+                "totalReliability": [0.8],
+                "koi_period": [365.0],
+                "gaia_iso_insol": [3.0],
+                "gaia_iso_insol_errm": [np.nan],
+                "gaia_iso_insol_errp": [np.nan],
+                "gaia_iso_prad": [1.0],
+                "gaia_iso_prad_errm": [0.1],
+                "gaia_iso_prad_errp": [0.1],
+                "teff": [5772.0],
+                "teff_err2": [50.0],
+                "teff_err1": [50.0],
+                "perturbed_flux": [np.nan],
+                "perturbed_radius": [1.0],
+                "perturbed_teff": [5772.0],
+            }
+        )
+        raw = pd.DataFrame(
+            {
+                "gaia_iso_insol_errm": [""],
+                "gaia_iso_insol_errp": [""],
+                "perturbed_flux": [""],
+            }
+        )
+        flags = {
+            "instellation_in_source_domain": np.asarray([False], dtype=bool),
+            "radius_in_source_domain": np.asarray([True], dtype=bool),
+            "teff_in_source_domain": np.asarray([True], dtype=bool),
+            "retained_by_active_policy": np.asarray([False], dtype=bool),
+        }
+        return pd.DataFrame(values), raw, flags
+
+    def test_nullable_flux_policy_accepts_only_audit_consistent_rejected_rows(self) -> None:
+        audit, raw, flags = self.nullable_flux_audit_fixture()
+        self.assertEqual(
+            freeze._validate_perturbation_audit_numeric_policy(
+                audit, raw, flags, label="fixture"
+            ),
+            1,
+        )
+
+        finite_audit, finite_raw, finite_flags = self.nullable_flux_audit_fixture()
+        finite_audit.loc[0, ["gaia_iso_insol_errm", "gaia_iso_insol_errp"]] = 0.1
+        finite_audit.loc[0, "perturbed_flux"] = 1.0
+        finite_raw.loc[0, ["gaia_iso_insol_errm", "gaia_iso_insol_errp"]] = "0.1"
+        finite_raw.loc[0, "perturbed_flux"] = "1.0"
+        finite_flags["instellation_in_source_domain"] = np.asarray([True], dtype=bool)
+        finite_flags["retained_by_active_policy"] = np.asarray([True], dtype=bool)
+        self.assertEqual(
+            freeze._validate_perturbation_audit_numeric_policy(
+                finite_audit, finite_raw, finite_flags, label="finite fixture"
+            ),
+            0,
+        )
+
+        cases: list[tuple[str, pd.DataFrame, pd.DataFrame, dict[str, np.ndarray]]] = []
+
+        audit, raw, flags = self.nullable_flux_audit_fixture()
+        raw.loc[0, "perturbed_flux"] = "NaN"
+        cases.append(("non-canonical", audit, raw, flags))
+
+        audit, raw, flags = self.nullable_flux_audit_fixture()
+        flags["retained_by_active_policy"] = np.asarray([True], dtype=bool)
+        cases.append(("retained", audit, raw, flags))
+
+        audit, raw, flags = self.nullable_flux_audit_fixture()
+        flags["instellation_in_source_domain"] = np.asarray([True], dtype=bool)
+        cases.append(("domain", audit, raw, flags))
+
+        audit, raw, flags = self.nullable_flux_audit_fixture()
+        audit.loc[0, "perturbed_flux"] = np.inf
+        raw.loc[0, "perturbed_flux"] = "inf"
+        cases.append(("infinite", audit, raw, flags))
+
+        audit, raw, flags = self.nullable_flux_audit_fixture()
+        audit.loc[0, "gaia_iso_insol_errp"] = 0.1
+        raw.loc[0, "gaia_iso_insol_errp"] = "0.1"
+        cases.append(("mismatched", audit, raw, flags))
+
+        for case, changed_audit, changed_raw, changed_flags in cases:
+            with self.subTest(case=case), self.assertRaises(RuntimeError):
+                freeze._validate_perturbation_audit_numeric_policy(
+                    changed_audit,
+                    changed_raw,
+                    changed_flags,
+                    label=f"{case} fixture",
+                )
+
+    @staticmethod
+    def aggregate_nullable_flux_fixture() -> tuple[pd.DataFrame, bytes]:
+        rows: list[dict[str, object]] = []
+        diagnostics: list[bytes] = []
+        for global_trial in range(freeze.EXPECTED_OUTER_REALIZATIONS):
+            shard = global_trial // 25
+            trial = global_trial % 25
+            trial_seed = 700_000 + global_trial
+            rows.append(
+                {
+                    "branch": "constant",
+                    "run_label": f"production-shard-{shard}",
+                    "measurement_error_mode": freeze.QUANTILE_MATCHED_TWO_SIDED,
+                    "shard": shard,
+                    "trial": trial,
+                    "global_trial": global_trial,
+                    "trial_seed": trial_seed,
+                    "source_row": 0,
+                    "kepoi_name": "SYNTHETIC-MISSING",
+                    "kepid_x": 1,
+                    "totalReliability": 0.8,
+                    "koi_period": 365.0,
+                    "gaia_iso_insol": 3.0,
+                    "gaia_iso_insol_errm": "",
+                    "gaia_iso_insol_errp": "",
+                    "gaia_iso_prad": 1.0,
+                    "gaia_iso_prad_errm": 0.1,
+                    "gaia_iso_prad_errp": 0.1,
+                    "teff": 5772.0,
+                    "teff_err2": 50.0,
+                    "teff_err1": 50.0,
+                    "perturbed_flux": "",
+                    "perturbed_radius": 1.0,
+                    "perturbed_teff": 5772.0,
+                    "instellation_in_source_domain": "False",
+                    "radius_in_source_domain": "True",
+                    "teff_in_source_domain": "True",
+                    "period_passes_optional_cutoff": "True",
+                    "teff_filter_active": "True",
+                    "retained_by_active_policy": "False",
+                    "audit_status": "instellation_outside_source_domain",
+                }
+            )
+            diagnostic = {
+                "global_trial": global_trial,
+                "perturbation_seed": trial_seed,
+                "selected_after_domain": 0,
+                "perturbation_counts": {
+                    "n_catalog_rows": 1,
+                    "n_reliability_selected_before_domain": 1,
+                    "n_outside_instellation_source_domain": 1,
+                    "n_outside_radius_source_domain": 0,
+                    "n_outside_teff_source_domain": 0,
+                    "n_outside_any_of_three_source_domains": 1,
+                    "n_failing_optional_period_cutoff": 0,
+                    "n_retained_by_active_policy": 0,
+                    "n_retained_with_teff_outside_source_domain": 0,
+                },
+            }
+            diagnostics.append(
+                json.dumps(diagnostic, sort_keys=True, separators=(",", ":")).encode(
+                    "utf-8"
+                )
+                + b"\n"
+            )
+        return (
+            pd.DataFrame(rows, columns=freeze.FULL_PERTURBATION_AUDIT_COLUMNS),
+            b"".join(diagnostics),
+        )
+
+    def test_aggregate_call_path_accepts_only_canonical_gzip_missing_flux(self) -> None:
+        audit, diagnostics = self.aggregate_nullable_flux_fixture()
+
+        def validate(frame: pd.DataFrame) -> dict[str, object]:
+            raw = frame.to_csv(index=False, lineterminator="\n").encode("utf-8")
+            audit_snapshot = self.snapshot(
+                "perturbation_audit_constant_full.csv.gz",
+                gzip.compress(raw, mtime=0),
+            )
+            diagnostics_snapshot = self.snapshot(
+                "trial_diagnostics_constant_full.jsonl", diagnostics
+            )
+            evidence, _ = freeze.validate_aggregate_perturbation_audit(
+                "constant", audit_snapshot, diagnostics_snapshot
+            )
+            return evidence
+
+        evidence = validate(audit)
+        self.assertEqual(
+            evidence["missing_instellation_uncertainty_exclusions"],
+            freeze.EXPECTED_OUTER_REALIZATIONS,
+        )
+        self.assertTrue(evidence["all_counts_recomputed"])
+
+        textual_nan = audit.copy()
+        textual_nan.loc[0, "perturbed_flux"] = "NaN"
+        with self.assertRaises(RuntimeError):
+            validate(textual_nan)
+
+        wrong_flag = audit.copy()
+        wrong_flag.loc[0, "instellation_in_source_domain"] = "True"
+        with self.assertRaises(RuntimeError):
+            validate(wrong_flag)
+
+    @staticmethod
+    def pilot_nullable_flux_fixture() -> tuple[
+        dict[str, object], dict[str, freeze.FileSnapshot], list[int], list[int]
+    ]:
+        family_name = "synthetic-family"
+        trial_seeds = [101, 102, 103]
+        mcmc_seeds = [201, 202, 203]
+        chain_rows: list[dict[str, object]] = []
+        planet_rows: list[dict[str, object]] = []
+        audit_rows: list[dict[str, object]] = []
+        diagnostics: list[dict[str, object]] = []
+        for trial, (trial_seed, mcmc_seed) in enumerate(
+            zip(trial_seeds, mcmc_seeds)
+        ):
+            for walker in range(16):
+                chain_rows.append(
+                    {
+                        "branch": "constant",
+                        "run_label": family_name,
+                        "trial": trial,
+                        "trial_seed": trial_seed,
+                        "mcmc_seed": mcmc_seed,
+                        "production_step": 0,
+                        "walker": walker,
+                        "log_probability": -1.0,
+                        "F0": 1.0,
+                        "alpha": 0.0,
+                        "beta": 0.0,
+                        "gamma": 0.0,
+                        "source_theta1_beta_inst": 0.0,
+                        "source_theta2_alpha_radius": 0.0,
+                    }
+                )
+            planet_rows.append(
+                {
+                    "branch": "constant",
+                    "run_label": family_name,
+                    "trial": trial,
+                    "trial_seed": trial_seed,
+                    "source_row": 1,
+                    "kepoi_name": "SYNTHETIC-RETAINED",
+                    "total_reliability": 0.8,
+                    "koi_period_days": 365.0,
+                    "perturbed_flux": 1.0,
+                    "perturbed_radius_rearth": 1.0,
+                    "perturbed_teff_K": 5772.0,
+                }
+            )
+            for source_row, missing in ((0, True), (1, False)):
+                audit_rows.append(
+                    {
+                        "branch": "constant",
+                        "run_label": family_name,
+                        "measurement_error_mode": freeze.QUANTILE_MATCHED_TWO_SIDED,
+                        "trial": trial,
+                        "trial_seed": trial_seed,
+                        "source_row": source_row,
+                        "kepoi_name": (
+                            "SYNTHETIC-MISSING"
+                            if missing
+                            else "SYNTHETIC-RETAINED"
+                        ),
+                        "kepid_x": source_row + 1,
+                        "totalReliability": 0.8,
+                        "koi_period": 365.0,
+                        "gaia_iso_insol": 3.0 if missing else 1.0,
+                        "gaia_iso_insol_errm": "" if missing else 0.1,
+                        "gaia_iso_insol_errp": "" if missing else 0.1,
+                        "gaia_iso_prad": 1.0,
+                        "gaia_iso_prad_errm": 0.1,
+                        "gaia_iso_prad_errp": 0.1,
+                        "teff": 5772.0,
+                        "teff_err2": 50.0,
+                        "teff_err1": 50.0,
+                        "perturbed_flux": "" if missing else 1.0,
+                        "perturbed_radius": 1.0,
+                        "perturbed_teff": 5772.0,
+                        "instellation_in_source_domain": (
+                            "False" if missing else "True"
+                        ),
+                        "radius_in_source_domain": "True",
+                        "teff_in_source_domain": "True",
+                        "period_passes_optional_cutoff": "True",
+                        "teff_filter_active": "True",
+                        "retained_by_active_policy": (
+                            "False" if missing else "True"
+                        ),
+                        "audit_status": (
+                            "instellation_outside_source_domain"
+                            if missing
+                            else "retained"
+                        ),
+                    }
+                )
+            diagnostics.append(
+                {
+                    "trial": trial,
+                    "seed": trial_seed,
+                    "perturbation_seed": trial_seed,
+                    "mcmc_seed": mcmc_seed,
+                    "measurement_error_mode": freeze.QUANTILE_MATCHED_TWO_SIDED,
+                    "selected_after_domain": 1,
+                    "perturbation_counts": {
+                        "n_catalog_rows": 2,
+                        "n_reliability_selected_before_domain": 2,
+                        "n_outside_instellation_source_domain": 1,
+                        "n_outside_radius_source_domain": 0,
+                        "n_outside_teff_source_domain": 0,
+                        "n_outside_any_of_three_source_domains": 1,
+                        "n_failing_optional_period_cutoff": 0,
+                        "n_retained_by_active_policy": 1,
+                        "n_retained_with_teff_outside_source_domain": 0,
+                    },
+                    "optimizer_success": True,
+                    "optimizer_status": 0,
+                    "optimizer_message": "ok",
+                    "optimizer_fun": 1.0,
+                    "optimizer_theta_source_order": [1.0, 0.0, 0.0, 0.0],
+                    "mean_acceptance_fraction": 0.25,
+                    "acceptance_fraction_by_walker": [0.25] * 16,
+                    "autocorrelation_time": [1.0] * 4,
+                    "effective_sample_size_source_order": [16.0] * 4,
+                    "production_steps_completed": 20,
+                    "adaptive_production": True,
+                    "converged": True,
+                    "convergence_checks": [],
+                    "runtime_seconds": 1.0,
+                }
+            )
+
+        frames = {
+            "chain.csv": pd.DataFrame(
+                chain_rows, columns=freeze.PILOT_CHAIN_COLUMNS
+            ),
+            "planets.csv": pd.DataFrame(
+                planet_rows, columns=freeze.PILOT_PLANET_COLUMNS
+            ),
+            "audit.csv": pd.DataFrame(
+                audit_rows, columns=freeze.PILOT_AUDIT_COLUMNS
+            ),
+        }
+        snapshots = {
+            name: FreezeV4NumericalResultsTests.snapshot(
+                name, frame.to_csv(index=False, lineterminator="\n").encode("utf-8")
+            )
+            for name, frame in frames.items()
+        }
+        diagnostics_bytes = (
+            json.dumps(diagnostics, sort_keys=True, separators=(",", ":")) + "\n"
+        ).encode("utf-8")
+        snapshots["diagnostics.json"] = FreezeV4NumericalResultsTests.snapshot(
+            "diagnostics.json", diagnostics_bytes
+        )
+        family = {
+            "chain_file": "chain.csv",
+            "diagnostics_file": "diagnostics.json",
+            "planets_file": "planets.csv",
+            "perturbation_audit_file": "audit.csv",
+            "production_steps": [20, 20, 20],
+        }
+        return family, snapshots, trial_seeds, mcmc_seeds
+
+    def test_pilot_call_path_accepts_only_canonical_uncompressed_missing_flux(self) -> None:
+        family, snapshots, trial_seeds, mcmc_seeds = self.pilot_nullable_flux_fixture()
+        policy = {
+            "requested_minimum_steps": 3000,
+            "requested_maximum_steps": 20000,
+            "check_interval": 1000,
+            "tau_multiple": 100.0,
+            "tau_relative_tolerance": 0.05,
+            "required_consecutive_stable_checks": 2,
+        }
+        aggregate_module = SimpleNamespace(
+            validate_production_diagnostics=lambda *_args, **_kwargs: None
+        )
+        _, planets, audit, steps = freeze._validate_pilot_family_artifacts(
+            branch="constant",
+            family_name="synthetic-family",
+            family=family,
+            snapshots=snapshots,
+            expected_trial_seeds=trial_seeds,
+            expected_mcmc_seeds=mcmc_seeds,
+            policy=policy,
+            aggregate_module=aggregate_module,
+        )
+        self.assertEqual(len(planets), 3)
+        self.assertEqual(int(audit.perturbed_flux.isna().sum()), 3)
+        self.assertEqual(steps, [20, 20, 20])
+
+        changed_audit = pd.read_csv(
+            io.BytesIO(snapshots["audit.csv"].data),
+            dtype=str,
+            keep_default_na=False,
+        )
+        changed_audit.loc[0, "perturbed_flux"] = "NaN"
+        snapshots["audit.csv"] = self.snapshot(
+            "audit.csv",
+            changed_audit.to_csv(index=False, lineterminator="\n").encode("utf-8"),
+        )
+        with self.assertRaises(RuntimeError):
+            freeze._validate_pilot_family_artifacts(
+                branch="constant",
+                family_name="synthetic-family",
+                family=family,
+                snapshots=snapshots,
+                expected_trial_seeds=trial_seeds,
+                expected_mcmc_seeds=mcmc_seeds,
+                policy=policy,
+                aggregate_module=aggregate_module,
+            )
 
     def test_external_contract_accepts_only_hash_locked_promoted_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -571,6 +1017,82 @@ class FreezeV4NumericalResultsTests(unittest.TestCase):
                 return_value=(verifier, verifier_snapshot),
             ), self.assertRaises(RuntimeError):
                 freeze.validate_aggregate_artifact_root(root, "constant")
+
+    def test_stride_subset_compares_csv_tokens_not_mixed_float_parsers(
+        self,
+    ) -> None:
+        rows: list[dict[str, str]] = []
+        for index, (trial, f0) in enumerate(
+            (
+                (0, "0.09999999999999999"),
+                (0, "1.0"),
+                (1, "3.1415926535897931"),
+                (1, "2.0"),
+            )
+        ):
+            rows.append(
+                {
+                    "branch": "constant",
+                    "run_label": f"production-shard-{trial}",
+                    "shard": str(trial),
+                    "trial": "0",
+                    "global_trial": str(trial),
+                    "trial_seed": str(100 + trial),
+                    "mcmc_seed": str(200 + trial),
+                    "production_step": str(index),
+                    "walker": "0",
+                    "log_probability": "-1.0",
+                    "F0": f0,
+                    "alpha": "-1.2",
+                    "beta": "-0.8",
+                    "gamma": "-2.7",
+                    "source_theta1_beta_inst": "-0.8",
+                    "source_theta2_alpha_radius": "-1.2",
+                }
+            )
+
+        def encoded_csv(
+            columns: tuple[str, ...], selected: list[dict[str, str]]
+        ) -> bytes:
+            buffer = io.StringIO(newline="")
+            writer = csv.DictWriter(buffer, fieldnames=columns, lineterminator="\n")
+            writer.writeheader()
+            writer.writerows(
+                {column: row[column] for column in columns} for row in selected
+            )
+            return gzip.compress(buffer.getvalue().encode("utf-8"), mtime=0)
+
+        full_bytes = encoded_csv(freeze.FULL_POSTERIOR_COLUMNS, rows)
+        propagation_rows = [rows[0], rows[2]]
+        propagation_bytes = encoded_csv(
+            freeze.PROPAGATION_POSTERIOR_COLUMNS, propagation_rows
+        )
+        full_snapshot = self.snapshot("full.csv.gz", full_bytes)
+        propagation_snapshot = self.snapshot(
+            "propagation.csv.gz", propagation_bytes
+        )
+
+        round_trip = pd.read_csv(
+            io.BytesIO(full_bytes), compression="gzip", float_precision="round_trip"
+        ).loc[[0, 2], "F0"].to_numpy(dtype=float)
+        default = pd.read_csv(
+            io.BytesIO(propagation_bytes), compression="gzip", float_precision=None
+        )["F0"].to_numpy(dtype=float)
+        self.assertFalse(np.array_equal(round_trip, default))
+        freeze.validate_exact_stride_two_csv_subset(
+            full_snapshot, propagation_snapshot, branch="constant"
+        )
+
+        changed_rows = [dict(row) for row in propagation_rows]
+        changed_rows[0]["F0"] = "0.1"
+        changed_snapshot = self.snapshot(
+            "changed.csv.gz",
+            encoded_csv(freeze.PROPAGATION_POSTERIOR_COLUMNS, changed_rows),
+        )
+        with self.assertRaisesRegex(RuntimeError, "exact stride-2 subset"):
+            freeze.validate_exact_stride_two_csv_subset(
+                full_snapshot, changed_snapshot, branch="constant"
+            )
 
     @staticmethod
     def seed_report(branch: str) -> dict[str, object]:

@@ -41,7 +41,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 # Versioned reproducibility timestamp, not the wall-clock build time. Keeping
 # every ZIP member at the release date makes independent builds byte-identical.
-SOURCE_DATE_UTC = (2026, 8, 30, 0, 0, 0)
+SOURCE_DATE_UTC = (2026, 9, 2, 0, 0, 0)
 REQUIRED_RELEASE_GATE_PATHS = {
     "provenance/V4_0_4_RELEASE_ACCEPTANCE.json",
     "scripts/verify_v404_release_acceptance.py",

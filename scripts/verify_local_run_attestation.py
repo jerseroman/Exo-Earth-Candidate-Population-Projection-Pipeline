@@ -107,6 +107,11 @@ PINNED_SIGNERS = (
 START_NAME = "LOCAL_RUN_START_CHALLENGE.json"
 START_SIGNATURE_NAME = f"{START_NAME}.sig"
 OUTPUT_MANIFEST_NAME = "LOCAL_RUN_OUTPUT_SHA256.json"
+PUBLIC_RESULTS_POLICY_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "provenance"
+    / "PUBLIC_RESULTS_POLICY_v4_0_4.json"
+)
 COMPLETION_NAME = "LOCAL_RUN_COMPLETION_ATTESTATION.json"
 COMPLETION_SIGNATURE_NAME = f"{COMPLETION_NAME}.sig"
 REPORT_NAME = "LOCAL_RUN_PUBLIC_REPORT.json"
@@ -143,6 +148,8 @@ REQUIRED_DISABLED_CPU = (
 
 V404_PLAN_LABEL = "v4.0.4-local-production"
 V404_COMMAND_ID = "run-v404-local-production"
+V404_RECOVERY_PLAN_LABEL = "v4.0.4-local-production-recover-mcmc"
+V404_RECOVERY_COMMAND_ID = "run-v404-local-production-recover-mcmc"
 V404_PROGRAM = "scripts/run_v404_local_production.py"
 V404_BRYSON_SOURCE_SHA256 = (
     "0bb479b0c94c4f793b95e4fa1e853973805c54d3de7e2a2acc2e51c05b70a586"
@@ -174,6 +181,22 @@ V404_RUN_FLAGS = (
     "--expected-bryson-source-sha256",
     "--maximum-parallel-shards",
 )
+V404_RECOVERY_FLAGS = (
+    "--recovery-contract",
+    "--expected-recovery-contract-sha256",
+    "--expected-recovery-contract-size-bytes",
+    "--donor-work-shard-root",
+    "--donor-raw-root",
+    "--donor-evidence-root",
+    "--donor-attestation-contract",
+    "--donor-command-plan",
+    "--donor-numerical-runtime-manifest",
+    "--donor-source-archive",
+    "--source-transition-evidence",
+    "--recovery-qualification-report",
+    "--ssh-keygen-executable",
+)
+V404_RECOVERY_RUN_FLAGS = V404_RUN_FLAGS + V404_RECOVERY_FLAGS
 V404_PATH_FLAGS = frozenset(
     flag
     for flag in V404_RUN_FLAGS
@@ -183,6 +206,20 @@ V404_PATH_FLAGS = frozenset(
         "--expected-host-contract-sha256",
         "--expected-bryson-source-sha256",
         "--maximum-parallel-shards",
+    }
+)
+V404_RECOVERY_PATH_FLAGS = frozenset(
+    {
+        *V404_PATH_FLAGS,
+        *(
+            flag
+            for flag in V404_RECOVERY_FLAGS
+            if flag
+            not in {
+                "--expected-recovery-contract-sha256",
+                "--expected-recovery-contract-size-bytes",
+            }
+        ),
     }
 )
 V404_ENV_KEYS = frozenset(
@@ -670,6 +707,149 @@ def canonical_json_bytes(value: Any) -> bytes:
         fail(f"cannot serialize canonical JSON: {exc}")
 
 
+def canonical_policy_json_bytes(value: Any) -> bytes:
+    try:
+        return (
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                allow_nan=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        fail(f"cannot serialize canonical policy JSON: {exc}")
+
+
+def public_projection_attestation(
+    output_entries: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Bind the signed private tree to its exact non-sensitive release subset."""
+
+    snapshot = read_snapshot(
+        PUBLIC_RESULTS_POLICY_PATH,
+        "public results boundary policy",
+        collect=True,
+        maximum_bytes=256 * 1024,
+    )
+    if snapshot.data is None:
+        fail("public results boundary policy bytes were not collected")
+    policy = load_json_bytes(snapshot.data, "public results boundary policy")
+    if not isinstance(policy, dict) or set(policy) != {
+        "excluded_files",
+        "policy_id",
+        "private_evidence_file_count",
+        "public_file_count",
+        "retained_derived_files",
+        "rewritten_scoped_manifests",
+        "schema_version",
+    }:
+        fail("public results boundary policy schema changed")
+    if snapshot.data != canonical_policy_json_bytes(policy):
+        fail("public results boundary policy is not canonical JSON bytes")
+    if (
+        type(policy["schema_version"]) is not int
+        or policy["schema_version"] != 1
+        or policy["policy_id"] != "v4.0.4-public-results-boundary-v1"
+        or policy["private_evidence_file_count"] != 88
+        or policy["public_file_count"] != 70
+    ):
+        fail("public results boundary policy identity/counts changed")
+    excluded_rows = policy["excluded_files"]
+    retained_rows = policy["retained_derived_files"]
+    manifest_rows = policy["rewritten_scoped_manifests"]
+    if (
+        not isinstance(excluded_rows, list)
+        or len(excluded_rows) != 18
+        or not isinstance(retained_rows, list)
+        or len(retained_rows) != 13
+        or not isinstance(manifest_rows, list)
+        or len(manifest_rows) != 5
+    ):
+        fail("public results boundary policy cardinality changed")
+    excluded: list[str] = []
+    for index, row in enumerate(excluded_rows):
+        if not isinstance(row, dict) or set(row) != {"path", "reason"}:
+            fail(f"public result exclusion {index} schema changed")
+        safe_relative(row["path"], f"public result exclusion {index}")
+        excluded.append(row["path"])
+    retained: list[str] = []
+    retained_classes = {
+        "AGGREGATE_CORRELATION_TABLE",
+        "GALACTIC_DERIVED_DRAWS",
+        "LIKELIHOOD_GRID_PARAMETER_POINTS",
+        "OCCURRENCE_POSTERIOR_FOR_PROPAGATION",
+    }
+    for index, row in enumerate(retained_rows):
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"class", "path"}
+            or row["class"] not in retained_classes
+        ):
+            fail(f"retained derived result {index} schema/class changed")
+        safe_relative(row["path"], f"retained derived result {index}")
+        retained.append(row["path"])
+    transformed: list[str] = []
+    for index, row in enumerate(manifest_rows):
+        if not isinstance(row, dict) or set(row) != {
+            "path",
+            "private_targets",
+            "public_targets",
+        }:
+            fail(f"public scoped manifest {index} schema changed")
+        safe_relative(row["path"], f"public scoped manifest {index}")
+        transformed.append(row["path"])
+    if (
+        excluded != sorted(excluded)
+        or len(excluded) != len({item.casefold() for item in excluded})
+        or retained != sorted(retained)
+        or len(retained) != len({item.casefold() for item in retained})
+        or transformed != sorted(transformed)
+        or len(transformed) != len({item.casefold() for item in transformed})
+    ):
+        fail("public results boundary policy ordering/case uniqueness changed")
+    expected = set(V404_EXPECTED_OUTPUT_FILES)
+    excluded_set = set(excluded)
+    transformed_set = set(transformed)
+    controls = {
+        "V404_LOCAL_PRODUCTION_REPORT.json",
+        "SHA256SUMS_v404_local_production.txt",
+    }
+    public_set = expected - excluded_set
+    passthrough_set = public_set - transformed_set - controls
+    if (
+        len(expected) != 88
+        or not excluded_set < expected
+        or not transformed_set < public_set
+        or not set(retained) < passthrough_set
+        or len(public_set) != 70
+        or len(passthrough_set) != 63
+    ):
+        fail("public results boundary policy does not partition the private tree")
+    by_name = {item.get("path"): item for item in output_entries}
+    if set(by_name) != expected or len(by_name) != len(output_entries):
+        fail("signed output entries do not match the private evidence contract")
+    excluded_entries = [by_name[name] for name in sorted(excluded_set)]
+    passthrough_entries = [by_name[name] for name in sorted(passthrough_set)]
+    recheck_snapshot(snapshot, "public results boundary policy")
+    return {
+        "public_projection_policy_sha256": snapshot.sha256,
+        "public_projection_file_count": len(public_set),
+        "public_projection_excluded_file_count": len(excluded_entries),
+        "public_projection_excluded_file_set_sha256": sha256_bytes(
+            canonical_json_bytes(excluded_entries)
+        ),
+        "public_projection_passthrough_file_count": len(passthrough_entries),
+        "public_projection_passthrough_total_size_bytes": sum(
+            item["size_bytes"] for item in passthrough_entries
+        ),
+        "public_projection_passthrough_file_set_sha256": sha256_bytes(
+            canonical_json_bytes(passthrough_entries)
+        ),
+        "public_projection_rewritten_manifest_count": len(transformed_set),
+    }
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -1614,8 +1794,29 @@ def validate_plan(value: Any, runtime: Mapping[str, Any]) -> dict[str, Any]:
         "local production command plan",
     )
     require_exact_integer(plan["schema_version"], 1, "command plan schema_version")
-    if plan["plan_label"] != V404_PLAN_LABEL:
-        fail(f"command plan label must be exactly {V404_PLAN_LABEL!r}")
+    plan_specs = {
+        V404_PLAN_LABEL: (
+            V404_COMMAND_ID,
+            "run",
+            V404_RUN_FLAGS,
+            V404_PATH_FLAGS,
+        ),
+        V404_RECOVERY_PLAN_LABEL: (
+            V404_RECOVERY_COMMAND_ID,
+            "recover-mcmc",
+            V404_RECOVERY_RUN_FLAGS,
+            V404_RECOVERY_PATH_FLAGS,
+        ),
+    }
+    try:
+        expected_command_id, expected_mode, expected_flags, expected_path_flags = (
+            plan_specs[plan["plan_label"]]
+        )
+    except (KeyError, TypeError):
+        fail(
+            "command plan label must be exactly one of the recognized "
+            "v4.0.4 plan labels"
+        )
     outputs = plan["expected_output_files"]
     if not isinstance(outputs, list):
         fail("command plan expected outputs must be an array")
@@ -1648,12 +1849,12 @@ def validate_plan(value: Any, runtime: Mapping[str, Any]) -> dict[str, Any]:
             f"command {index}",
         )
         identifiers.append(safe_id(command["command_id"], f"command {index} id"))
-        if command["command_id"] != V404_COMMAND_ID:
-            fail(f"command id must be exactly {V404_COMMAND_ID!r}")
+        if command["command_id"] != expected_command_id:
+            fail(f"command id must be exactly {expected_command_id!r}")
         if command["cwd"] != ".":
             fail("every production command cwd must be the exact extracted source root")
         argv = command["argv"]
-        if not isinstance(argv, list) or len(argv) != 3 + 2 * len(V404_RUN_FLAGS) or not all(
+        if not isinstance(argv, list) or len(argv) != 3 + 2 * len(expected_flags) or not all(
             isinstance(item, str)
             and item
             and "\x00" not in item
@@ -1665,16 +1866,16 @@ def validate_plan(value: Any, runtime: Mapping[str, Any]) -> dict[str, Any]:
         executable = Path(argv[0])
         if not executable.is_absolute() or argv[0] != runtime["python_executable"]:
             fail("every command must use the exact runtime Python executable")
-        if argv[1] != V404_PROGRAM or argv[2] != "run":
+        if argv[1] != V404_PROGRAM or argv[2] != expected_mode:
             fail("command must invoke the exact tracked v4.0.4 production program")
         observed_flags = tuple(argv[position] for position in range(3, len(argv), 2))
-        if observed_flags != V404_RUN_FLAGS:
+        if observed_flags != expected_flags:
             fail("command argv flags/order differ from the canonical v4.0.4 run schema")
         argv_values = {
             argv[position]: argv[position + 1]
             for position in range(3, len(argv), 2)
         }
-        for flag in V404_PATH_FLAGS:
+        for flag in expected_path_flags:
             raw_path = argv_values[flag]
             path_value = Path(raw_path)
             if not path_value.is_absolute():
@@ -1697,6 +1898,19 @@ def validate_plan(value: Any, runtime: Mapping[str, Any]) -> dict[str, Any]:
             fail("Bryson source hash argument differs from the v4.0.4 lock")
         if argv_values["--maximum-parallel-shards"] not in {"1", "2", "3", "4"}:
             fail("maximum parallel shards argument must be canonical integer 1..4")
+        if expected_mode == "recover-mcmc":
+            require_hash(
+                argv_values["--expected-recovery-contract-sha256"],
+                "expected recovery-contract hash argument",
+            )
+            size_value = argv_values["--expected-recovery-contract-size-bytes"]
+            if (
+                not size_value.isascii()
+                or not size_value.isdecimal()
+                or size_value.startswith("0")
+                or int(size_value) <= 0
+            ):
+                fail("expected recovery-contract size argument is not a canonical positive integer")
         if argv_values["--python-executable"] != argv[0]:
             fail("command Python argument differs from argv[0]")
         require_hash(command["executable_sha256"], f"command {index} executable hash")
@@ -1747,6 +1961,7 @@ def validate_plan_bindings(
     public_release_checkout: Path,
     *,
     require_extracted_programs: bool,
+    trusted_ssh_keygen_executable: Path | None = None,
 ) -> None:
     expected_bindings = {
         "EXOEARTH_SOURCE_ROOT": str(execution_root),
@@ -1813,6 +2028,51 @@ def validate_plan_bindings(
                         f"command {index} mutable roots overlap: "
                         f"{left_name} and {right_name}"
                     )
+        if command["argv"][2] == "recover-mcmc":
+            if trusted_ssh_keygen_executable is None:
+                fail("recovery plan validation requires a trusted ssh-keygen executable")
+            trusted_ssh = str(Path(trusted_ssh_keygen_executable).resolve())
+            if argv_values.get("--ssh-keygen-executable") != trusted_ssh:
+                fail("recovery ssh-keygen does not bind the trusted attestation tool")
+            donor_roots = {
+                "donor work": Path(argv_values["--donor-work-shard-root"]),
+                "donor raw": Path(argv_values["--donor-raw-root"]),
+                "donor evidence": Path(argv_values["--donor-evidence-root"]),
+            }
+            protected_recovery_paths = {
+                **donor_roots,
+                "recovery contract": Path(argv_values["--recovery-contract"]),
+                "donor attestation contract": Path(
+                    argv_values["--donor-attestation-contract"]
+                ),
+                "donor command plan": Path(argv_values["--donor-command-plan"]),
+                "donor numerical runtime manifest": Path(
+                    argv_values["--donor-numerical-runtime-manifest"]
+                ),
+                "donor source archive": Path(argv_values["--donor-source-archive"]),
+                "source transition evidence": Path(
+                    argv_values["--source-transition-evidence"]
+                ),
+                "recovery qualification report": Path(
+                    argv_values["--recovery-qualification-report"]
+                ),
+                "recovery ssh-keygen": Path(argv_values["--ssh-keygen-executable"]),
+            }
+            donor_items = list(donor_roots.items())
+            for donor_index, (left_name, left) in enumerate(donor_items):
+                for right_name, right in donor_items[donor_index + 1 :]:
+                    if paths_overlap(left, right):
+                        fail(
+                            f"command {index} recovery roots overlap: "
+                            f"{left_name} and {right_name}"
+                        )
+            for protected_name, protected in protected_recovery_paths.items():
+                for root_name, root in mutable_roots.items():
+                    if paths_overlap(protected, root):
+                        fail(
+                            f"recovery {protected_name} overlaps mutable "
+                            f"{root_name} root"
+                        )
         if require_extracted_programs:
             script = execution_root / Path(*PurePosixPath(command["argv"][1]).parts)
             script_snapshot = read_snapshot(script, f"command {index} tracked program")
@@ -2381,6 +2641,7 @@ def build_public_report(
                 "stderr_size_bytes": result["stderr"]["size_bytes"],
             }
         )
+    projection = public_projection_attestation(output_entries)
     body = {
         "schema_version": 1,
         "qualification_status": "PASS",
@@ -2413,6 +2674,7 @@ def build_public_report(
         "output_file_count": len(output_entries),
         "output_total_size_bytes": sum(item["size_bytes"] for item in output_entries),
         "output_file_set_sha256": sha256_bytes(canonical_json_bytes(output_entries)),
+        **projection,
     }
     return document_with_id(body, "report_id")
 
@@ -2564,6 +2826,7 @@ def execute_plan(
         source_repo,
         public_source_repo,
         require_extracted_programs=False,
+        trusted_ssh_keygen_executable=ssh_keygen_executable,
     )
     challenge = create_start_challenge(
         contract,
@@ -2611,6 +2874,7 @@ def execute_plan(
         source_repo,
         public_source_repo,
         require_extracted_programs=True,
+        trusted_ssh_keygen_executable=ssh_keygen_executable,
     )
     ensure_new_empty_directory(output, "production output root")
     command_results, commands_passed = execute_commands(plan, execution, evidence)
@@ -2793,6 +3057,7 @@ def verify_run(
         source_repo,
         public_source_repo,
         require_extracted_programs=True,
+        trusted_ssh_keygen_executable=ssh_keygen_executable,
     )
     verify_exact_tree(execution, files, directories, "archive execution tree")
     validate_exact_evidence_tree(evidence, plan)

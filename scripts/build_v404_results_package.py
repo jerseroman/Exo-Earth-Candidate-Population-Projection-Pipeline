@@ -22,6 +22,7 @@ if __name__ == "__main__" and not _bootstrap_sys.flags.isolated:
     )
 
 import argparse
+import copy
 from dataclasses import dataclass
 import hashlib
 import json
@@ -217,61 +218,6 @@ def _load_release_gate_source_only() -> ModuleType:
 verify_v404_release_acceptance = _load_release_gate_source_only()
 
 
-def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    for key, value in pairs:
-        if key in result:
-            fail(f"duplicate JSON key in public production report: {key}")
-        result[key] = value
-    return result
-
-
-def reject_constant(value: str) -> None:
-    fail(f"non-finite JSON constant in public production report: {value}")
-
-
-def reject_nonfinite(value: Any) -> None:
-    if isinstance(value, float) and not math.isfinite(value):
-        fail("non-finite JSON number in public production report")
-    if isinstance(value, list):
-        for item in value:
-            reject_nonfinite(item)
-    elif isinstance(value, dict):
-        for item in value.values():
-            reject_nonfinite(item)
-
-
-def load_report(data: bytes) -> dict[str, Any]:
-    try:
-        text = data.decode("utf-8", errors="strict")
-        value = json.loads(
-            text,
-            object_pairs_hook=unique_object,
-            parse_constant=reject_constant,
-        )
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
-        fail(f"cannot parse public production report: {error}")
-    reject_nonfinite(value)
-    if not isinstance(value, dict):
-        fail("public production report must be an object")
-    boundary = value.get("public_boundary")
-    if (
-        value.get("schema_version") != 1
-        or value.get("status") != "PASS"
-        or value.get("release_candidate") != "v4.0.4"
-        or not isinstance(boundary, dict)
-        or boundary
-        != {
-            "third_party_input_files_copied": False,
-            "row_level_host_files_copied": False,
-            "private_raw_chain_files_copied": False,
-            "private_logs_copied": False,
-        }
-    ):
-        fail("public production report did not pass the release boundary")
-    return value
-
-
 def validate_relative_path(value: str) -> str:
     if "\\" in value or ":" in value or "\x00" in value or "\r" in value or "\n" in value:
         fail("production manifest contains an unsafe path")
@@ -449,6 +395,83 @@ def expected_directories(paths: list[str]) -> set[str]:
     return directories
 
 
+def canonical_json_bytes(value: Any) -> bytes:
+    try:
+        return (
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                allow_nan=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        fail(f"cannot serialize canonical public-results JSON: {error}")
+
+
+def canonical_entry_digest(entries: list[dict[str, Any]]) -> str:
+    return hashlib.sha256(canonical_json_bytes(entries)).hexdigest()
+
+
+def parse_scoped_manifest(
+    data: bytes,
+    manifest_path: str,
+) -> dict[str, str]:
+    """Parse one directory-scoped manifest into full logical paths."""
+
+    try:
+        text = data.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        fail(f"scoped manifest is not strict UTF-8: {manifest_path}: {error}")
+    if not text.endswith("\n") or "\r" in text:
+        fail(f"scoped manifest is not canonical LF text: {manifest_path}")
+    lines = text.splitlines()
+    if not lines:
+        fail(f"scoped manifest is empty: {manifest_path}")
+    parent = PurePosixPath(manifest_path).parent
+    entries: dict[str, str] = {}
+    leaves: list[str] = []
+    casefolded: set[str] = set()
+    for number, line in enumerate(lines, start=1):
+        match = MANIFEST_LINE_RE.fullmatch(line)
+        if match is None:
+            fail(f"scoped manifest line is malformed: {manifest_path}:{number}")
+        digest, leaf = match.groups()
+        validate_relative_path(leaf)
+        if "/" in leaf or PurePosixPath(leaf).name != leaf:
+            fail(f"scoped manifest target is not a same-directory leaf: {manifest_path}")
+        folded = leaf.casefold()
+        if folded in casefolded:
+            fail(f"scoped manifest has a case collision: {manifest_path}")
+        casefolded.add(folded)
+        leaves.append(leaf)
+        entries[(parent / leaf).as_posix()] = digest
+    if leaves != sorted(leaves):
+        fail(f"scoped manifest targets are not sorted: {manifest_path}")
+    return entries
+
+
+def render_scoped_manifest(
+    manifest_path: str,
+    targets: tuple[str, ...],
+    records: dict[str, dict[str, Any]],
+) -> bytes:
+    parent = PurePosixPath(manifest_path).parent
+    lines: list[str] = []
+    for target in targets:
+        path = PurePosixPath(target)
+        if path.parent != parent or target not in records:
+            fail(f"public scoped manifest target escaped its signed directory: {target}")
+        lines.append(f"{records[target]['sha256']}  {path.name}\n")
+    if [line.rsplit("  ", 1)[1][:-1] for line in lines] != sorted(
+        line.rsplit("  ", 1)[1][:-1] for line in lines
+    ):
+        fail(f"public scoped manifest target order is not canonical: {manifest_path}")
+    return "".join(lines).encode("utf-8")
+
+
 def load_signed_output_manifest(
     path: Path, local_report: dict[str, Any]
 ) -> tuple[list[dict[str, Any]], bytes]:
@@ -469,8 +492,12 @@ class PreparedResults:
     root: Path
     signed_by_path: dict[str, dict[str, Any]]
     signed_manifest_data: bytes
-    public_manifest_entries: dict[str, str]
-    public_manifest_data: bytes
+    private_manifest_entries: dict[str, str]
+    private_manifest_data: bytes
+    public_paths: tuple[str, ...]
+    projected_members: dict[str, bytes]
+    projected_records: dict[str, tuple[str, int]]
+    policy_sha256: str
     files: set[str]
     directories: set[str]
 
@@ -708,36 +735,164 @@ def prepare_signed_results(
         signed_output_manifest, local_report
     )
     signed_by_path = {item["path"]: item for item in signed_entries}
-    entries, manifest_data = load_manifest(root)
-    if set(entries) != set(signed_by_path) - {MANIFEST_NAME}:
-        fail("public production manifest differs from the signed strict output set")
-    for relative, expected in entries.items():
+    policy = verify_v404_release_acceptance._public_results_policy()
+    if tuple(signed_by_path) != policy.private_paths:
+        fail("signed strict output set differs from the exact 88-file private evidence tree")
+
+    private_manifest_entries, private_manifest_data = load_manifest(root)
+    if set(private_manifest_entries) != set(signed_by_path) - {MANIFEST_NAME}:
+        fail("private production manifest differs from the signed strict output set")
+    for relative, expected in private_manifest_entries.items():
         if signed_by_path[relative]["sha256"] != expected:
-            fail(f"public production manifest differs from signed output: {relative}")
-    if signed_by_path[MANIFEST_NAME]["sha256"] != hashlib.sha256(manifest_data).hexdigest():
-        fail("public production manifest bytes differ from the signed strict output")
-    files, directories = enumerate_plain_files(root, "public production result root")
+            fail(f"private production manifest differs from signed output: {relative}")
+    if (
+        signed_by_path[MANIFEST_NAME]["sha256"]
+        != hashlib.sha256(private_manifest_data).hexdigest()
+        or signed_by_path[MANIFEST_NAME]["size_bytes"] != len(private_manifest_data)
+    ):
+        fail("private production manifest bytes differ from the signed strict output")
+    files, directories = enumerate_plain_files(root, "private production-evidence root")
     if files != set(signed_by_path) or directories != expected_directories(
         list(signed_by_path)
     ):
-        fail("public production tree differs from its signed manifest")
+        fail("private production-evidence tree differs from its signed manifest")
     report_data = read_stable(
-        root / REPORT_NAME, "public production report", maximum_bytes=4_000_000
+        root / REPORT_NAME, "private production report", maximum_bytes=4_000_000
     )
-    load_report(report_data)
-    observed_input = {
+    private_observed = {
         relative: (item["sha256"], item["size_bytes"])
         for relative, item in signed_by_path.items()
     }
+    private_report = verify_v404_release_acceptance._validate_private_results_report(
+        report_data, private_observed, source
+    )
+
+    excluded_entries = [signed_by_path[path] for path in policy.excluded_paths]
+    passthrough_entries = [signed_by_path[path] for path in policy.passthrough_paths]
+    expected_projection_binding = {
+        "public_projection_policy_sha256": policy.policy_sha256,
+        "public_projection_file_count": len(policy.public_paths),
+        "public_projection_excluded_file_count": len(policy.excluded_paths),
+        "public_projection_excluded_file_set_sha256": canonical_entry_digest(
+            excluded_entries
+        ),
+        "public_projection_passthrough_file_count": len(policy.passthrough_paths),
+        "public_projection_passthrough_total_size_bytes": sum(
+            item["size_bytes"] for item in passthrough_entries
+        ),
+        "public_projection_passthrough_file_set_sha256": canonical_entry_digest(
+            passthrough_entries
+        ),
+        "public_projection_rewritten_manifest_count": len(policy.manifest_targets),
+    }
+    for field, expected in expected_projection_binding.items():
+        if local_report.get(field) != expected:
+            fail(f"signed local report differs from public projection binding: {field}")
+
+    projected_members: dict[str, bytes] = {}
+    projected_records: dict[str, tuple[str, int]] = {
+        path: (signed_by_path[path]["sha256"], signed_by_path[path]["size_bytes"])
+        for path in policy.passthrough_paths
+    }
+    for manifest_path, (private_targets, public_targets) in policy.manifest_targets.items():
+        private_data = read_stable(
+            root / Path(*PurePosixPath(manifest_path).parts),
+            f"private scoped manifest {manifest_path}",
+            maximum_bytes=2_000_000,
+        )
+        private_record = signed_by_path[manifest_path]
+        if (
+            hashlib.sha256(private_data).hexdigest() != private_record["sha256"]
+            or len(private_data) != private_record["size_bytes"]
+        ):
+            fail(f"private scoped manifest differs from signed bytes: {manifest_path}")
+        parsed = parse_scoped_manifest(private_data, manifest_path)
+        expected_private = {
+            target: signed_by_path[target]["sha256"] for target in private_targets
+        }
+        if parsed != expected_private:
+            fail(f"private scoped manifest differs from its exact signed directory: {manifest_path}")
+        public_data = render_scoped_manifest(
+            manifest_path, public_targets, signed_by_path
+        )
+        projected_members[manifest_path] = public_data
+        projected_records[manifest_path] = (
+            hashlib.sha256(public_data).hexdigest(),
+            len(public_data),
+        )
+
+    public_report = copy.deepcopy(private_report)
+    public_report.pop("private_evidence_boundary")
+    public_report["public_boundary"] = {
+        "archive_scope": "separate-v4.0.4-results-package",
+        "derived_aggregate_diagnostics_included": True,
+        "mcmc_chain_files_copied": False,
+        "private_logs_copied": False,
+        "private_raw_chain_files_copied": False,
+        "row_level_dr25_derived_files_copied": False,
+        "row_level_host_files_copied": False,
+        "third_party_input_files_copied": False,
+    }
+    public_report["public_projection"] = {
+        "excluded_file_count": len(policy.excluded_paths),
+        "excluded_file_set_sha256": local_report[
+            "public_projection_excluded_file_set_sha256"
+        ],
+        "passthrough_file_count": len(policy.passthrough_paths),
+        "passthrough_file_set_sha256": local_report[
+            "public_projection_passthrough_file_set_sha256"
+        ],
+        "passthrough_total_size_bytes": local_report[
+            "public_projection_passthrough_total_size_bytes"
+        ],
+        "policy_id": policy.policy["policy_id"],
+        "policy_sha256": policy.policy_sha256,
+        "private_evidence_file_count": len(policy.private_paths),
+        "public_file_count": len(policy.public_paths),
+        "retained_derived_file_count": len(policy.retained_derived_paths),
+        "rewritten_scoped_manifest_count": len(policy.manifest_targets),
+    }
+    public_report["public_files"] = [
+        {
+            "path": path,
+            "sha256": projected_records[path][0],
+            "size_bytes": projected_records[path][1],
+        }
+        for path in policy.public_paths
+        if path not in {REPORT_NAME, MANIFEST_NAME}
+    ]
+    projected_report_data = canonical_json_bytes(public_report)
+    projected_members[REPORT_NAME] = projected_report_data
+    projected_records[REPORT_NAME] = (
+        hashlib.sha256(projected_report_data).hexdigest(),
+        len(projected_report_data),
+    )
+
+    projected_manifest_data = "".join(
+        f"{projected_records[path][0]}  {path}\n"
+        for path in policy.public_paths
+        if path != MANIFEST_NAME
+    ).encode("utf-8")
+    projected_members[MANIFEST_NAME] = projected_manifest_data
+    projected_records[MANIFEST_NAME] = (
+        hashlib.sha256(projected_manifest_data).hexdigest(),
+        len(projected_manifest_data),
+    )
+    if tuple(sorted(projected_records)) != policy.public_paths:
+        fail("public projection does not contain the exact canonical 70-file set")
     verify_v404_release_acceptance._validate_public_results_report(
-        report_data, observed_input, source
+        projected_report_data, projected_records, source
     )
     return PreparedResults(
         root=root,
         signed_by_path=signed_by_path,
         signed_manifest_data=signed_manifest_data,
-        public_manifest_entries=entries,
-        public_manifest_data=manifest_data,
+        private_manifest_entries=private_manifest_entries,
+        private_manifest_data=private_manifest_data,
+        public_paths=policy.public_paths,
+        projected_members=projected_members,
+        projected_records=projected_records,
+        policy_sha256=policy.policy_sha256,
         files=files,
         directories=directories,
     )
@@ -753,39 +908,46 @@ def assemble_verified_archive(
         compression=zipfile.ZIP_STORED,
         allowZip64=True,
     ) as archive:
-        manifest_digest = hashlib.sha256(prepared.public_manifest_data).hexdigest()
-        for relative in sorted(prepared.signed_by_path):
-            if relative == MANIFEST_NAME:
+        for relative in prepared.public_paths:
+            if relative in prepared.projected_members:
+                data = prepared.projected_members[relative]
                 archive.writestr(
-                    zip_info(f"{ARCHIVE_PREFIX}/{MANIFEST_NAME}"),
-                    prepared.public_manifest_data,
+                    zip_info(f"{ARCHIVE_PREFIX}/{relative}"),
+                    data,
                 )
-                observed[MANIFEST_NAME] = (
-                    manifest_digest,
-                    len(prepared.public_manifest_data),
+                observed[relative] = (
+                    hashlib.sha256(data).hexdigest(),
+                    len(data),
                 )
             else:
                 observed[relative] = add_verified_file(
                     archive,
                     prepared.root / Path(*PurePosixPath(relative).parts),
                     f"{ARCHIVE_PREFIX}/{relative}",
-                    prepared.public_manifest_entries[relative],
+                    prepared.signed_by_path[relative]["sha256"],
                 )
+            if observed[relative] != prepared.projected_records[relative]:
+                fail(f"public projection member differs from its prepared record: {relative}")
     if not isinstance(destination, (str, bytes, os.PathLike)):
         destination.flush()
         os.fsync(destination.fileno())
         destination.seek(0)
     files_after, directories_after = enumerate_plain_files(
-        prepared.root, "public production result root"
+        prepared.root, "private production-evidence root"
     )
     if files_after != prepared.files or directories_after != prepared.directories:
-        fail("public production tree changed while it was packaged")
+        fail("private production-evidence tree changed while it was packaged")
     if read_stable(
         prepared.root / MANIFEST_NAME,
-        "public production manifest final recheck",
+        "private production manifest final recheck",
         maximum_bytes=2_000_000,
-    ) != prepared.public_manifest_data:
-        fail("public production manifest changed while it was packaged")
+    ) != prepared.private_manifest_data:
+        fail("private production manifest changed while it was packaged")
+    if (
+        verify_v404_release_acceptance._public_results_policy().policy_sha256
+        != prepared.policy_sha256
+    ):
+        fail("public results boundary policy changed while packaging")
 
     expected_members = [
         f"{ARCHIVE_PREFIX}/{relative}" for relative in sorted(observed)
@@ -1013,7 +1175,7 @@ def build(
         "size_bytes": archive_size,
         "file_count": len(observed),
         "source_manifest_sha256": hashlib.sha256(
-            prepared.public_manifest_data
+            prepared.projected_members[MANIFEST_NAME]
         ).hexdigest(),
         "signed_output_manifest_sha256": hashlib.sha256(
             prepared.signed_manifest_data
@@ -1068,7 +1230,7 @@ def measure_release_lock(
         "sha256": archive_sha256,
         "size_bytes": archive_size,
         "source_manifest_sha256": hashlib.sha256(
-            prepared.public_manifest_data
+            prepared.projected_members[MANIFEST_NAME]
         ).hexdigest(),
         "signed_output_manifest_sha256": hashlib.sha256(
             prepared.signed_manifest_data

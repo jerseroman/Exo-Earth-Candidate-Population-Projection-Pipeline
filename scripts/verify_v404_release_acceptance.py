@@ -41,6 +41,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
+import gzip
 import io
 import json
 import math
@@ -67,13 +68,34 @@ RESULTS_CHECKSUM_NAME = RESULTS_ARCHIVE_NAME + ".sha256"
 RESULTS_ARCHIVE_PREFIX = RESULTS_ARCHIVE_NAME[:-4]
 PUBLIC_RESULTS_MANIFEST_NAME = "SHA256SUMS_v404_local_production.txt"
 PUBLIC_RESULTS_REPORT_NAME = "V404_LOCAL_PRODUCTION_REPORT.json"
+PUBLIC_RESULTS_POLICY_PATH = "provenance/PUBLIC_RESULTS_POLICY_v4_0_4.json"
+PUBLIC_RESULTS_EXCLUDED_PATH_REASONS = {
+    "aggregates/corrected-constant/joint_posterior_constant_full.csv.gz": "MCMC_CHAIN",
+    "aggregates/corrected-constant/perturbation_audit_constant_full.csv.gz": "ROW_LEVEL_DR25",
+    "aggregates/corrected-zero/joint_posterior_zero_full.csv.gz": "MCMC_CHAIN",
+    "aggregates/corrected-zero/perturbation_audit_zero_full.csv.gz": "ROW_LEVEL_DR25",
+    "aggregates/legacy-measurement-constant/joint_posterior_constant_full.csv.gz": "MCMC_CHAIN",
+    "aggregates/legacy-measurement-constant/perturbation_audit_constant_full.csv.gz": "ROW_LEVEL_DR25",
+    "qualification/seed-stability/constant/joint_posterior_constant_corrected-pilot-seed-1.csv": "MCMC_CHAIN",
+    "qualification/seed-stability/constant/joint_posterior_constant_corrected-pilot-seed-2.csv": "MCMC_CHAIN",
+    "qualification/seed-stability/constant/perturbation_audit_constant_corrected-pilot-seed-1.csv": "ROW_LEVEL_DR25",
+    "qualification/seed-stability/constant/perturbation_audit_constant_corrected-pilot-seed-2.csv": "ROW_LEVEL_DR25",
+    "qualification/seed-stability/constant/perturbed_planets_constant_corrected-pilot-seed-1.csv": "ROW_LEVEL_DR25",
+    "qualification/seed-stability/constant/perturbed_planets_constant_corrected-pilot-seed-2.csv": "ROW_LEVEL_DR25",
+    "qualification/seed-stability/zero/joint_posterior_zero_corrected-pilot-seed-1.csv": "MCMC_CHAIN",
+    "qualification/seed-stability/zero/joint_posterior_zero_corrected-pilot-seed-2.csv": "MCMC_CHAIN",
+    "qualification/seed-stability/zero/perturbation_audit_zero_corrected-pilot-seed-1.csv": "ROW_LEVEL_DR25",
+    "qualification/seed-stability/zero/perturbation_audit_zero_corrected-pilot-seed-2.csv": "ROW_LEVEL_DR25",
+    "qualification/seed-stability/zero/perturbed_planets_zero_corrected-pilot-seed-1.csv": "ROW_LEVEL_DR25",
+    "qualification/seed-stability/zero/perturbed_planets_zero_corrected-pilot-seed-2.csv": "ROW_LEVEL_DR25",
+}
 SOURCE_ARCHIVE_NAME = (
     "exo-earth-candidate-population-projection-pipeline-4.0.4-source.zip"
 )
 SOURCE_CHECKSUM_NAME = "PUBLIC_SHA256SUMS"
 TRUSTED_SOURCE_ARCHIVE_ENV = "V404_TRUSTED_SOURCE_ARCHIVE"
 TRUSTED_SOURCE_CHECKSUM_ENV = "V404_TRUSTED_SOURCE_CHECKSUM"
-SOURCE_ZIP_TIME = (2026, 8, 30, 0, 0, 0)
+SOURCE_ZIP_TIME = (2026, 9, 2, 0, 0, 0)
 HEADLINE_SUMMARY_PATHS = {
     "constant": (
         "propagations/corrected-constant/canonical/"
@@ -96,6 +118,163 @@ HEADLINE_DRAW_PATHS = {
 }
 FINALIZATION_PATHS = (ACCEPTANCE_PATH, "MANIFEST.sha256")
 POST_COMPUTATION_POLICY = "computational-ancestor-exact-evidence-diff-v1"
+RECOVERY_PUBLIC_EVIDENCE_PATHS = {
+    "contract": "provenance/recovery/MCMC_RECOVERY_CONTRACT_v4_0_4.json",
+    "source_transition": (
+        "provenance/recovery/MCMC_SOURCE_TRANSITION_A7_TO_A11_v4_0_4.json"
+    ),
+    "qualification": (
+        "provenance/recovery/MCMC_RECOVERY_QUALIFICATION_v4_0_4.json"
+    ),
+}
+RECOVERY_CONTRACT_ID = "mcmc-recovery-artifact-v4.0.4"
+RECOVERY_TRANSITION_ID = "a7-to-a11-mcmc-equivalence-v4.0.4"
+RECOVERY_COPY_POLICY = "byte-copy-no-links"
+RECOVERY_DECISION = "REUSE_MCMC_RECOMPUTE_ALL_DOWNSTREAM"
+RECOVERY_SHARDS_PER_VARIANT = 16
+RECOVERY_TRIALS_PER_SHARD = 25
+RECOVERY_REALIZATIONS = 1_200
+RECOVERY_WORK_FILE_COUNT = 384
+RECOVERY_RAW_FILE_COUNT = 1_296
+RECOVERY_TOTAL_FILE_COUNT = 1_680
+RECOVERY_TOTAL_SIZE_BYTES = 13_501_074_979
+RECOVERY_WORK_SIZE_BYTES = 3_498_332_085
+RECOVERY_RAW_SIZE_BYTES = 10_002_742_894
+RECOVERY_WORK_TREE_SHA256 = (
+    "971459488817641a29032aa36bfe37581a8a276ef3dd5ee11b7b07a307a05118"
+)
+RECOVERY_RAW_TREE_SHA256 = (
+    "98bb6ba382ccb626372a21b8dbf741e7b4fc6298e4104de0fb30b012052570d9"
+)
+RECOVERY_MCMC_POLICY_SHA256 = (
+    "206968f982cccee67caa00a6b23442602716289cc17d0304fedac38ac376a59e"
+)
+RECOVERY_PROTECTED_A7_RECORDS_SHA256 = (
+    "5e9648cb02c07f203f62e764851bd9fda4db2032cec00a57b88bf3d0632fd0b7"
+)
+RECOVERY_PROTECTED_A7_TOTAL_SIZE_BYTES = 792_174
+RECOVERY_PROTECTED_A11_RECORDS_SHA256 = (
+    "587351085fc22bd144e4557280f93937a67f26e02aa5d41d2bdeeb18523d6dea"
+)
+RECOVERY_PROTECTED_A11_TOTAL_SIZE_BYTES = 823_038
+RECOVERY_SHARD_MANIFEST_RECORDS_SHA256 = (
+    "d54b6e83d2de645e8f228f645d6f5751077aac02c799265338c7d5c1001d57d8"
+)
+RECOVERY_SHARD_MANIFEST_COUNT = 96
+RECOVERY_SHARD_MANIFEST_TOTAL_SIZE_BYTES = 196_384
+RECOVERY_WORK_MANIFEST_TOTAL_SIZE_BYTES = 37_260
+RECOVERY_RAW_MANIFEST_TOTAL_SIZE_BYTES = 159_124
+RECOVERY_DONOR = {
+    "run_id": "96ba59478239484feea6a93343506cb6202dd47e6059bb3a7154d3f1873c8781",
+    "source_commit": "6263d5fdc1d472900a08c12c9483f96ef3e23105",
+    "source_tree": "6883388e735b4c6fde4a45f0754d1c691605818f",
+    "source_file_set_sha256": (
+        "19b5e28afb67e289802fea5f223182e2acc51594161fc87007a5455f4bf0f999"
+    ),
+    "source_file_count": 183,
+    "execution_environment": "local_ubuntu_22_04_wsl2",
+    "attestation_contract": {
+        "sha256": "86d02839a4fee3d36da6a1d89ea92bb8261d944edb6a1929c5f916f077cb9137",
+        "size_bytes": 2376,
+    },
+    "source_archive": {
+        "sha256": "25293c47d793d8e65fbf7b26a79ef14616026a31528b17de9f3021f30ca9f563",
+        "size_bytes": 3686400,
+    },
+    "command_plan": {
+        "sha256": "59936d72a6026b01b9680ea4b6c7ef82a229ce2b74431ab0ac11ed13e009dc5c",
+        "size_bytes": 10072,
+    },
+    "numerical_runtime_manifest": {
+        "sha256": "9f0029dd9d2bf6974600ad6530e04dbdec0fd2dad810e20220868595a35ca87e",
+        "size_bytes": 1200,
+    },
+    "start_challenge": {
+        "sha256": "0cee803961850e1be1fd185aa78d91f236f8172f4b4d26fbbb142f6e6c34f98d",
+        "size_bytes": 1259,
+    },
+    "start_signature": {
+        "sha256": "21db2d8767469f5473b5747dc63db7fcc33c42c4a656db1f92dd7db069630d2f",
+        "size_bytes": 342,
+    },
+    "command_stdout": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0,
+    },
+    "command_stderr": {
+        "sha256": "c79330ae0949f1de45b30a44ccfa8a6230916710063c5e667d0e6d790e2e5c8d",
+        "size_bytes": 193,
+    },
+    "completion_attestation_present": False,
+}
+RECOVERY_VARIANTS = (
+    ("corrected-constant", "constant", "quantile_matched_two_sided", 20_000),
+    ("corrected-zero", "zero", "quantile_matched_two_sided", 30_000),
+    (
+        "legacy-measurement-constant",
+        "constant",
+        "legacy_source_mixture",
+        20_000,
+    ),
+)
+RECOVERY_PROTECTED_PATHS = tuple(sorted((
+    "provenance/DATA_LOCKS.json",
+    "requirements.in",
+    "requirements.txt",
+    "research/bryson-joint-posterior/aggregate_hab2_joint_posterior.py",
+    "research/bryson-joint-posterior/catalog_perturbation_audit.py",
+    "research/bryson-joint-posterior/clustered_monte_carlo.py",
+    "research/bryson-joint-posterior/compare_mcmc_seed_families.py",
+    "research/bryson-joint-posterior/freeze_v4_numerical_results.py",
+    "research/bryson-joint-posterior/frozen-v4/V4_NUMERICAL_FREEZE.json",
+    "research/bryson-joint-posterior/frozen-v4/V4_NUMERICAL_FREEZE.md",
+    "research/bryson-joint-posterior/frozen-v4/v4_galactic_quantiles.csv",
+    "research/bryson-joint-posterior/frozen-v4/v4_parameter_quantiles.csv",
+    "research/bryson-joint-posterior/IPython/__init__.py",
+    "research/bryson-joint-posterior/IPython/display.py",
+    "research/bryson-joint-posterior/ipywidgets.py",
+    "research/bryson-joint-posterior/likelihood_grid_convergence.py",
+    "research/bryson-joint-posterior/mcmc_convergence.py",
+    "research/bryson-joint-posterior/MCMC_PROTOCOL.md",
+    "research/bryson-joint-posterior/MEASUREMENT_ERROR_MODES.md",
+    "research/bryson-joint-posterior/measurement_error.py",
+    "research/bryson-joint-posterior/MODIFICATIONS_BRYSON.md",
+    "research/bryson-joint-posterior/PHASE1_MEASUREMENT_ERROR_REPORT.md",
+    "research/bryson-joint-posterior/PHASE2_NUMERICAL_FREEZE_REPORT.md",
+    "research/bryson-joint-posterior/propagate_hab2_joint_posterior.py",
+    "research/bryson-joint-posterior/raw_chain_evidence.py",
+    "research/bryson-joint-posterior/run_hab2_joint_posterior.py",
+    "research/bryson-joint-posterior/test_accepted_catalog_replay.py",
+    "research/bryson-joint-posterior/test_adaptive_aggregation.py",
+    "research/bryson-joint-posterior/test_catalog_perturbation_audit.py",
+    "research/bryson-joint-posterior/test_clustered_monte_carlo.py",
+    "research/bryson-joint-posterior/test_compare_mcmc_seed_families.py",
+    "research/bryson-joint-posterior/test_freeze_v4_numerical_results.py",
+    "research/bryson-joint-posterior/test_likelihood_grid_convergence.py",
+    "research/bryson-joint-posterior/test_mcmc_convergence.py",
+    "research/bryson-joint-posterior/test_measurement_error.py",
+    "research/bryson-joint-posterior/test_propagate_host_measure.py",
+    "research/bryson-joint-posterior/test_raw_chain_evidence.py",
+    "research/bryson-joint-posterior/test_run_hab2_provenance.py",
+    "scripts/verify_dependency_lock.py",
+    "scripts/verify_numerical_runtime.py",
+)))
+RECOVERY_ALLOWED_DOWNSTREAM_CHANGES = frozenset(
+    {
+        "research/bryson-joint-posterior/freeze_v4_numerical_results.py",
+        "research/bryson-joint-posterior/test_freeze_v4_numerical_results.py",
+    }
+)
+RECOVERY_ALLOWED_DOWNSTREAM_A7_RECORDS = {
+    "research/bryson-joint-posterior/freeze_v4_numerical_results.py": {
+        "sha256": "e2512e10037c74482b32d6ed3df1f88e478717e9bbb662b020fc51c38bfdc6df",
+        "size_bytes": 153_650,
+    },
+    "research/bryson-joint-posterior/test_freeze_v4_numerical_results.py": {
+        "sha256": "0a8e00cf52fd8deca976ed99edc3a0eed5b26214d44b34f24832a87dee279cee",
+        "size_bytes": 31_840,
+    },
+}
 POST_COMPUTATION_STATIC_PATHS = frozenset(
     {
         ACCEPTANCE_PATH,
@@ -114,6 +293,7 @@ POST_COMPUTATION_STATIC_PATHS = frozenset(
         "provenance/PUBLIC_EXCLUSIONS.csv",
         "provenance/RELEASE_4_0_4_CHANGE_RECORD.json",
         "provenance/ROMAN_MIT_PATHS.txt",
+        *RECOVERY_PUBLIC_EVIDENCE_PATHS.values(),
     }
 )
 MANIFEST_SKIP_PARTS = {
@@ -204,6 +384,14 @@ LOCAL_REPORT_KEYS = {
     "output_file_count",
     "output_total_size_bytes",
     "output_file_set_sha256",
+    "public_projection_policy_sha256",
+    "public_projection_file_count",
+    "public_projection_excluded_file_count",
+    "public_projection_excluded_file_set_sha256",
+    "public_projection_passthrough_file_count",
+    "public_projection_passthrough_total_size_bytes",
+    "public_projection_passthrough_file_set_sha256",
+    "public_projection_rewritten_manifest_count",
     "report_id",
 }
 
@@ -219,6 +407,9 @@ LOCAL_HASH_FIELDS = {
     "completion_signature_sha256",
     "output_manifest_sha256",
     "output_file_set_sha256",
+    "public_projection_policy_sha256",
+    "public_projection_excluded_file_set_sha256",
+    "public_projection_passthrough_file_set_sha256",
 }
 
 LOCAL_BINDING_FIELDS = {
@@ -234,6 +425,14 @@ LOCAL_BINDING_FIELDS = {
     "output_file_set_sha256",
     "output_file_count",
     "output_total_size_bytes",
+    "public_projection_policy_sha256",
+    "public_projection_file_count",
+    "public_projection_excluded_file_count",
+    "public_projection_excluded_file_set_sha256",
+    "public_projection_passthrough_file_count",
+    "public_projection_passthrough_total_size_bytes",
+    "public_projection_passthrough_file_set_sha256",
+    "public_projection_rewritten_manifest_count",
 }
 
 
@@ -276,6 +475,24 @@ def canonical_json_bytes(value: Any) -> bytes:
         ).encode("utf-8")
     except (TypeError, ValueError) as error:
         fail(f"cannot serialize canonical JSON: {error}")
+
+
+def _recovery_canonical_json_bytes(value: Any) -> bytes:
+    """Match the recovery orchestrator's indented canonical JSON encoding."""
+
+    try:
+        return (
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                allow_nan=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        fail(f"cannot serialize canonical recovery JSON: {error}")
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -1536,7 +1753,7 @@ def _verify_release_manifest_binding(
     return manifest
 
 
-def _expected_results_paths() -> tuple[str, ...]:
+def _expected_private_results_paths() -> tuple[str, ...]:
     controller = load_source_only_module(
         ROOT,
         "scripts/run_v404_local_production.py",
@@ -1548,17 +1765,208 @@ def _expected_results_paths() -> tuple[str, ...]:
         not paths
         or list(paths) != sorted(paths)
         or len(paths) != len({item.casefold() for item in paths})
+        or len(paths) != 88
         or PUBLIC_RESULTS_MANIFEST_NAME not in paths
         or PUBLIC_RESULTS_REPORT_NAME not in paths
     ):
-        fail("local production output contract is not canonical")
+        fail("local private production-evidence contract is not canonical")
     for index, relative in enumerate(paths):
-        _safe_relative(relative, f"local production output path {index}")
+        _safe_relative(relative, f"local private production-evidence path {index}")
+    return paths
+
+
+def _public_results_policy() -> SimpleNamespace:
+    """Load and strictly validate the canonical private-to-public projection."""
+
+    private_paths = _expected_private_results_paths()
+    private_set = set(private_paths)
+    snapshot = read_snapshot(
+        ROOT,
+        PUBLIC_RESULTS_POLICY_PATH,
+        "public results boundary policy",
+        maximum_bytes=256 * 1024,
+    )
+    raw = load_json_bytes(snapshot.data, "public results boundary policy")
+    policy = _exact_keys(
+        raw,
+        {
+            "excluded_files",
+            "policy_id",
+            "private_evidence_file_count",
+            "public_file_count",
+            "retained_derived_files",
+            "rewritten_scoped_manifests",
+            "schema_version",
+        },
+        "public results boundary policy",
+    )
+    try:
+        canonical_policy = (
+            json.dumps(
+                policy,
+                ensure_ascii=False,
+                allow_nan=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        fail(f"cannot serialize public results boundary policy: {error}")
+    if snapshot.data != canonical_policy:
+        fail("public results boundary policy is not canonical JSON bytes")
+    if (
+        type(policy["schema_version"]) is not int
+        or policy["schema_version"] != 1
+        or policy["policy_id"] != "v4.0.4-public-results-boundary-v1"
+        or type(policy["private_evidence_file_count"]) is not int
+        or policy["private_evidence_file_count"] != 88
+        or type(policy["public_file_count"]) is not int
+        or policy["public_file_count"] != 70
+    ):
+        fail("public results boundary policy identity/counts changed")
+
+    excluded_rows = policy["excluded_files"]
+    if not isinstance(excluded_rows, list) or len(excluded_rows) != 18:
+        fail("public results boundary policy must exclude exactly 18 files")
+    excluded_paths: list[str] = []
+    for index, value in enumerate(excluded_rows):
+        row = _exact_keys(value, {"path", "reason"}, f"public exclusion {index}")
+        _safe_relative(row["path"], f"public exclusion {index} path")
+        if PUBLIC_RESULTS_EXCLUDED_PATH_REASONS.get(row["path"]) != row["reason"]:
+            fail("public exclusion path/reason differs from the exact release policy")
+        excluded_paths.append(row["path"])
+    if (
+        excluded_paths != sorted(PUBLIC_RESULTS_EXCLUDED_PATH_REASONS)
+        or len(excluded_paths) != len({item.casefold() for item in excluded_paths})
+        or not set(excluded_paths) < private_set
+        or PUBLIC_RESULTS_REPORT_NAME in excluded_paths
+        or PUBLIC_RESULTS_MANIFEST_NAME in excluded_paths
+    ):
+        fail("public results exclusion set is not canonical or private-bound")
+    excluded_set = set(excluded_paths)
+
+    retained_rows = policy["retained_derived_files"]
+    expected_retained_classes = {
+        "aggregates/corrected-constant/joint_posterior_constant_correlation.csv": "AGGREGATE_CORRELATION_TABLE",
+        "aggregates/corrected-constant/joint_posterior_constant_for_galactic_propagation.csv.gz": "OCCURRENCE_POSTERIOR_FOR_PROPAGATION",
+        "aggregates/corrected-zero/joint_posterior_zero_correlation.csv": "AGGREGATE_CORRELATION_TABLE",
+        "aggregates/corrected-zero/joint_posterior_zero_for_galactic_propagation.csv.gz": "OCCURRENCE_POSTERIOR_FOR_PROPAGATION",
+        "aggregates/legacy-measurement-constant/joint_posterior_constant_correlation.csv": "AGGREGATE_CORRELATION_TABLE",
+        "aggregates/legacy-measurement-constant/joint_posterior_constant_for_galactic_propagation.csv.gz": "OCCURRENCE_POSTERIOR_FOR_PROPAGATION",
+        "propagations/corrected-constant/canonical/galactic_posterior_draws_constant.csv.gz": "GALACTIC_DERIVED_DRAWS",
+        "propagations/corrected-constant/legacy/galactic_posterior_draws_constant.csv.gz": "GALACTIC_DERIVED_DRAWS",
+        "propagations/corrected-zero/canonical/galactic_posterior_draws_zero.csv.gz": "GALACTIC_DERIVED_DRAWS",
+        "propagations/corrected-zero/legacy/galactic_posterior_draws_zero.csv.gz": "GALACTIC_DERIVED_DRAWS",
+        "propagations/legacy-measurement-constant/canonical/galactic_posterior_draws_constant.csv.gz": "GALACTIC_DERIVED_DRAWS",
+        "qualification/likelihood-grid/constant/selected_joint_parameter_points.csv": "LIKELIHOOD_GRID_PARAMETER_POINTS",
+        "qualification/likelihood-grid/zero/selected_joint_parameter_points.csv": "LIKELIHOOD_GRID_PARAMETER_POINTS",
+    }
+    if not isinstance(retained_rows, list) or len(retained_rows) != 13:
+        fail("public results policy must classify exactly 13 retained derived files")
+    retained_paths: list[str] = []
+    for index, value in enumerate(retained_rows):
+        row = _exact_keys(value, {"class", "path"}, f"retained derived file {index}")
+        _safe_relative(row["path"], f"retained derived file {index} path")
+        if expected_retained_classes.get(row["path"]) != row["class"]:
+            fail("retained derived-file class/path differs from the exact release policy")
+        retained_paths.append(row["path"])
+    if retained_paths != sorted(expected_retained_classes):
+        fail("retained derived-file classification is not canonical or exact")
+
+    manifest_rows = policy["rewritten_scoped_manifests"]
+    if not isinstance(manifest_rows, list) or len(manifest_rows) != 5:
+        fail("public results boundary policy must rewrite exactly 5 manifests")
+    manifests: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {}
+    for index, value in enumerate(manifest_rows):
+        row = _exact_keys(
+            value,
+            {"path", "private_targets", "public_targets"},
+            f"public scoped manifest {index}",
+        )
+        path = row["path"]
+        _safe_relative(path, f"public scoped manifest {index} path")
+        if path in manifests or path not in private_set or path in excluded_set:
+            fail("public scoped manifest path is repeated, absent, or excluded")
+        private_targets = row["private_targets"]
+        public_targets = row["public_targets"]
+        if not isinstance(private_targets, list) or not isinstance(public_targets, list):
+            fail("public scoped manifest target sets must be JSON lists")
+        for label, targets in (
+            ("private", private_targets),
+            ("public", public_targets),
+        ):
+            for target_index, target in enumerate(targets):
+                _safe_relative(
+                    target,
+                    f"public scoped manifest {index} {label} target {target_index}",
+                )
+            if targets != sorted(targets) or len(targets) != len(
+                {target.casefold() for target in targets}
+            ):
+                fail("public scoped manifest target set is not canonical")
+        parent = PurePosixPath(path).parent
+        exact_private_targets = sorted(
+            candidate
+            for candidate in private_paths
+            if PurePosixPath(candidate).parent == parent and candidate != path
+        )
+        if private_targets != exact_private_targets:
+            fail("public scoped manifest does not bind its exact private directory")
+        exact_public_targets = sorted(set(private_targets) - excluded_set)
+        if public_targets != exact_public_targets or not public_targets:
+            fail("public scoped manifest public target set is not the exact safe subset")
+        manifests[path] = (tuple(private_targets), tuple(public_targets))
+    manifest_paths = list(manifests)
+    if manifest_paths != sorted(manifest_paths) or len(manifest_paths) != len(
+        {item.casefold() for item in manifest_paths}
+    ):
+        fail("public scoped manifest list is not canonical")
+    derived_manifest_paths = {
+        candidate
+        for candidate in private_paths
+        if PurePosixPath(candidate).name.startswith("SHA256SUMS_")
+        and any(
+            PurePosixPath(excluded).parent == PurePosixPath(candidate).parent
+            for excluded in excluded_set
+        )
+    }
+    if set(manifests) != derived_manifest_paths:
+        fail("public scoped manifest set does not cover every affected directory")
+
+    public_paths = tuple(sorted(private_set - excluded_set))
+    if len(public_paths) != policy["public_file_count"]:
+        fail("public results projection count differs from its policy")
+    transformed = set(manifests) | {
+        PUBLIC_RESULTS_REPORT_NAME,
+        PUBLIC_RESULTS_MANIFEST_NAME,
+    }
+    passthrough_paths = tuple(sorted(set(public_paths) - transformed))
+    if len(passthrough_paths) != 63:
+        fail("public results projection must contain exactly 63 signed passthrough files")
+    if not set(retained_paths) < set(passthrough_paths):
+        fail("retained derived-file classification is not in the signed passthrough set")
+    recheck_snapshot(snapshot, "public results boundary policy")
+    return SimpleNamespace(
+        policy=dict(policy),
+        policy_sha256=snapshot.sha256,
+        private_paths=private_paths,
+        public_paths=public_paths,
+        excluded_paths=tuple(excluded_paths),
+        manifest_targets=manifests,
+        passthrough_paths=passthrough_paths,
+        retained_derived_paths=tuple(retained_paths),
+    )
+
+
+def _expected_results_paths() -> tuple[str, ...]:
+    policy = _public_results_policy()
+    for index, relative in enumerate(policy.public_paths):
+        _safe_relative(relative, f"public results path {index}")
         lowered = relative.casefold()
         leaf = PurePosixPath(relative).name.casefold()
         if (
             lowered.endswith(".bin")
-            or "raw_chain" in lowered
             or any(part in {"private", "logs", "inputs"} for part in PurePosixPath(lowered).parts)
             or leaf
             in {
@@ -1569,16 +1977,16 @@ def _expected_results_paths() -> tuple[str, ...]:
                 "out_sc0_hab2_insol_teff.fits.gz",
             }
         ):
-            fail(f"local production output contract exposes a forbidden path: {relative}")
-    return paths
+            fail(f"public results policy exposes a forbidden path: {relative}")
+    return policy.public_paths
 
 
-def _validate_output_entries(
+def _validate_private_output_entries(
     value: Any, local_report: Mapping[str, Any], label: str
 ) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         fail(f"{label} must be a JSON list")
-    expected_paths = list(_expected_results_paths())
+    expected_paths = list(_expected_private_results_paths())
     entries: list[dict[str, Any]] = []
     for index, raw in enumerate(value):
         item = _exact_keys(raw, {"path", "sha256", "size_bytes"}, f"{label} entry {index}")
@@ -1587,7 +1995,7 @@ def _validate_output_entries(
         _positive_size(item["size_bytes"], f"{label} entry {index} size", allow_zero=True)
         entries.append(dict(item))
     if [item["path"] for item in entries] != expected_paths:
-        fail(f"{label} differs from the exact public production output set/order")
+        fail(f"{label} differs from the exact private production-evidence set/order")
     if local_report.get("output_file_count") != len(entries):
         fail(f"{label} count differs from the signed local public report")
     if local_report.get("output_total_size_bytes") != sum(
@@ -1618,7 +2026,30 @@ def validate_local_output_manifest_bytes(
         fail("strict local output manifest algorithm changed")
     if data != canonical_json_bytes(value):
         fail("strict local output manifest is not canonical JSON bytes")
-    return _validate_output_entries(value["files"], local_report, "strict local output manifest")
+    entries = _validate_private_output_entries(
+        value["files"], local_report, "strict local output manifest"
+    )
+    policy = _public_results_policy()
+    by_path = {item["path"]: item for item in entries}
+    excluded_entries = [by_path[path] for path in policy.excluded_paths]
+    passthrough_entries = [by_path[path] for path in policy.passthrough_paths]
+    exact_projection = {
+        "public_projection_excluded_file_count": len(excluded_entries),
+        "public_projection_excluded_file_set_sha256": hashlib.sha256(
+            canonical_json_bytes(excluded_entries)
+        ).hexdigest(),
+        "public_projection_passthrough_file_count": len(passthrough_entries),
+        "public_projection_passthrough_total_size_bytes": sum(
+            item["size_bytes"] for item in passthrough_entries
+        ),
+        "public_projection_passthrough_file_set_sha256": hashlib.sha256(
+            canonical_json_bytes(passthrough_entries)
+        ).hexdigest(),
+    }
+    for field, expected in exact_projection.items():
+        if local_report.get(field) != expected:
+            fail(f"signed local report {field} differs from the strict private tree")
+    return entries
 
 
 def _parse_public_results_manifest(data: bytes) -> dict[str, str]:
@@ -1645,30 +2076,106 @@ def _parse_public_results_manifest(data: bytes) -> dict[str, str]:
     return entries
 
 
-def _validate_public_results_report(
+def _parse_public_scoped_manifest(data: bytes, manifest_path: str) -> dict[str, str]:
+    """Parse a canonical same-directory manifest into full logical paths."""
+
+    try:
+        text = data.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        fail(f"public scoped manifest is not strict UTF-8: {manifest_path}: {error}")
+    if not text.endswith("\n") or "\r" in text:
+        fail(f"public scoped manifest is not canonical LF text: {manifest_path}")
+    parent = PurePosixPath(manifest_path).parent
+    entries: dict[str, str] = {}
+    leaves: list[str] = []
+    folded: set[str] = set()
+    for number, line in enumerate(text.splitlines(), start=1):
+        match = re.fullmatch(r"([0-9a-f]{64})  ([A-Za-z0-9][A-Za-z0-9._-]*)", line)
+        if match is None:
+            fail(f"public scoped manifest line is malformed: {manifest_path}:{number}")
+        digest, leaf = match.groups()
+        if leaf.casefold() in folded:
+            fail(f"public scoped manifest has a case collision: {manifest_path}")
+        folded.add(leaf.casefold())
+        leaves.append(leaf)
+        entries[(parent / leaf).as_posix()] = digest
+    if not leaves or leaves != sorted(leaves):
+        fail(f"public scoped manifest is empty or unsorted: {manifest_path}")
+    return entries
+
+
+def _validate_public_tabular_header(
+    archive: zipfile.ZipFile, info: zipfile.ZipInfo, relative: str
+) -> None:
+    """Reject row identifiers and serialized trajectory-chain coordinates."""
+
+    lowered = relative.casefold()
+    if not (lowered.endswith(".csv") or lowered.endswith(".csv.gz")):
+        return
+    try:
+        with archive.open(info, mode="r") as raw:
+            if lowered.endswith(".gz"):
+                with gzip.GzipFile(fileobj=raw, mode="rb") as decoded:
+                    header = decoded.readline(65_537)
+            else:
+                header = raw.readline(65_537)
+    except (OSError, EOFError, gzip.BadGzipFile, RuntimeError, zlib.error) as error:
+        fail(f"cannot inspect public tabular header {relative}: {error}")
+    if not header or len(header) > 65_536 or not header.endswith((b"\n", b"\r")):
+        fail(f"public tabular header is empty or exceeds the safety limit: {relative}")
+    try:
+        text = header.decode("utf-8", errors="strict").rstrip("\r\n")
+        rows = list(csv.reader([text], strict=True))
+    except (UnicodeDecodeError, csv.Error) as error:
+        fail(f"public tabular header is malformed: {relative}: {error}")
+    if len(rows) != 1 or not rows[0]:
+        fail(f"public tabular header is malformed: {relative}")
+    columns = {column.strip().casefold() for column in rows[0]}
+    row_identifiers = {
+        "source_row",
+        "kepoi_name",
+        "kepid",
+        "kepid_x",
+        "koi_name",
+    }
+    if columns & row_identifiers:
+        fail(f"public results contain a row-level DR25 identifier: {relative}")
+    if {"production_step", "walker", "log_probability"} <= columns:
+        fail(f"public results contain serialized MCMC trajectory coordinates: {relative}")
+
+
+def _validate_results_report(
     data: bytes,
     observed: Mapping[str, tuple[str, int]],
     source: Mapping[str, Any],
+    *,
+    public_projection: bool,
 ) -> dict[str, Any]:
+    boundary_key = "public_boundary" if public_projection else "private_evidence_boundary"
+    exact_keys = {
+        "schema_version",
+        "status",
+        "release_candidate",
+        "execution_environment",
+        "source_archive",
+        "production_design",
+        "acceptance",
+        boundary_key,
+        "public_files",
+        "command_count",
+        "runtime_seconds_by_stage",
+        "total_runtime_seconds",
+        "completed_utc",
+    }
+    if public_projection:
+        exact_keys.add("public_projection")
     report = _exact_keys(
         load_json_bytes(data, "embedded local production report"),
-        {
-            "schema_version",
-            "status",
-            "release_candidate",
-            "execution_environment",
-            "source_archive",
-            "production_design",
-            "acceptance",
-            "public_boundary",
-            "public_files",
-            "command_count",
-            "runtime_seconds_by_stage",
-            "total_runtime_seconds",
-            "completed_utc",
-        },
+        exact_keys,
         "embedded local production report",
     )
+    if data != canonical_json_bytes(report):
+        fail("embedded local production report is not canonical JSON bytes")
     if (
         type(report["schema_version"]) is not int
         or report["schema_version"] != 1
@@ -1692,32 +2199,877 @@ def _validate_public_results_report(
         or archive["regular_files_verified"] <= 0
     ):
         fail("embedded local production source-file count is invalid")
-    if report["public_boundary"] != {
-        "third_party_input_files_copied": False,
-        "row_level_host_files_copied": False,
-        "private_raw_chain_files_copied": False,
+    if public_projection:
+        if report[boundary_key] != {
+            "archive_scope": "separate-v4.0.4-results-package",
+            "derived_aggregate_diagnostics_included": True,
+            "mcmc_chain_files_copied": False,
+            "private_logs_copied": False,
+            "private_raw_chain_files_copied": False,
+            "row_level_dr25_derived_files_copied": False,
+            "row_level_host_files_copied": False,
+            "third_party_input_files_copied": False,
+        }:
+            fail("embedded local production report violates the public boundary")
+    elif report[boundary_key] != {
+        "mcmc_chain_files_retained_for_qualification": True,
         "private_logs_copied": False,
+        "private_raw_chain_files_copied": False,
+        "release_projection_required": True,
+        "row_level_dr25_files_retained_for_qualification": True,
+        "row_level_host_files_copied": False,
+        "third_party_input_files_copied": False,
     }:
-        fail("embedded local production report violates the public boundary")
+        fail("embedded production report violates the private evidence boundary")
+    expected_paths = (
+        _expected_results_paths()
+        if public_projection
+        else _expected_private_results_paths()
+    )
     expected_inventory = []
-    for relative in _expected_results_paths():
+    for relative in expected_paths:
         if relative in {PUBLIC_RESULTS_REPORT_NAME, PUBLIC_RESULTS_MANIFEST_NAME}:
             continue
         digest, size = observed[relative]
         expected_inventory.append({"path": relative, "sha256": digest, "size_bytes": size})
     if report["public_files"] != expected_inventory:
         fail("embedded local production report inventory differs from the archive")
+    if public_projection:
+        policy = _public_results_policy()
+        projection = _exact_keys(
+            report["public_projection"],
+            {
+                "excluded_file_count",
+                "excluded_file_set_sha256",
+                "passthrough_file_count",
+                "passthrough_file_set_sha256",
+                "passthrough_total_size_bytes",
+                "policy_id",
+                "policy_sha256",
+                "private_evidence_file_count",
+                "public_file_count",
+                "retained_derived_file_count",
+                "rewritten_scoped_manifest_count",
+            },
+            "embedded public-results projection",
+        )
+        for field in (
+            "excluded_file_set_sha256",
+            "passthrough_file_set_sha256",
+            "policy_sha256",
+        ):
+            _sha(projection[field], f"embedded public-results projection {field}")
+        exact_projection = {
+            "excluded_file_count": len(policy.excluded_paths),
+            "passthrough_file_count": len(policy.passthrough_paths),
+            "policy_id": policy.policy["policy_id"],
+            "policy_sha256": policy.policy_sha256,
+            "private_evidence_file_count": len(policy.private_paths),
+            "public_file_count": len(policy.public_paths),
+            "retained_derived_file_count": len(policy.retained_derived_paths),
+            "rewritten_scoped_manifest_count": len(policy.manifest_targets),
+        }
+        for field, expected in exact_projection.items():
+            if projection[field] != expected:
+                fail(f"embedded public-results projection {field} changed")
+        for field in ("passthrough_total_size_bytes",):
+            _positive_size(projection[field], f"embedded public-results projection {field}")
     if type(report["command_count"]) is not int or report["command_count"] <= 0:
         fail("embedded local production report command count is invalid")
     _utc(report["completed_utc"], "embedded local production completion time")
     for label in ("production_design", "acceptance", "runtime_seconds_by_stage"):
         if not isinstance(report[label], dict) or not report[label]:
             fail(f"embedded local production report {label} is empty")
+    recovery = _mapping(
+        report["production_design"].get("mcmc_recovery"),
+        "embedded local production MCMC recovery disclosure",
+    )
+    if recovery.get("mcmc_reused") is False:
+        if recovery != {
+            "mcmc_reused": False,
+            "aggregates_and_downstream_recomputed": True,
+        }:
+            fail("embedded full-run MCMC disclosure differs from the exact schema")
+    elif recovery.get("mcmc_reused") is True:
+        recovery = _exact_keys(
+            recovery,
+            {
+                "mcmc_reused",
+                "fresh_preflight_runtime_and_pilots_recomputed",
+                "aggregates_and_downstream_recomputed",
+                "donor_completion_attestation_present_in_qualified_evidence_set",
+                "donor_run_id",
+                "donor_source_commit",
+                "donor_source_tree",
+                "donor_source_archive_sha256",
+                "donor_source_archive_size_bytes",
+                "donor_source_file_set_sha256",
+                "donor_source_file_count",
+                "donor_attestation_contract_sha256",
+                "donor_attestation_contract_size_bytes",
+                "donor_command_plan_sha256",
+                "donor_numerical_runtime_sha256",
+                "donor_start_challenge_sha256",
+                "donor_start_signature_sha256",
+                "recovery_contract_sha256",
+                "recovery_contract_size_bytes",
+                "mcmc_policy_sha256",
+                "recovery_source_commit",
+                "recovery_source_tree",
+                "source_transition_report_id",
+                "source_transition_report_sha256",
+                "qualification_report_id",
+                "qualification_report_sha256",
+                "reused_realizations",
+                "imported_work_file_count",
+                "imported_work_size_bytes",
+                "imported_work_tree_sha256",
+                "imported_raw_file_count",
+                "imported_raw_size_bytes",
+                "imported_raw_tree_sha256",
+            },
+            "embedded recovery MCMC disclosure",
+        )
+        for field in (
+            "fresh_preflight_runtime_and_pilots_recomputed",
+            "aggregates_and_downstream_recomputed",
+        ):
+            if recovery[field] is not True:
+                fail(f"embedded recovery disclosure does not confirm {field}")
+        if (
+            recovery[
+                "donor_completion_attestation_present_in_qualified_evidence_set"
+            ]
+            is not False
+        ):
+            fail("embedded recovery disclosure misstates qualified donor completion evidence")
+        _sha(recovery["donor_run_id"], "embedded recovery donor run id")
+        _git_sha(recovery["donor_source_commit"], "embedded recovery donor commit")
+        _git_sha(recovery["donor_source_tree"], "embedded recovery donor tree")
+        _git_sha(recovery["recovery_source_commit"], "embedded recovery source commit")
+        _git_sha(recovery["recovery_source_tree"], "embedded recovery source tree")
+        if (
+            recovery["recovery_source_commit"] != source["commit"]
+            or recovery["recovery_source_tree"] != source["tree"]
+        ):
+            fail("embedded recovery disclosure does not bind the release source")
+        for field in (
+            "donor_source_archive_sha256",
+            "donor_source_file_set_sha256",
+            "donor_attestation_contract_sha256",
+            "donor_command_plan_sha256",
+            "donor_numerical_runtime_sha256",
+            "donor_start_challenge_sha256",
+            "donor_start_signature_sha256",
+            "recovery_contract_sha256",
+            "mcmc_policy_sha256",
+            "source_transition_report_sha256",
+            "qualification_report_sha256",
+            "imported_work_tree_sha256",
+            "imported_raw_tree_sha256",
+        ):
+            _sha(recovery[field], f"embedded recovery {field}")
+        _report_id(
+            recovery["source_transition_report_id"],
+            "embedded recovery source-transition report id",
+        )
+        _report_id(
+            recovery["qualification_report_id"],
+            "embedded recovery qualification report id",
+        )
+        _positive_size(
+            recovery["recovery_contract_size_bytes"],
+            "embedded recovery contract size",
+        )
+        _positive_size(
+            recovery["donor_source_archive_size_bytes"],
+            "embedded recovery donor source archive size",
+        )
+        _positive_size(
+            recovery["donor_attestation_contract_size_bytes"],
+            "embedded recovery donor attestation contract size",
+        )
+        _positive_size(
+            recovery["donor_source_file_count"],
+            "embedded recovery donor source-file count",
+        )
+        exact_counts = {
+            "reused_realizations": 1_200,
+            "imported_work_file_count": 384,
+            "imported_raw_file_count": 1_296,
+        }
+        for field, expected in exact_counts.items():
+            if type(recovery[field]) is not int or recovery[field] != expected:
+                fail(f"embedded recovery {field} differs from v4.0.4 policy")
+        work_size = _positive_size(
+            recovery["imported_work_size_bytes"],
+            "embedded recovery work-tree size",
+        )
+        raw_size = _positive_size(
+            recovery["imported_raw_size_bytes"],
+            "embedded recovery raw-tree size",
+        )
+        if work_size + raw_size != 13_501_074_979:
+            fail("embedded recovery imported byte total differs from the qualified donor")
+    else:
+        fail("embedded local production report lacks an exact MCMC provenance decision")
     for field in ("total_runtime_seconds",):
         value = report[field]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value)) or value <= 0:
             fail(f"embedded local production report {field} is invalid")
     return report
+
+
+def _validate_private_results_report(
+    data: bytes,
+    observed: Mapping[str, tuple[str, int]],
+    source: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate the unchanged 88-file internal qualification report."""
+
+    return _validate_results_report(
+        data, observed, source, public_projection=False
+    )
+
+
+def _validate_public_results_report(
+    data: bytes,
+    observed: Mapping[str, tuple[str, int]],
+    source: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate the deterministic 70-file release projection report."""
+
+    return _validate_results_report(
+        data, observed, source, public_projection=True
+    )
+
+
+def _recovery_lock(
+    value: Any, label: str, *, allow_empty: bool = False
+) -> dict[str, Any]:
+    item = _exact_keys(value, {"sha256", "size_bytes"}, label)
+    _sha(item["sha256"], f"{label} SHA-256")
+    _positive_size(item["size_bytes"], f"{label} size", allow_zero=allow_empty)
+    if item["size_bytes"] == 0 and item["sha256"] != hashlib.sha256(b"").hexdigest():
+        fail(f"{label} empty-file SHA-256 is invalid")
+    return item
+
+
+def _recovery_self_id(
+    value: Mapping[str, Any], field: str, label: str
+) -> str:
+    identifier = _sha(value.get(field), f"{label} {field}")
+    body = dict(value)
+    body.pop(field, None)
+    if identifier != hashlib.sha256(_recovery_canonical_json_bytes(body)).hexdigest():
+        fail(f"{label} {field} does not match its canonical body")
+    return identifier
+
+
+def _canonical_recovery_snapshot(
+    root: Path, role: str, label: str
+) -> tuple[Snapshot, dict[str, Any]]:
+    relative = RECOVERY_PUBLIC_EVIDENCE_PATHS[role]
+    snapshot = read_snapshot(root, relative, label, maximum_bytes=4 * 1024 * 1024)
+    value = _mapping(load_json_bytes(snapshot.data, label), label)
+    if snapshot.data != _recovery_canonical_json_bytes(value):
+        fail(f"{label} is not canonical JSON bytes")
+    return snapshot, value
+
+
+def _validate_public_recovery_contract(value: Any) -> dict[str, Any]:
+    contract = _exact_keys(
+        value,
+        {
+            "schema_version",
+            "contract_id",
+            "status",
+            "donor",
+            "policy",
+            "variants",
+            "source_transition",
+            "qualification_report",
+        },
+        "public MCMC recovery contract",
+    )
+    if (
+        type(contract["schema_version"]) is not int
+        or contract["schema_version"] != 2
+        or contract["contract_id"] != RECOVERY_CONTRACT_ID
+        or contract["status"] != "ACCEPTED"
+    ):
+        fail("public MCMC recovery contract identity/status changed")
+
+    donor = _exact_keys(
+        contract["donor"],
+        {
+            "run_id",
+            "source_commit",
+            "source_tree",
+            "source_file_set_sha256",
+            "source_file_count",
+            "execution_environment",
+            "attestation_contract",
+            "source_archive",
+            "command_plan",
+            "numerical_runtime_manifest",
+            "start_challenge",
+            "start_signature",
+            "command_stdout",
+            "command_stderr",
+            "completion_attestation_present",
+        },
+        "public recovery donor",
+    )
+    _sha(donor["run_id"], "public recovery donor run id")
+    _git_sha(donor["source_commit"], "public recovery donor source commit")
+    _git_sha(donor["source_tree"], "public recovery donor source tree")
+    _sha(
+        donor["source_file_set_sha256"],
+        "public recovery donor source file-set SHA-256",
+    )
+    if type(donor["source_file_count"]) is not int or donor["source_file_count"] != 183:
+        fail("public recovery donor source file count differs from A7")
+    if donor["execution_environment"] != "local_ubuntu_22_04_wsl2":
+        fail("public recovery donor execution environment changed")
+    if donor["completion_attestation_present"] is not False:
+        fail("public recovery donor incorrectly claims a completion attestation")
+    for field in (
+        "attestation_contract",
+        "source_archive",
+        "command_plan",
+        "numerical_runtime_manifest",
+        "start_challenge",
+        "start_signature",
+        "command_stdout",
+        "command_stderr",
+    ):
+        _recovery_lock(
+            donor[field],
+            f"public recovery donor {field}",
+            allow_empty=field == "command_stdout",
+        )
+    if donor != RECOVERY_DONOR:
+        fail("public recovery donor differs from the exact qualified A7 evidence")
+
+    policy = _exact_keys(
+        contract["policy"],
+        {
+            "copy_policy",
+            "mcmc_reused",
+            "aggregates_and_downstream_recomputed",
+            "shards_per_variant",
+            "trials_per_shard",
+            "total_realizations",
+            "work_file_count",
+            "raw_file_count",
+            "total_file_count",
+            "total_size_bytes",
+            "mcmc_policy_sha256",
+            "work_size_bytes",
+            "raw_size_bytes",
+            "work_tree_sha256",
+            "raw_tree_sha256",
+        },
+        "public MCMC recovery policy",
+    )
+    expected_policy = {
+        "copy_policy": RECOVERY_COPY_POLICY,
+        "mcmc_reused": True,
+        "aggregates_and_downstream_recomputed": True,
+        "shards_per_variant": RECOVERY_SHARDS_PER_VARIANT,
+        "trials_per_shard": RECOVERY_TRIALS_PER_SHARD,
+        "total_realizations": RECOVERY_REALIZATIONS,
+        "work_file_count": RECOVERY_WORK_FILE_COUNT,
+        "raw_file_count": RECOVERY_RAW_FILE_COUNT,
+        "total_file_count": RECOVERY_TOTAL_FILE_COUNT,
+        "total_size_bytes": RECOVERY_TOTAL_SIZE_BYTES,
+        "mcmc_policy_sha256": RECOVERY_MCMC_POLICY_SHA256,
+        "work_size_bytes": RECOVERY_WORK_SIZE_BYTES,
+        "raw_size_bytes": RECOVERY_RAW_SIZE_BYTES,
+        "work_tree_sha256": RECOVERY_WORK_TREE_SHA256,
+        "raw_tree_sha256": RECOVERY_RAW_TREE_SHA256,
+    }
+    if policy != expected_policy:
+        fail("public MCMC recovery policy differs from the qualified donor")
+
+    variants = contract["variants"]
+    if not isinstance(variants, list) or len(variants) != len(RECOVERY_VARIANTS):
+        fail("public MCMC recovery contract must contain exactly three variants")
+    manifest_records: list[dict[str, Any]] = []
+    for expected, raw in zip(RECOVERY_VARIANTS, variants):
+        name, branch, measurement_mode, maximum_steps = expected
+        variant = _exact_keys(
+            raw,
+            {"name", "branch", "measurement_error_mode", "maximum_steps", "shards"},
+            f"public MCMC recovery variant {name}",
+        )
+        if {
+            "name": variant["name"],
+            "branch": variant["branch"],
+            "measurement_error_mode": variant["measurement_error_mode"],
+            "maximum_steps": variant["maximum_steps"],
+        } != {
+            "name": name,
+            "branch": branch,
+            "measurement_error_mode": measurement_mode,
+            "maximum_steps": maximum_steps,
+        }:
+            fail(f"public MCMC recovery variant policy changed: {name}")
+        shards = variant["shards"]
+        if not isinstance(shards, list) or len(shards) != RECOVERY_SHARDS_PER_VARIANT:
+            fail(f"public MCMC recovery shard count changed: {name}")
+        for shard_number, raw_shard in enumerate(shards):
+            shard = _exact_keys(
+                raw_shard,
+                {"shard", "work_manifest", "raw_manifest"},
+                f"public MCMC recovery {name} shard {shard_number}",
+            )
+            if type(shard["shard"]) is not int or shard["shard"] != shard_number:
+                fail(f"public MCMC recovery shard order changed: {name}")
+            work_lock = _recovery_lock(
+                shard["work_manifest"],
+                f"public MCMC recovery {name} shard {shard_number} work manifest",
+            )
+            raw_lock = _recovery_lock(
+                shard["raw_manifest"],
+                f"public MCMC recovery {name} shard {shard_number} raw manifest",
+            )
+            manifest_records.extend(
+                (
+                    {
+                        "path": (
+                            f"{name}/shard-{shard_number:02d}/"
+                            "SHA256SUMS_complete.txt"
+                        ),
+                        "role": "work_manifest",
+                        "variant": name,
+                        "shard": shard_number,
+                        "sha256": work_lock["sha256"],
+                        "size_bytes": work_lock["size_bytes"],
+                    },
+                    {
+                        "path": (
+                            f"{name}/shard-{shard_number:02d}/"
+                            f"SHA256SUMS_raw_chain_{branch}_production-"
+                            f"shard-{shard_number}.txt"
+                        ),
+                        "role": "raw_manifest",
+                        "variant": name,
+                        "shard": shard_number,
+                        "sha256": raw_lock["sha256"],
+                        "size_bytes": raw_lock["size_bytes"],
+                    },
+                )
+            )
+
+    work_manifest_bytes = sum(
+        record["size_bytes"]
+        for record in manifest_records
+        if record["role"] == "work_manifest"
+    )
+    raw_manifest_bytes = sum(
+        record["size_bytes"]
+        for record in manifest_records
+        if record["role"] == "raw_manifest"
+    )
+    if (
+        len(manifest_records) != RECOVERY_SHARD_MANIFEST_COUNT
+        or work_manifest_bytes != RECOVERY_WORK_MANIFEST_TOTAL_SIZE_BYTES
+        or raw_manifest_bytes != RECOVERY_RAW_MANIFEST_TOTAL_SIZE_BYTES
+        or work_manifest_bytes + raw_manifest_bytes
+        != RECOVERY_SHARD_MANIFEST_TOTAL_SIZE_BYTES
+        or hashlib.sha256(
+            _recovery_canonical_json_bytes(manifest_records)
+        ).hexdigest()
+        != RECOVERY_SHARD_MANIFEST_RECORDS_SHA256
+    ):
+        fail("public MCMC shard-manifest locks differ from the exact A7 donor set")
+
+    _recovery_lock(
+        contract["source_transition"], "public MCMC source-transition lock"
+    )
+    qualification = _exact_keys(
+        contract["qualification_report"],
+        {"report_id", "sha256", "size_bytes"},
+        "public MCMC recovery qualification lock",
+    )
+    _sha(qualification["report_id"], "public recovery qualification report id")
+    _recovery_lock(
+        {"sha256": qualification["sha256"], "size_bytes": qualification["size_bytes"]},
+        "public MCMC recovery qualification lock",
+    )
+    return contract
+
+
+def _validate_public_source_transition(
+    value: Any,
+    *,
+    donor: Mapping[str, Any],
+    source: Mapping[str, Any],
+) -> dict[str, Any]:
+    report = _exact_keys(
+        value,
+        {
+            "schema_version",
+            "report_id",
+            "transition_id",
+            "status",
+            "from_source",
+            "to_source",
+            "protected_paths",
+        },
+        "public MCMC source-transition report",
+    )
+    if (
+        type(report["schema_version"]) is not int
+        or report["schema_version"] != 1
+        or report["transition_id"] != RECOVERY_TRANSITION_ID
+        or report["status"] != "PASS"
+    ):
+        fail("public MCMC source-transition identity/status changed")
+    _recovery_self_id(report, "report_id", "public MCMC source-transition report")
+    expected_from = {
+        "commit": donor["source_commit"],
+        "tree": donor["source_tree"],
+        "archive_sha256": donor["source_archive"]["sha256"],
+        "archive_size_bytes": donor["source_archive"]["size_bytes"],
+    }
+    expected_to = dict(source)
+    if report["from_source"] != expected_from or report["to_source"] != expected_to:
+        fail("public MCMC source-transition endpoints changed")
+
+    expected_paths = RECOVERY_PROTECTED_PATHS
+    if (
+        len(expected_paths) != 40
+        or len(set(expected_paths)) != 40
+        or expected_paths != tuple(sorted(expected_paths))
+        or set(RECOVERY_ALLOWED_DOWNSTREAM_A7_RECORDS)
+        != RECOVERY_ALLOWED_DOWNSTREAM_CHANGES
+        or not RECOVERY_ALLOWED_DOWNSTREAM_CHANGES.issubset(expected_paths)
+    ):
+        fail("internal public MCMC protected-path policy is invalid")
+    entries = report["protected_paths"]
+    if not isinstance(entries, list) or len(entries) != len(expected_paths):
+        fail("public MCMC source-transition protected path count changed")
+    observed_paths: list[str] = []
+    from_records: list[dict[str, Any]] = []
+    to_records: list[dict[str, Any]] = []
+    for expected_path, raw in zip(expected_paths, entries):
+        item = _exact_keys(
+            raw,
+            {
+                "path",
+                "from_sha256",
+                "from_size_bytes",
+                "to_sha256",
+                "to_size_bytes",
+                "bit_identical",
+            },
+            f"public MCMC source transition {expected_path}",
+        )
+        path = _safe_relative(item["path"], "public MCMC protected path")
+        observed_paths.append(path)
+        _sha(item["from_sha256"], f"public MCMC {path} source SHA-256")
+        _sha(item["to_sha256"], f"public MCMC {path} target SHA-256")
+        _positive_size(item["from_size_bytes"], f"public MCMC {path} source size")
+        _positive_size(item["to_size_bytes"], f"public MCMC {path} target size")
+        allowed_downstream_change = path in RECOVERY_ALLOWED_DOWNSTREAM_CHANGES
+        bytes_changed = (
+            item["from_sha256"], item["from_size_bytes"]
+        ) != (item["to_sha256"], item["to_size_bytes"])
+        if (
+            path != expected_path
+            or item["bit_identical"] is not (not allowed_downstream_change)
+            or bytes_changed != allowed_downstream_change
+        ):
+            fail(
+                f"public MCMC source-transition policy mismatch across A7 to A11: "
+                f"{expected_path}"
+            )
+        if allowed_downstream_change:
+            expected_from = RECOVERY_ALLOWED_DOWNSTREAM_A7_RECORDS[path]
+            if (
+                item["from_sha256"] != expected_from["sha256"]
+                or item["from_size_bytes"] != expected_from["size_bytes"]
+            ):
+                fail(f"public MCMC A7 downstream source record changed: {path}")
+        from_records.append(
+            {
+                "path": path,
+                "sha256": item["from_sha256"],
+                "size_bytes": item["from_size_bytes"],
+            }
+        )
+        to_records.append(
+            {
+                "path": path,
+                "sha256": item["to_sha256"],
+                "size_bytes": item["to_size_bytes"],
+            }
+        )
+    if tuple(observed_paths) != expected_paths:
+        fail("public MCMC protected path set/order changed")
+    if (
+        sum(record["size_bytes"] for record in from_records)
+        != RECOVERY_PROTECTED_A7_TOTAL_SIZE_BYTES
+        or hashlib.sha256(
+            _recovery_canonical_json_bytes(from_records)
+        ).hexdigest()
+        != RECOVERY_PROTECTED_A7_RECORDS_SHA256
+        or sum(record["size_bytes"] for record in to_records)
+        != RECOVERY_PROTECTED_A11_TOTAL_SIZE_BYTES
+        or hashlib.sha256(
+            _recovery_canonical_json_bytes(to_records)
+        ).hexdigest()
+        != RECOVERY_PROTECTED_A11_RECORDS_SHA256
+    ):
+        fail("public MCMC source-transition records differ from the exact A7/A11 set")
+    return report
+
+
+def _validate_public_recovery_qualification(
+    value: Any,
+    *,
+    donor_run_id: str,
+    transition_sha256: str,
+) -> dict[str, Any]:
+    report = _exact_keys(
+        value,
+        {
+            "schema_version",
+            "report_id",
+            "status",
+            "decision",
+            "donor_run_id",
+            "recovery_contract_id",
+            "source_transition_sha256",
+            "completion_attestation_present",
+            "work_manifest_count",
+            "raw_manifest_count",
+            "mcmc_realizations",
+            "total_file_count",
+            "total_size_bytes",
+        },
+        "public MCMC recovery qualification report",
+    )
+    expected = {
+        "schema_version": 1,
+        "status": "PASS",
+        "decision": RECOVERY_DECISION,
+        "donor_run_id": donor_run_id,
+        "recovery_contract_id": RECOVERY_CONTRACT_ID,
+        "source_transition_sha256": transition_sha256,
+        "completion_attestation_present": False,
+        "work_manifest_count": len(RECOVERY_VARIANTS) * RECOVERY_SHARDS_PER_VARIANT,
+        "raw_manifest_count": len(RECOVERY_VARIANTS) * RECOVERY_SHARDS_PER_VARIANT,
+        "mcmc_realizations": RECOVERY_REALIZATIONS,
+        "total_file_count": RECOVERY_TOTAL_FILE_COUNT,
+        "total_size_bytes": RECOVERY_TOTAL_SIZE_BYTES,
+    }
+    if {field: report.get(field) for field in expected} != expected:
+        fail("public MCMC recovery qualification decision changed")
+    _recovery_self_id(report, "report_id", "public MCMC recovery qualification report")
+    return report
+
+
+def _verify_recovery_git_lineage_if_available(
+    root: Path,
+    source: Mapping[str, Any],
+    donor: Mapping[str, Any],
+) -> None:
+    """Require the recovery source A11 to be the sole child of donor A7."""
+
+    marker = root / ".git"
+    if not marker.exists() and not marker.is_symlink():
+        return
+    try:
+        marker_metadata = marker.lstat()
+    except OSError as error:
+        fail(f"cannot inspect Git metadata marker for recovery lineage: {error}")
+    if _is_link_or_reparse(marker_metadata):
+        fail("Git metadata marker for recovery lineage is a link or reparse point")
+    if not (
+        stat.S_ISDIR(marker_metadata.st_mode) or stat.S_ISREG(marker_metadata.st_mode)
+    ):
+        fail("Git metadata marker for recovery lineage is invalid")
+    executable = shutil.which("git")
+    if executable is None:
+        fail("Git is required to verify MCMC recovery lineage in a Git checkout")
+
+    def run(arguments: list[str], label: str) -> str:
+        try:
+            result = subprocess.run(
+                [executable, "-C", str(root), *arguments],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=False,
+                check=False,
+            )
+        except OSError as error:
+            fail(f"cannot execute Git for {label}: {error}")
+        if result.returncode != 0:
+            fail(f"Git could not verify {label}")
+        try:
+            return result.stdout.decode("ascii", errors="strict").strip()
+        except UnicodeDecodeError as error:
+            fail(f"Git returned non-ASCII {label}: {error}")
+
+    source_commit = source["commit"]
+    donor_commit = donor["source_commit"]
+    lineage = run(
+        ["rev-list", "--parents", "-n", "1", source_commit],
+        "MCMC recovery source parent",
+    ).split()
+    if lineage != [source_commit, donor_commit]:
+        fail("MCMC recovery source is not the exact sole child of donor A7")
+    if run(
+        ["rev-parse", f"{source_commit}^{{tree}}"],
+        "MCMC recovery source tree",
+    ) != source["tree"]:
+        fail("MCMC recovery source commit does not resolve to its locked tree")
+    if run(
+        ["rev-parse", f"{donor_commit}^{{tree}}"],
+        "MCMC recovery donor tree",
+    ) != donor["source_tree"]:
+        fail("MCMC recovery donor commit does not resolve to the exact A7 tree")
+
+
+def _verify_public_recovery_evidence(
+    root: Path,
+    public_report: Mapping[str, Any],
+    source: Mapping[str, Any],
+    release_source: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bind public recovery documents to both signed results and release source."""
+
+    recovery = _mapping(
+        _mapping(public_report.get("production_design"), "public production design").get(
+            "mcmc_recovery"
+        ),
+        "public production MCMC recovery disclosure",
+    )
+    candidates = {
+        role: root / Path(*PurePosixPath(relative).parts)
+        for role, relative in RECOVERY_PUBLIC_EVIDENCE_PATHS.items()
+    }
+    if recovery.get("mcmc_reused") is False:
+        if any(os.path.lexists(candidate) for candidate in candidates.values()):
+            fail("full-run release contains unexpected MCMC recovery evidence")
+        return {"status": "NOT_APPLICABLE", "mcmc_reused": False}
+    if recovery.get("mcmc_reused") is not True:
+        fail("public production report lacks an exact MCMC provenance decision")
+
+    manifest_snapshot = read_snapshot(
+        root, "MANIFEST.sha256", "recovery-evidence repository manifest", maximum_bytes=16 * 1024 * 1024
+    )
+    manifest_entries = _parse_repository_manifest(manifest_snapshot)
+    git_checkout = (root / ".git").exists() or (root / ".git").is_symlink()
+    expected_payload = (
+        release_source["payload_manifest_sha256"]
+        if git_checkout
+        else release_source["public_payload_manifest_sha256"]
+    )
+    if hashlib.sha256(_payload_manifest_bytes(manifest_entries)).hexdigest() != expected_payload:
+        fail("recovery-evidence manifest differs from the release payload lock")
+
+    contract_snapshot, contract_value = _canonical_recovery_snapshot(
+        root, "contract", "public MCMC recovery contract"
+    )
+    transition_snapshot, transition_value = _canonical_recovery_snapshot(
+        root, "source_transition", "public MCMC source-transition report"
+    )
+    qualification_snapshot, qualification_value = _canonical_recovery_snapshot(
+        root, "qualification", "public MCMC recovery qualification report"
+    )
+    snapshots = {
+        "contract": contract_snapshot,
+        "source_transition": transition_snapshot,
+        "qualification": qualification_snapshot,
+    }
+    for role, snapshot in snapshots.items():
+        relative = RECOVERY_PUBLIC_EVIDENCE_PATHS[role]
+        if manifest_entries.get(relative) != snapshot.sha256:
+            fail(f"public MCMC recovery {role} is not bound by MANIFEST.sha256")
+
+    contract = _validate_public_recovery_contract(contract_value)
+    donor = _mapping(contract["donor"], "public recovery donor")
+    _verify_recovery_git_lineage_if_available(root, source, donor)
+    transition = _validate_public_source_transition(
+        transition_value, donor=donor, source=source
+    )
+    qualification = _validate_public_recovery_qualification(
+        qualification_value,
+        donor_run_id=donor["run_id"],
+        transition_sha256=transition_snapshot.sha256,
+    )
+    if contract["source_transition"] != {
+        "sha256": transition_snapshot.sha256,
+        "size_bytes": transition_snapshot.size_bytes,
+    }:
+        fail("public source-transition bytes differ from the recovery contract lock")
+    if contract["qualification_report"] != {
+        "report_id": qualification["report_id"],
+        "sha256": qualification_snapshot.sha256,
+        "size_bytes": qualification_snapshot.size_bytes,
+    }:
+        fail("public qualification bytes differ from the recovery contract lock")
+
+    expected_disclosure = {
+        "donor_run_id": donor["run_id"],
+        "donor_source_commit": donor["source_commit"],
+        "donor_source_tree": donor["source_tree"],
+        "donor_source_archive_sha256": donor["source_archive"]["sha256"],
+        "donor_source_archive_size_bytes": donor["source_archive"]["size_bytes"],
+        "donor_source_file_set_sha256": donor["source_file_set_sha256"],
+        "donor_source_file_count": donor["source_file_count"],
+        "donor_attestation_contract_sha256": donor["attestation_contract"]["sha256"],
+        "donor_attestation_contract_size_bytes": donor["attestation_contract"]["size_bytes"],
+        "donor_command_plan_sha256": donor["command_plan"]["sha256"],
+        "donor_numerical_runtime_sha256": donor["numerical_runtime_manifest"]["sha256"],
+        "donor_start_challenge_sha256": donor["start_challenge"]["sha256"],
+        "donor_start_signature_sha256": donor["start_signature"]["sha256"],
+        "recovery_contract_sha256": contract_snapshot.sha256,
+        "recovery_contract_size_bytes": contract_snapshot.size_bytes,
+        "mcmc_policy_sha256": contract["policy"]["mcmc_policy_sha256"],
+        "recovery_source_commit": transition["to_source"]["commit"],
+        "recovery_source_tree": transition["to_source"]["tree"],
+        "source_transition_report_id": transition["report_id"],
+        "source_transition_report_sha256": transition_snapshot.sha256,
+        "qualification_report_id": qualification["report_id"],
+        "qualification_report_sha256": qualification_snapshot.sha256,
+        "reused_realizations": contract["policy"]["total_realizations"],
+        "imported_work_file_count": contract["policy"]["work_file_count"],
+        "imported_work_size_bytes": contract["policy"]["work_size_bytes"],
+        "imported_work_tree_sha256": contract["policy"]["work_tree_sha256"],
+        "imported_raw_file_count": contract["policy"]["raw_file_count"],
+        "imported_raw_size_bytes": contract["policy"]["raw_size_bytes"],
+        "imported_raw_tree_sha256": contract["policy"]["raw_tree_sha256"],
+    }
+    for field, expected in expected_disclosure.items():
+        if recovery.get(field) != expected:
+            fail(f"public MCMC recovery evidence does not bind signed field {field}")
+    if (
+        recovery["donor_completion_attestation_present_in_qualified_evidence_set"]
+        is not donor["completion_attestation_present"]
+        or recovery["aggregates_and_downstream_recomputed"]
+        is not contract["policy"]["aggregates_and_downstream_recomputed"]
+        or recovery["imported_work_size_bytes"] + recovery["imported_raw_size_bytes"]
+        != contract["policy"]["total_size_bytes"]
+    ):
+        fail("public MCMC recovery policy does not bind the signed production report")
+
+    for role, snapshot in snapshots.items():
+        recheck_snapshot(snapshot, f"public MCMC recovery {role}")
+    recheck_snapshot(manifest_snapshot, "recovery-evidence repository manifest")
+    return {
+        "status": "PASS",
+        "mcmc_reused": True,
+        "contract_sha256": contract_snapshot.sha256,
+        "source_transition_sha256": transition_snapshot.sha256,
+        "qualification_sha256": qualification_snapshot.sha256,
+    }
 
 
 def _rederive_headline_q50_from_draws(
@@ -1870,6 +3222,7 @@ def _verify_results_archive(
         fail("results SHA-256 sidecar differs from the release-acceptance lock")
 
     expected_paths = list(_expected_results_paths())
+    policy = _public_results_policy()
     expected_members = [f"{RESULTS_ARCHIVE_PREFIX}/{name}" for name in expected_paths]
     observed: dict[str, tuple[str, int]] = {}
     embedded: dict[str, bytes] = {}
@@ -1925,9 +3278,11 @@ def _verify_results_archive(
                     if size != info.file_size:
                         fail(f"results ZIP member size changed while read: {relative}")
                     observed[relative] = (member_digest.hexdigest(), size)
+                    _validate_public_tabular_header(archive, info, relative)
                     if relative in {
                         PUBLIC_RESULTS_MANIFEST_NAME,
                         PUBLIC_RESULTS_REPORT_NAME,
+                        *policy.manifest_targets,
                         *HEADLINE_SUMMARY_PATHS.values(),
                         *HEADLINE_DRAW_PATHS.values(),
                     }:
@@ -1954,7 +3309,28 @@ def _verify_results_archive(
         {"path": relative, "sha256": observed[relative][0], "size_bytes": observed[relative][1]}
         for relative in expected_paths
     ]
-    _validate_output_entries(reconstructed, local_report, "results ZIP output inventory")
+    if [item["path"] for item in reconstructed] != list(policy.public_paths):
+        fail("results ZIP inventory differs from the exact public projection")
+    passthrough_entries = [
+        {
+            "path": relative,
+            "sha256": observed[relative][0],
+            "size_bytes": observed[relative][1],
+        }
+        for relative in policy.passthrough_paths
+    ]
+    passthrough_binding = {
+        "public_projection_passthrough_file_count": len(passthrough_entries),
+        "public_projection_passthrough_total_size_bytes": sum(
+            item["size_bytes"] for item in passthrough_entries
+        ),
+        "public_projection_passthrough_file_set_sha256": hashlib.sha256(
+            canonical_json_bytes(passthrough_entries)
+        ).hexdigest(),
+    }
+    for field, expected in passthrough_binding.items():
+        if local_report.get(field) != expected:
+            fail(f"results ZIP signed passthrough binding differs: {field}")
     manifest_data = embedded[PUBLIC_RESULTS_MANIFEST_NAME]
     if hashlib.sha256(manifest_data).hexdigest() != archive_lock["source_manifest_sha256"]:
         fail("embedded results manifest differs from the release-acceptance lock")
@@ -1965,9 +3341,42 @@ def _verify_results_archive(
     for relative, expected_digest in public_manifest.items():
         if observed[relative][0] != expected_digest:
             fail(f"embedded results manifest hash differs for {relative}")
+    for manifest_path, (_private_targets, public_targets) in policy.manifest_targets.items():
+        scoped = _parse_public_scoped_manifest(embedded[manifest_path], manifest_path)
+        expected_scoped = {
+            target: observed[target][0] for target in public_targets
+        }
+        if scoped != expected_scoped:
+            fail(f"public scoped manifest differs from its exact safe target set: {manifest_path}")
     report = _validate_public_results_report(
         embedded[PUBLIC_RESULTS_REPORT_NAME], observed, source
     )
+    projection = report["public_projection"]
+    report_binding = {
+        "excluded_file_count": local_report[
+            "public_projection_excluded_file_count"
+        ],
+        "excluded_file_set_sha256": local_report[
+            "public_projection_excluded_file_set_sha256"
+        ],
+        "passthrough_file_count": local_report[
+            "public_projection_passthrough_file_count"
+        ],
+        "passthrough_file_set_sha256": local_report[
+            "public_projection_passthrough_file_set_sha256"
+        ],
+        "passthrough_total_size_bytes": local_report[
+            "public_projection_passthrough_total_size_bytes"
+        ],
+        "policy_sha256": local_report["public_projection_policy_sha256"],
+        "public_file_count": local_report["public_projection_file_count"],
+        "rewritten_scoped_manifest_count": local_report[
+            "public_projection_rewritten_manifest_count"
+        ],
+    }
+    for field, expected in report_binding.items():
+        if projection[field] != expected:
+            fail(f"projected public report differs from signed local binding: {field}")
     headline_q50 = _signed_headline_q50(embedded, posterior)
     evidence = LargeFileEvidence(
         path=Path(archive_path),
@@ -2278,8 +3687,26 @@ def _validate_local_report(
         "source_archive_size_bytes",
         "output_file_count",
         "output_total_size_bytes",
+        "public_projection_file_count",
+        "public_projection_excluded_file_count",
+        "public_projection_passthrough_file_count",
+        "public_projection_passthrough_total_size_bytes",
+        "public_projection_rewritten_manifest_count",
     ):
         _positive_size(item[field], f"local report {field}")
+    projection = _public_results_policy()
+    if (
+        item["output_file_count"] != len(projection.private_paths)
+        or item["public_projection_policy_sha256"] != projection.policy_sha256
+        or item["public_projection_file_count"] != len(projection.public_paths)
+        or item["public_projection_excluded_file_count"]
+        != len(projection.excluded_paths)
+        or item["public_projection_passthrough_file_count"]
+        != len(projection.passthrough_paths)
+        or item["public_projection_rewritten_manifest_count"]
+        != len(projection.manifest_targets)
+    ):
+        fail("local report public-projection binding differs from the source policy")
     results = item["command_results"]
     if not isinstance(results, list) or not results:
         fail("local public report command results are empty")
@@ -2630,6 +4057,30 @@ def _verify_freeze_cross_bindings(
             "output_file_set_sha256": report["output_file_set_sha256"],
             "output_file_count": report["output_file_count"],
             "output_total_size_bytes": report["output_total_size_bytes"],
+            "public_projection_policy_sha256": report[
+                "public_projection_policy_sha256"
+            ],
+            "public_projection_file_count": report[
+                "public_projection_file_count"
+            ],
+            "public_projection_excluded_file_count": report[
+                "public_projection_excluded_file_count"
+            ],
+            "public_projection_excluded_file_set_sha256": report[
+                "public_projection_excluded_file_set_sha256"
+            ],
+            "public_projection_passthrough_file_count": report[
+                "public_projection_passthrough_file_count"
+            ],
+            "public_projection_passthrough_total_size_bytes": report[
+                "public_projection_passthrough_total_size_bytes"
+            ],
+            "public_projection_passthrough_file_set_sha256": report[
+                "public_projection_passthrough_file_set_sha256"
+            ],
+            "public_projection_rewritten_manifest_count": report[
+                "public_projection_rewritten_manifest_count"
+            ],
         }
         for field in LOCAL_BINDING_FIELDS:
             _expect(
@@ -2951,6 +4402,15 @@ def verify_release_acceptance(
     evidence.pop("_local_report", None)
     evidence.pop("_headline_q50", None)
     evidence["headline_q50"] = signed_headline_q50
+    recovery_evidence = _verify_public_recovery_evidence(
+        root,
+        public_report,
+        evidence["computational_source"],
+        evidence["release_source"],
+    )
+    recheck_large_file(archive_evidence, "results ZIP archive")
+    recheck_snapshot(checksum_snapshot, "results SHA-256 sidecar")
+    evidence["mcmc_recovery_evidence"] = recovery_evidence
     return evidence
 
 

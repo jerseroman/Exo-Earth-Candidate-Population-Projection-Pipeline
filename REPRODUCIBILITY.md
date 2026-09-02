@@ -32,6 +32,21 @@ legacy-sensitivity aggregates and their fresh Galactic propagations.
 Final publication is valid only from the exact `v4.0.4` tag whose commit passes
 the release-acceptance, repository-manifest, license, and public-package gates.
 
+The completed run first produces an exact, signed 88-file private qualification
+tree. Publication never exposes that tree directly. The results builder applies
+`provenance/PUBLIC_RESULTS_POLICY_v4_0_4.json` to create an exact 70-file
+release projection: 18 row-level DR25 or serialized MCMC-trajectory files are
+absent, five affected directory manifests are regenerated, 63 files remain
+byte-identical to the signed tree, and the public report plus root manifest are
+regenerated and cross-bound to the signed exclusion and pass-through digests.
+The 13 explicitly classified retained derived diagnostics are products of the
+analysis, not third-party source rows or complete log-probability-bearing chain
+trajectories. The two likelihood-grid selected-point tables retain limited
+selection provenance (`posterior_row_number`, `global_trial`,
+`production_step`, and `walker`) needed to reproduce that audit, but not the
+full serialized chains. This separate results-archive scope is not the older
+source-release audit bundle scope.
+
 ### Hash-locked Python environment
 
 `requirements.in` is the human-maintained list of direct runtime, audit,
@@ -98,9 +113,12 @@ Every production runner also writes its complete unthinned post-burn chain to a
 separate private directory. The aggregate gate requires all 400 raw-chain
 identities and stable byte snapshots, independently recomputes the full
 checkpoint tau/stability/ESS decision, and verifies that each public shard CSV
-is the exact prescribed thinning. The public aggregate retains only a
-manifest-bound audit report and audit-helper SHA-256; raw binaries, their
-private indexes and their private manifests are excluded.
+is the exact prescribed thinning. Qualification retains the prescribed thinned
+chain and row-level perturbation evidence only inside the signed private
+88-file tree. The results projection excludes those serialized chain tables and
+row-level perturbation tables, while retaining only the explicitly classified
+derived and aggregate diagnostics. Raw binaries, their private indexes and
+their private manifests remain excluded.
 Each chain must also contain the complete, non-duplicated walker/step grid
 implied by its declared completed production length and thinning. The gate then
 requires adaptive convergence, successful optimization, valid positive
