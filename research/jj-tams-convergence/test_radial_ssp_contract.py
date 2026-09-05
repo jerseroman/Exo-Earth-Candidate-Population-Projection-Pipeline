@@ -282,6 +282,10 @@ result = {{
                 "public_key": verifier.secure.signing_public_key(cls.key_b),
             },
         ]
+        contract["artifact_sets"][0]["role"] = "qualification_candidate"
+        contract["artifact_sets"][0]["production_accepted"] = False
+        contract["artifact_sets"][0]["qualified_public_evidence_sha256"] = None
+        contract["artifact_sets"][0]["qualification_report"] = None
         cls.contract = cls.root / "RADIAL_SSP_CONTRACT.json"
         write_json(cls.contract, contract)
         cls.candidate_id = contract["artifact_sets"][0]["id"]

@@ -32,6 +32,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from scripts import build_public_package as package  # noqa: E402
+from scripts import build_v404_results_package as results_package  # noqa: E402
 from scripts import verify_public_package_roundtrip as roundtrip  # noqa: E402
 from scripts import verify_local_run_attestation as local_gate  # noqa: E402
 from scripts import verify_v404_release_acceptance as gate  # noqa: E402
@@ -204,6 +205,15 @@ class ReleaseFixture:
         (self.root / "scripts" / "verify_v404_release_acceptance.py").write_bytes(
             self.verifier_bytes
         )
+        self.model_bytes = b"fixture computational model\n"
+        model_path = (
+            self.root
+            / "research"
+            / "bryson-joint-posterior"
+            / "run_hab2_joint_posterior.py"
+        )
+        model_path.parent.mkdir(parents=True)
+        model_path.write_bytes(self.model_bytes)
         (self.root / "README.md").write_bytes(b"fixture release payload\n")
         self.recovery_disclosure: dict[str, object] | None = None
         self._prepare_results_assets()
@@ -344,10 +354,14 @@ class ReleaseFixture:
         private_paths = list(policy.private_paths)
         public_paths = list(policy.public_paths)
 
-        def compressed_csv(data: bytes) -> bytes:
+        def compressed_csv(data: bytes, filename: str = "") -> bytes:
             target = io.BytesIO()
             with gzip.GzipFile(
-                filename="", mode="wb", compresslevel=9, fileobj=target, mtime=0
+                filename=filename,
+                mode="wb",
+                compresslevel=9,
+                fileobj=target,
+                mtime=0,
             ) as stream:
                 stream.write(data)
             return target.getvalue()
@@ -382,8 +396,10 @@ class ReleaseFixture:
                 f"{q50},1\n"
                 f"{q50 + 10.0},1\n"
             ).encode("utf-8")
-            private_members[gate.HEADLINE_DRAW_PATHS[branch]] = compressed_csv(draw_csv)
-            private_members[relative] = gate.canonical_json_bytes(
+            private_members[gate.HEADLINE_DRAW_PATHS[branch]] = compressed_csv(
+                draw_csv, f"galactic_posterior_draws_{branch}.csv"
+            )
+            private_members[relative] = gate.production_summary_json_bytes(
                 {
                     "branch": branch,
                     "source_posterior_samples": {
@@ -450,8 +466,8 @@ class ReleaseFixture:
             "total_runtime_seconds": 1.0,
             "completed_utc": "2026-08-30T01:00:00Z",
         }
-        private_members[gate.PUBLIC_RESULTS_REPORT_NAME] = gate.canonical_json_bytes(
-            private_report
+        private_members[gate.PUBLIC_RESULTS_REPORT_NAME] = (
+            gate._local_production_report_json_bytes(private_report)
         )
         private_manifest_paths = sorted(
             set(private_paths) - {gate.PUBLIC_RESULTS_MANIFEST_NAME}
@@ -676,7 +692,10 @@ class ReleaseFixture:
             "contract_sha256": digest(contract_path.read_bytes()),
             "artifact_set_id": self.accepted_ids["host"],
             "qualification_reports": {
-                self.report_names["host"]: digest(report_path.read_bytes())
+                self.report_names["host"]: {
+                    "sha256": digest(report_path.read_bytes()),
+                    "size_bytes": report_path.stat().st_size,
+                }
             },
             "role": role,
         }
@@ -793,6 +812,8 @@ class ReleaseFixture:
         age_contract = self.root / Path(*gate.CONTRACT_PATHS["age"].split("/"))
         age_report = self.root / "provenance" / self.report_names["age"]
         sensitivity_roots = copy.deepcopy(shared_roots)
+        for field in gate.LOCAL_PUBLIC_PROJECTION_BINDING_FIELDS:
+            sensitivity_roots["signed_local_production_run"].pop(field)
         sensitivity_roots["age_cut_sensitivity"] = {
             "status": "PASS",
             "age_ssp_contract_sha256": digest(age_contract.read_bytes()),
@@ -936,8 +957,13 @@ class ReleaseFixture:
         for relative in gate.RECOVERY_PROTECTED_PATHS:
             source_path = ROOT / Path(*PurePosixPath(relative).parts)
             source_data = source_path.read_bytes()
-            to_digest = digest(source_data)
-            to_size = len(source_data)
+            a11_record = gate.RECOVERY_POSTCOMPUTATION_A11_RECORDS.get(relative)
+            to_digest = (
+                a11_record["sha256"] if a11_record is not None else digest(source_data)
+            )
+            to_size = (
+                a11_record["size_bytes"] if a11_record is not None else len(source_data)
+            )
             allowed_change = relative in gate.RECOVERY_ALLOWED_DOWNSTREAM_CHANGES
             donor_record = gate.RECOVERY_ALLOWED_DOWNSTREAM_A7_RECORDS.get(
                 relative,
@@ -1107,6 +1133,10 @@ class ReleaseFixture:
     def manifest_files(self, *, include_acceptance: bool) -> list[Path]:
         files = [
             self.root / "README.md",
+            self.root
+            / "research"
+            / "bryson-joint-posterior"
+            / "run_hab2_joint_posterior.py",
             self.root / "scripts" / "verify_v404_release_acceptance.py",
         ]
         if include_acceptance:
@@ -1286,12 +1316,12 @@ class ReleaseAcceptanceTests(unittest.TestCase):
         self.fixture._write_reports_and_contracts()
         self.fixture._write_freezes()
         if code_drift:
-            self.fixture.verifier_bytes = b"fixture release verifier code drift\n"
             (
                 self.fixture.root
-                / "scripts"
-                / "verify_v404_release_acceptance.py"
-            ).write_bytes(self.fixture.verifier_bytes)
+                / "research"
+                / "bryson-joint-posterior"
+                / "run_hab2_joint_posterior.py"
+            ).write_bytes(b"fixture computational code drift\n")
         self.fixture._write_acceptance()
         add_manifest_tree()
         git("commit", "-q", "-m", "pre-final release B")
@@ -2186,13 +2216,13 @@ class ReleaseAcceptanceTests(unittest.TestCase):
         locked_projection = acceptance["release_source"][
             "computational_projection_manifest_sha256"
         ]
-        verifier = (
-            self.fixture.root / "scripts" / "verify_v404_release_acceptance.py"
+        model = (
+            self.fixture.root
+            / "research"
+            / "bryson-joint-posterior"
+            / "run_hab2_joint_posterior.py"
         )
-        verifier.write_bytes(b"coherently rebased but post-computation code\n")
-        acceptance["release_source"]["acceptance_verifier_sha256"] = digest(
-            verifier.read_bytes()
-        )
+        model.write_bytes(b"coherently rebased but post-computation code\n")
         acceptance["release_source"]["payload_manifest_sha256"] = (
             self.fixture.payload_manifest_sha256()
         )
@@ -2212,6 +2242,21 @@ class ReleaseAcceptanceTests(unittest.TestCase):
             gate.ReleaseAcceptanceError, "computational projection differs"
         ):
             self.verify()
+
+    def test_scoped_manifest_accepts_signed_producer_order(self) -> None:
+        data = (
+            ("1" * 64 + "  z-last.csv\n")
+            + ("2" * 64 + "  a-first.csv\n")
+        ).encode("ascii")
+        self.assertEqual(
+            results_package.parse_scoped_manifest(
+                data, "aggregates/example/SHA256SUMS_example.txt"
+            ),
+            {
+                "aggregates/example/z-last.csv": "1" * 64,
+                "aggregates/example/a-first.csv": "2" * 64,
+            },
+        )
 
     def test_no_git_coherent_public_rebase_fails_external_source_anchor(self) -> None:
         with self.fixture.trusted_source_anchor() as (archive, checksum):
@@ -2298,7 +2343,7 @@ class ReleaseAcceptanceTests(unittest.TestCase):
             embedded[constant_path], "fixture constant propagation summary"
         )
         constant["posterior_quantiles"]["Lambda_EE"]["q50"] = 999_999_999.0
-        embedded[constant_path] = gate.canonical_json_bytes(constant)
+        embedded[constant_path] = gate.production_summary_json_bytes(constant)
         with self.assertRaisesRegex(
             gate.ReleaseAcceptanceError, "differs from the rederived accepted draws"
         ):
@@ -2326,6 +2371,8 @@ class ReleaseAcceptanceTests(unittest.TestCase):
         acceptance = self.fixture._acceptance_document()
         allowed = gate.post_computation_allowed_paths(acceptance)
         self.assertIn("provenance/RELEASE_4_0_4_CHANGE_RECORD.json", allowed)
+        self.assertIn("scripts/build_public_package.py", allowed)
+        self.assertIn("scripts/verify_public_package_roundtrip.py", allowed)
         self.assertTrue(
             gate.is_post_computation_allowed_path(
                 "provenance/RELEASE_4_0_4_CHANGE_RECORD.json", allowed
@@ -2410,6 +2457,19 @@ class ReleaseAcceptanceTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "project version differs"):
             package.validate_project_version("4.0.5")
 
+    def test_roundtrip_runtime_imports_sys_for_subprocess(self) -> None:
+        self.assertIs(roundtrip.sys, sys)
+
+    def test_roundtrip_make_uses_the_running_verified_interpreter(self) -> None:
+        source = Path("/trusted/source.zip")
+        checksum = Path("/trusted/PUBLIC_SHA256SUMS")
+        with mock.patch.dict(roundtrip.os.environ, {}, clear=True):
+            environment = roundtrip.verification_environment(source, checksum)
+        self.assertEqual(environment["PYTHON"], sys.executable)
+        self.assertEqual(environment["PYTHONDONTWRITEBYTECODE"], "1")
+        self.assertEqual(environment["V404_TRUSTED_SOURCE_ARCHIVE"], str(source))
+        self.assertEqual(environment["V404_TRUSTED_SOURCE_CHECKSUM"], str(checksum))
+
     def test_direct_source_packager_rechecks_captured_file_identity(self) -> None:
         with tempfile.TemporaryDirectory(prefix="v404-source-snapshot-") as temporary:
             root = Path(temporary)
@@ -2450,6 +2510,26 @@ class ReleaseAcceptanceTests(unittest.TestCase):
                     directory, "release.zip", b"attacker bytes", "test archive"
                 )
             self.assertEqual(victim.read_bytes(), b"victim-must-survive\n")
+
+    def test_public_output_allows_multiple_bound_no_clobber_writes(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="v404-public-sequential-") as temporary:
+            output = Path(temporary) / "dist"
+            output.mkdir()
+            directory = package.snapshot_plain_directory(output, "test output")
+            first = package.write_new_bound_file(
+                directory, "first.txt", b"first\n", "first test output"
+            )
+            second = package.write_new_bound_file(
+                directory, "second.txt", b"second\n", "second test output"
+            )
+            self.assertEqual(
+                package._read_bound_output(first, directory, "first test output"),
+                b"first\n",
+            )
+            self.assertEqual(
+                package._read_bound_output(second, directory, "second test output"),
+                b"second\n",
+            )
 
     def test_public_output_rejects_replaced_parent_identity(self) -> None:
         with tempfile.TemporaryDirectory(prefix="v404-public-parent-") as temporary:

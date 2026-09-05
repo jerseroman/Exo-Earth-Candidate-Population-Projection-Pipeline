@@ -361,11 +361,16 @@ for i in range(21):
                 ) = old_values
                 contract_verifier.detect_execution_environment = old_environment_detector
 
-    def test_repository_contract_is_initially_unaccepted(self) -> None:
+    def test_repository_contract_is_release_accepted(self) -> None:
         contract, _ = contract_verifier.load_contract(CANONICAL_CONTRACT)
-        self.assertFalse(contract["artifact_sets"][0]["production_accepted"])
-        with self.assertRaises(contract_verifier.SSPContractError):
-            contract_verifier.accepted_candidate(contract)
+        candidate = contract_verifier.accepted_candidate(contract)
+        self.assertTrue(candidate["production_accepted"])
+        self.assertTrue(candidate["qualification_eligible"])
+        self.assertEqual(candidate["role"], "qualified_candidate")
+        self.assertEqual(
+            candidate["qualification_report"]["path"],
+            "AGE_CUT_SSP_QUALIFICATION_v4_0_4.json",
+        )
 
     def test_canonical_accepted_contract_roundtrip_preserves_member_set(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -536,12 +541,12 @@ for i in range(21):
 
     def test_contract_json_nonfinite_bool_and_coercion_fail(self) -> None:
         replacements = (
-            ('"schema_version": 1', '"schema_version": 1e999'),
-            ('"schema_version": 1', '"schema_version": true'),
-            ('"schema_version": 1', '"schema_version": "1"'),
+            ('"schema_version":1', '"schema_version":1e999'),
+            ('"schema_version":1', '"schema_version":true'),
+            ('"schema_version":1', '"schema_version":"1"'),
             (
-                '"required_distinct_fresh_repetitions": 2',
-                '"required_distinct_fresh_repetitions": 2.0',
+                '"required_distinct_fresh_repetitions":2',
+                '"required_distinct_fresh_repetitions":2.0',
             ),
         )
         for old, new in replacements:

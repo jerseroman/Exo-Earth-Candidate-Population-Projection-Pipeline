@@ -1,0 +1,402 @@
+{
+  "status": "PASS",
+  "scope": "Corrected Bryson occurrence posterior and conditional Galactic propagation; constant and zero completeness remain separate scenarios.",
+  "inputs": {
+    "constant_aggregate": {
+      "path": "local-artifacts\\v4\\corrected-production-final\\constant-posterior\\joint_posterior_constant_aggregate_summary.json",
+      "sha256": "8472f8b8a431d3e9a3f8fded5b40b8bab6f1f8e2d2368e44bc6816e716d960b1"
+    },
+    "constant_galactic": {
+      "path": "local-artifacts\\v4\\corrected-production-final\\constant-galactic-ci\\galactic_posterior_summary_constant.json",
+      "sha256": "5ff8de0d86c62c71c10b80cb9356df48abbe21f773a9c84f7ea67fe8a0f12945"
+    },
+    "constant_seed_stability": {
+      "path": "local-artifacts\\v4\\corrected-pilot-32470830404\\stability-constant\\mcmc_seed_stability_constant.json",
+      "sha256": "04584e9fb72994bfb36dc15d5446372bbe5b4d2f5f40b677736b2e37d22acdde"
+    },
+    "zero_aggregate": {
+      "path": "local-artifacts\\v4\\corrected-production-final\\zero-posterior\\joint_posterior_zero_aggregate_summary.json",
+      "sha256": "37217bf026addf201c3f46354324b55c2bbcb9afb1b28f86197a98fcc79bc85c"
+    },
+    "zero_galactic": {
+      "path": "local-artifacts\\v4\\corrected-production-final\\zero-galactic\\galactic_posterior_summary_zero.json",
+      "sha256": "86752103927ddb8bccb45c047ee55b1deeed10b7f621255f7756da1786b1f73c"
+    },
+    "zero_seed_stability": {
+      "path": "local-artifacts\\v4\\corrected-pilot-32470830404\\stability-zero\\mcmc_seed_stability_zero.json",
+      "sha256": "ae22c55ea2c9eddd830c165f05c22646f4edd398505662af3eb07f82f63f4156"
+    },
+    "host_summary": {
+      "path": "local-artifacts\\v4\\host-canonical\\jj_g_hosts_summary_padova.json",
+      "sha256": "4cacc8f46636a4249c1740f0faf82291004dd0b2b5c3b903e8a854ce1e20ccb0"
+    },
+    "tams_convergence": {
+      "path": "local-artifacts\\v4\\tams-convergence\\tams_radial_convergence_results.json",
+      "sha256": "0417cef11f6763049e1aafebcccba10b4c2bbed17d254cd96713cd85bdeffa10"
+    },
+    "host_tams_audit": {
+      "path": "research\\v4-validation\\frozen-host-tams\\host_tams_audit.json",
+      "sha256": "f7187f206e1b13fc3b6ca90ac9c5bb58062adf1c4ed949db936f32c0b407e66c"
+    }
+  },
+  "gates": {
+    "constant": {
+      "aggregate": {
+        "F0": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.014465269554222575,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0008994315238085106,
+          "minimum_ess_per_realization": 1682.3178659410291
+        },
+        "alpha": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.01633571394171496,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0010141593694236704,
+          "minimum_ess_per_realization": 1783.3925480871847
+        },
+        "beta": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.011087371652533129,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0005881919390539711,
+          "minimum_ess_per_realization": 2180.4503388032113
+        },
+        "gamma": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.013611145319102038,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0009914422954575364,
+          "minimum_ess_per_realization": 1967.3487897488028
+        }
+      },
+      "galactic": {
+        "mean_f_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.013533157699660566,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0012336140559175254
+        },
+        "mean_f_EE": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.014776844615963453,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0014758784269338758
+        },
+        "Lambda_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.013533157699660564,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.00123361405591752
+        },
+        "Lambda_EE": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.014776844615963455,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0014758784269338749
+        },
+        "Lambda_EE_over_Lambda_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.013482012006860335,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.001189574665018926
+        }
+      },
+      "seed_stability": "pass"
+    },
+    "zero": {
+      "aggregate": {
+        "F0": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.013709224737282519,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.000606102767233472,
+          "minimum_ess_per_realization": 1662.351587865761
+        },
+        "alpha": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.015592921013104005,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0007442627945093678,
+          "minimum_ess_per_realization": 1875.881324048664
+        },
+        "beta": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.011499985368228948,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0008609967334523825,
+          "minimum_ess_per_realization": 2048.6303831581004
+        },
+        "gamma": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.014215756040198917,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.001530935466723545,
+          "minimum_ess_per_realization": 2280.8156556087297
+        }
+      },
+      "galactic": {
+        "mean_f_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.0146374782151194,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0009964693653636636
+        },
+        "mean_f_EE": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.01615063861636223,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0012344648940757217
+        },
+        "Lambda_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.0146374782151194,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0009964693653636643
+        },
+        "Lambda_EE": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.016150638616362237,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0012344648940757351
+        },
+        "Lambda_EE_over_Lambda_HZ": {
+          "outer_q50_mcse_fraction_of_q16_q84_width": 0.01507456753466007,
+          "inner_q50_mcse_fraction_of_q16_q84_width": 0.0015120775001946137
+        }
+      },
+      "seed_stability": "pass"
+    }
+  },
+  "host_model": {
+    "N_star_7_9_kpc": 263061992.36674237,
+    "provider": "jj_padova_dr05_parsec_tams_v1",
+    "tams_radial_convergence": "PASS",
+    "metallicity_dependent_tams_role": "EXCLUDED: archived differential surface is invalid; a valid metallicity-dependent low-mass TAMS sensitivity remains open",
+    "metallicity_dependent_tams_audit": {
+      "status": "FAIL",
+      "reason": "The archived differential surface mixes massive phase-7 giant or supergiant points into Teff interpolation, while several low-mass metallicity tracks do not cover 5300--6000 K without extrapolation.",
+      "contaminating_point_count": 42,
+      "contaminating_Z_values": [
+        0.001,
+        0.002,
+        0.004,
+        0.006,
+        0.008,
+        0.01,
+        0.014
+      ],
+      "maximum_contaminating_mass_Msun": 155.28811,
+      "maximum_contaminating_radius_Rsun": 2311.557681487369,
+      "low_mass_coverage": {
+        "0.001": {
+          "low_mass_point_count": 5,
+          "temperature_range_K": [
+            5895.355514669355,
+            6387.192421873255
+          ],
+          "covers_5300_to_6000_K_without_extrapolation": false
+        },
+        "0.002": {
+          "low_mass_point_count": 6,
+          "temperature_range_K": [
+            5737.464349407363,
+            6342.785139306298
+          ],
+          "covers_5300_to_6000_K_without_extrapolation": false
+        },
+        "0.004": {
+          "low_mass_point_count": 7,
+          "temperature_range_K": [
+            5671.526948608318,
+            6342.931189012851
+          ],
+          "covers_5300_to_6000_K_without_extrapolation": false
+        },
+        "0.006": {
+          "low_mass_point_count": 8,
+          "temperature_range_K": [
+            5497.433694962709,
+            6294.91688108549
+          ],
+          "covers_5300_to_6000_K_without_extrapolation": false
+        },
+        "0.008": {
+          "low_mass_point_count": 9,
+          "temperature_range_K": [
+            5534.3930590383525,
+            6391.017400767871
+          ],
+          "covers_5300_to_6000_K_without_extrapolation": false
+        },
+        "0.01": {
+          "low_mass_point_count": 9,
+          "temperature_range_K": [
+            5422.006076959508,
+            6295.496691057201
+          ],
+          "covers_5300_to_6000_K_without_extrapolation": false
+        },
+        "0.014": {
+          "low_mass_point_count": 13,
+          "temperature_range_K": [
+            5243.363903982019,
+            6395.139170517579
+          ],
+          "covers_5300_to_6000_K_without_extrapolation": true
+        },
+        "0.017": {
+          "low_mass_point_count": 16,
+          "temperature_range_K": [
+            5151.337446989074,
+            6376.758944326096
+          ],
+          "covers_5300_to_6000_K_without_extrapolation": true
+        },
+        "0.02": {
+          "low_mass_point_count": 18,
+          "temperature_range_K": [
+            5074.695638646524,
+            6378.227416392381
+          ],
+          "covers_5300_to_6000_K_without_extrapolation": true
+        },
+        "0.03": {
+          "low_mass_point_count": 22,
+          "temperature_range_K": [
+            5065.589581955096,
+            6389.398860998363
+          ],
+          "covers_5300_to_6000_K_without_extrapolation": true
+        },
+        "0.04": {
+          "low_mass_point_count": 21,
+          "temperature_range_K": [
+            4993.096964381284,
+            6379.9900292593775
+          ],
+          "covers_5300_to_6000_K_without_extrapolation": true
+        }
+      },
+      "metallicities_without_full_low_mass_coverage": [
+        "0.001",
+        "0.002",
+        "0.004",
+        "0.006",
+        "0.008",
+        "0.01"
+      ],
+      "decision": "Exclude the reported metallicity-TAMS delta from v4."
+    },
+    "native_solar_selector_without_5200_anchor_fractional_change_vs_canonical": {
+      "N_star": 0.0,
+      "Lambda_HZ_plugin": 0.0,
+      "Lambda_EE_plugin": 0.0
+    }
+  },
+  "posterior_parameters": {
+    "constant": {
+      "F0": {
+        "q2.5": 0.4261013585306602,
+        "q16": 0.6552302254737046,
+        "q50": 1.1106036476735128,
+        "q84": 2.030551012871968,
+        "q97.5": 3.8321491149393623
+      },
+      "alpha": {
+        "q2.5": -2.8007824242088573,
+        "q16": -2.0208094531889125,
+        "q50": -1.148994408791174,
+        "q84": -0.17723683158500472,
+        "q97.5": 0.8938850772649718
+      },
+      "beta": {
+        "q2.5": -1.4164701655180407,
+        "q16": -1.1381125665022018,
+        "q50": -0.8333935277509106,
+        "q84": -0.5082969053091141,
+        "q97.5": -0.1676537143077913
+      },
+      "gamma": {
+        "q2.5": -5.907408439421278,
+        "q16": -4.349846574362777,
+        "q50": -2.740454491393911,
+        "q84": -1.121322693998131,
+        "q97.5": 0.47962999087776464
+      }
+    },
+    "zero": {
+      "F0": {
+        "q2.5": 0.5229171109720335,
+        "q16": 0.8731598974731561,
+        "q50": 1.617439394638246,
+        "q84": 3.2258367817177986,
+        "q97.5": 6.648019569509247
+      },
+      "alpha": {
+        "q2.5": -2.9067039986551686,
+        "q16": -2.131054640435228,
+        "q50": -1.2640654976348944,
+        "q84": -0.3046473969551842,
+        "q97.5": 0.7399997662607146
+      },
+      "beta": {
+        "q2.5": -1.867017199403742,
+        "q16": -1.5319088977729924,
+        "q50": -1.1781005563663265,
+        "q84": -0.8038189540664368,
+        "q97.5": -0.40756479294359577
+      },
+      "gamma": {
+        "q2.5": -5.089180468408484,
+        "q16": -3.3039252423919065,
+        "q50": -1.490900426886246,
+        "q84": 0.3634938519751605,
+        "q97.5": 2.235571145451023
+      }
+    }
+  },
+  "galactic_results": {
+    "constant": {
+      "mean_f_HZ": {
+        "q2.5": 0.06451363670849902,
+        "q16": 0.16005357501265838,
+        "q50": 0.3883056884517271,
+        "q84": 0.9069829183882389,
+        "q97.5": 1.996663894839248
+      },
+      "mean_f_EE": {
+        "q2.5": 0.0024786114288092576,
+        "q16": 0.005787557221218124,
+        "q50": 0.012255079394085128,
+        "q84": 0.023527727675029548,
+        "q97.5": 0.04121486470162053
+      },
+      "Lambda_HZ": {
+        "q2.5": 16971085.80735968,
+        "q16": 42104012.328244105,
+        "q50": 102148468.05143714,
+        "q84": 238592733.55378056,
+        "q97.5": 525246382.2630818
+      },
+      "Lambda_EE": {
+        "q2.5": 652028.4607654538,
+        "q16": 1522486.3335499624,
+        "q50": 3223845.6020202106,
+        "q84": 6189250.918054584,
+        "q97.5": 10842064.42353256
+      },
+      "Lambda_EE_over_Lambda_HZ": {
+        "q2.5": 0.01910171998752548,
+        "q16": 0.02487550190260522,
+        "q50": 0.031187600386790245,
+        "q84": 0.0376443684419013,
+        "q97.5": 0.044308209291661245
+      }
+    },
+    "zero": {
+      "mean_f_HZ": {
+        "q2.5": 0.0965339228213042,
+        "q16": 0.2537282156524479,
+        "q50": 0.6590690724909568,
+        "q84": 1.6215912614902759,
+        "q97.5": 3.7502180874536095
+      },
+      "mean_f_EE": {
+        "q2.5": 0.0033771076597711243,
+        "q16": 0.007992744162414665,
+        "q50": 0.017381670273021337,
+        "q84": 0.03387835009765266,
+        "q97.5": 0.06021460735661248
+      },
+      "Lambda_HZ": {
+        "q2.5": 25394406.06834621,
+        "q16": 66746249.92918245,
+        "q50": 173376023.31674877,
+        "q84": 426579028.0520738,
+        "q97.5": 986539841.8952081
+      },
+      "Lambda_EE": {
+        "q2.5": 888388.6694162593,
+        "q16": 2102587.2038421687,
+        "q50": 4572456.812682157,
+        "q84": 8912106.27478533,
+        "q97.5": 15840174.580809454
+      },
+      "Lambda_EE_over_Lambda_HZ": {
+        "q2.5": 0.014928021636556363,
+        "q16": 0.020031117093545773,
+        "q50": 0.02605747593014544,
+        "q84": 0.03272421695692232,
+        "q97.5": 0.03998929694721947
+      }
+    }
+  }
+}

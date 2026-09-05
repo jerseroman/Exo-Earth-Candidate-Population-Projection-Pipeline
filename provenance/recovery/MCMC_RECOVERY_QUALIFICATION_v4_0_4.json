@@ -1,0 +1,15 @@
+{
+  "completion_attestation_present": false,
+  "decision": "REUSE_MCMC_RECOMPUTE_ALL_DOWNSTREAM",
+  "donor_run_id": "96ba59478239484feea6a93343506cb6202dd47e6059bb3a7154d3f1873c8781",
+  "mcmc_realizations": 1200,
+  "raw_manifest_count": 48,
+  "recovery_contract_id": "mcmc-recovery-artifact-v4.0.4",
+  "report_id": "4d3c3c7270f7affa865aebd6546f0c0ba9e42388f88958e43360ca74d45d878f",
+  "schema_version": 1,
+  "source_transition_sha256": "ea28a59a37764b2024ab642493b2edb75cd9abcc3747ea3370a56a41ded5342f",
+  "status": "PASS",
+  "total_file_count": 1680,
+  "total_size_bytes": 13501074979,
+  "work_manifest_count": 48
+}

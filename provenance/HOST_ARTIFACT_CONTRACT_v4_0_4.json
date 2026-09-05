@@ -1,7 +1,60 @@
 {
-  "schema_version": 1,
-  "contract_id": "jj-padova-dr05-tams-v4.0.4",
-  "manifest_name": "SHA256SUMS_padova.txt",
+  "artifact_sets": [
+    {
+      "file_sha256": {
+        "jj_g_hosts_R_T_age_padova.csv": "3b63afa40bead46e8f3eb055ac2ef77f1f9de29647d2379598b674695a92eef7",
+        "jj_g_hosts_R_T_padova.csv": "c789032ee5c5ad33ca5ecb163600d4b96a618dd332bc831f0802876a308f85cf",
+        "jj_g_hosts_radial_padova.csv": "8cbd6b2eebd2603c1fa7a770de476dd72a47c0cedf4fa5807f9cd2200a9f71b2",
+        "jj_g_hosts_raw_eligible_padova.csv": "a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28",
+        "jj_g_hosts_summary_padova.json": "f06adfab8816e9ccc0e18807d3c4288cbc7fb527d6ec00bbb49882c2ef962508"
+      },
+      "id": "historical-2026-08-23",
+      "manifest_sha256": "81287e45dd968a99c5371eedf5169055cca4b3e1a02974214579b00d134d85de",
+      "note": "Reference baseline for one-time numerical qualification only; its superseded directional TAMS wording is not accepted for v4.0.4 production.",
+      "production_accepted": false,
+      "qualification_eligible": false,
+      "qualification_report": null,
+      "role": "historical_baseline",
+      "summary_sha256_without_python": "bc38c3d42422b20b57ea433dff12b394881167318ac8e0ad77dd894b429474cd"
+    },
+    {
+      "file_sha256": {
+        "jj_g_hosts_R_T_age_padova.csv": "62d3efeecca427491f30b9cf45abe3b89baf92278bb7a1993c14ca6151fb82ed",
+        "jj_g_hosts_R_T_padova.csv": "687e54aa78bc8b804266ea6eb3021a763d029e220fc2ee0e6cbbca2aeaec77a7",
+        "jj_g_hosts_radial_padova.csv": "265df30dee310c6fed7f1f20f9451e44ce1de011d9260135f80854ed58396816",
+        "jj_g_hosts_raw_eligible_padova.csv": "8cfa2b9d97ee9da3c27c44f86df5706ad87fbcf23727612e0e2f888d3b9d1bb6",
+        "jj_g_hosts_summary_padova.json": "834eef56b6611163fee1ef8c0d42003b248c93748563858713ddb8d38ace5920"
+      },
+      "id": "diagnostic-runtime-r3",
+      "manifest_sha256": "37ae6f76de916da98d87c1335a1c9152d2a82a8a3852deb15bd7b25cfd6c90e2",
+      "note": "Single-run diagnostic representation; explicitly blocked from production and from qualification.",
+      "production_accepted": false,
+      "qualification_eligible": false,
+      "qualification_report": null,
+      "role": "diagnostic_candidate",
+      "summary_sha256_without_python": "7b6e5867e338212a08a3b6a8a4c68ad4480913ed32ae642139f67a34a9fcfbe6"
+    },
+    {
+      "file_sha256": {
+        "jj_g_hosts_R_T_age_padova.csv": "3b63afa40bead46e8f3eb055ac2ef77f1f9de29647d2379598b674695a92eef7",
+        "jj_g_hosts_R_T_padova.csv": "c789032ee5c5ad33ca5ecb163600d4b96a618dd332bc831f0802876a308f85cf",
+        "jj_g_hosts_radial_padova.csv": "8cbd6b2eebd2603c1fa7a770de476dd72a47c0cedf4fa5807f9cd2200a9f71b2",
+        "jj_g_hosts_raw_eligible_padova.csv": "a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28",
+        "jj_g_hosts_summary_padova.json": "834eef56b6611163fee1ef8c0d42003b248c93748563858713ddb8d38ace5920"
+      },
+      "id": "expected-simd-controlled-neutral",
+      "manifest_sha256": "41b8b2f43fb7193b2c688f7e8236d97c5ef40c1c5da925bc02f9303504480af1",
+      "note": "Expected neutral-summary representation; remains blocked until two distinct fresh runs reproduce the complete canonical set bit for bit and a locked qualification report is added.",
+      "production_accepted": true,
+      "qualification_eligible": true,
+      "qualification_report": {
+        "path": "HOST_ARTIFACT_QUALIFICATION_v4_0_4.json",
+        "sha256": "45128498c349404932f6c7d7c69e170249625be6f78501222590ccb7d866fcbf"
+      },
+      "role": "qualified_candidate",
+      "summary_sha256_without_python": "7b6e5867e338212a08a3b6a8a4c68ad4480913ed32ae642139f67a34a9fcfbe6"
+    }
+  ],
   "canonical_files": [
     "jj_g_hosts_radial_padova.csv",
     "jj_g_hosts_R_T_padova.csv",
@@ -9,142 +62,196 @@
     "jj_g_hosts_raw_eligible_padova.csv",
     "jj_g_hosts_summary_padova.json"
   ],
-  "raw_file": "jj_g_hosts_raw_eligible_padova.csv",
-  "summary_file": "jj_g_hosts_summary_padova.json",
-  "raw_schema": {
-    "columns": [
-      "R_kpc",
-      "component",
-      "Teff_K",
-      "age_Gyr",
-      "logg",
-      "N_surface_pc-2"
-    ],
-    "row_count": 184327,
-    "weight_column": "N_surface_pc-2"
-  },
-  "identity_projection": {
-    "algorithm": "utf8-json-string-arrays-v1",
-    "columns": [
-      "R_kpc",
-      "component",
-      "Teff_K",
-      "age_Gyr",
-      "logg"
-    ],
-    "encoding": "UTF-8",
-    "csv_dialect": "Python csv.excel with newline='' and UTF-8 decoding",
-    "row_serialization": "compact JSON array of original CSV field strings",
-    "numeric_text_rule": "preserve decoded CSV field strings exactly; no numeric parsing or reformatting",
-    "record_terminator": "LF after every row",
-    "sha256": "8106808f3c1f63fdef38dc6c1d1b70d6e7068c0ea4f23c793f4f27c07593e3fc"
-  },
-  "summary_projection": {
-    "algorithm": "utf8-json-sorted-top-level-exclusions-v1",
-    "encoding": "UTF-8",
-    "input_rule": "strict JSON; duplicate keys and non-finite constants rejected",
-    "number_rule": "Python 3.10 json numeric parse and json.dumps emission; no numeric coercion",
-    "excluded_top_level_keys": [
-      "python",
-      "tams_transfer_assumption"
-    ],
-    "serialization": "JSON sort_keys=true, ensure_ascii=false, separators=(',',':'), allow_nan=false",
-    "sha256": "19f95d88a3b5f4d178f62154333451b214d3db4a25c7243e5353962872e53a50"
-  },
-  "summary_required_values": {
-    "jj_repository": "askenja/jjmodel",
-    "jj_commit": "2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54",
-    "jj_version_expected": "1.0.1",
-    "isochrone_family": "Padova/PARSEC",
-    "host_provider_id": "jj_padova_dr05_parsec_tams_v1",
-    "host_estimand.age_Gyr_min": 4.57,
-    "host_estimand.main_sequence_selector": "Rstar <= public Berger/Huber PARSEC TAMS boundary at Teff, plus logg < 7 compact-remnant veto",
-    "host_estimand.explicit_metallicity_dimension": false,
-    "N_G_hosts_age_ge_4p57_R4_14": 1238302534.4196892,
-    "N_G_hosts_age_ge_4p57_R7_9": 263061992.36674237,
-    "thick_disk_fraction_R7_9": 0.19893903660102683,
-    "legacy_provider_files_suffix": "_legacy_logg43",
-    "no_GHZ_SN_mask": true,
-    "no_planet_occurrence_metallicity_correction": true
-  },
+  "contract_id": "jj-padova-dr05-tams-v4.0.4",
   "forbidden_summary_paths": [
     "host_estimand.logg"
   ],
-  "artifact_sets": [
-    {
-      "id": "historical-2026-08-23",
-      "role": "historical_baseline",
-      "production_accepted": false,
-      "qualification_eligible": false,
-      "manifest_sha256": "81287e45dd968a99c5371eedf5169055cca4b3e1a02974214579b00d134d85de",
-      "file_sha256": {
-        "jj_g_hosts_radial_padova.csv": "8cbd6b2eebd2603c1fa7a770de476dd72a47c0cedf4fa5807f9cd2200a9f71b2",
-        "jj_g_hosts_R_T_padova.csv": "c789032ee5c5ad33ca5ecb163600d4b96a618dd332bc831f0802876a308f85cf",
-        "jj_g_hosts_R_T_age_padova.csv": "3b63afa40bead46e8f3eb055ac2ef77f1f9de29647d2379598b674695a92eef7",
-        "jj_g_hosts_raw_eligible_padova.csv": "a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28",
-        "jj_g_hosts_summary_padova.json": "f06adfab8816e9ccc0e18807d3c4288cbc7fb527d6ec00bbb49882c2ef962508"
+  "full_artifact_contract": {
+    "accepted_tuple": {
+      "attestation_signers": [
+        {
+          "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF6o39g15REJBdvRMh21U9DUs+spMaeeIVw7seFaqWwi v4.0.4-local-attestor-a",
+          "signer_id": "v404-local-attestor-a"
+        },
+        {
+          "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA3LslBc9zXOtiUoZedp9hzUO67FiV3ny8VJBOHXHouP v4.0.4-local-attestor-b",
+          "signer_id": "v404-local-attestor-b"
+        }
+      ],
+      "auxiliary_files": {
+        "tams_ab_radial.csv": {
+          "filename": "tams_ab_radial.csv",
+          "sha256": "4229430b804ba751e4d75f5d68ebd3acf0f8a44fd3d33c3092c2ef3b19262ec0",
+          "size_bytes": 2470
+        },
+        "tams_ab_results.json": {
+          "filename": "tams_ab_results.json",
+          "sha256": "bce5cc4e854e47ec2cf8e829559716334352986a79d58278c00122509a9dca16",
+          "size_bytes": 1521
+        }
       },
-      "summary_sha256_without_python": "bc38c3d42422b20b57ea433dff12b394881167318ac8e0ad77dd894b429474cd",
-      "qualification_report": null,
-      "note": "Reference baseline for one-time numerical qualification only; its superseded directional TAMS wording is not accepted for v4.0.4 production."
+      "canonical_files": {
+        "jj_g_hosts_R_T_age_padova.csv": {
+          "filename": "jj_g_hosts_R_T_age_padova.csv",
+          "sha256": "3b63afa40bead46e8f3eb055ac2ef77f1f9de29647d2379598b674695a92eef7",
+          "size_bytes": 230535
+        },
+        "jj_g_hosts_R_T_padova.csv": {
+          "filename": "jj_g_hosts_R_T_padova.csv",
+          "sha256": "c789032ee5c5ad33ca5ecb163600d4b96a618dd332bc831f0802876a308f85cf",
+          "size_bytes": 13234
+        },
+        "jj_g_hosts_radial_padova.csv": {
+          "filename": "jj_g_hosts_radial_padova.csv",
+          "sha256": "8cbd6b2eebd2603c1fa7a770de476dd72a47c0cedf4fa5807f9cd2200a9f71b2",
+          "size_bytes": 1776
+        },
+        "jj_g_hosts_raw_eligible_padova.csv": {
+          "filename": "jj_g_hosts_raw_eligible_padova.csv",
+          "sha256": "a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28",
+          "size_bytes": 12755678
+        },
+        "jj_g_hosts_summary_padova.json": {
+          "filename": "jj_g_hosts_summary_padova.json",
+          "sha256": "834eef56b6611163fee1ef8c0d42003b248c93748563858713ddb8d38ace5920",
+          "size_bytes": 1593
+        }
+      },
+      "canonical_manifest": {
+        "filename": "SHA256SUMS_padova.txt",
+        "sha256": "41b8b2f43fb7193b2c688f7e8236d97c5ef40c1c5da925bc02f9303504480af1",
+        "size_bytes": 481
+      },
+      "legacy_files": {
+        "jj_g_hosts_R_T_age_padova_legacy_logg43.csv": {
+          "filename": "jj_g_hosts_R_T_age_padova_legacy_logg43.csv",
+          "sha256": "82bf31797521f56bf904814d9e7e0d9138bde4b2ae7f3a4f1ed4cd2f75b208ca",
+          "size_bytes": 219901
+        },
+        "jj_g_hosts_R_T_padova_legacy_logg43.csv": {
+          "filename": "jj_g_hosts_R_T_padova_legacy_logg43.csv",
+          "sha256": "2afe2abceeb83afd496be6919a6e340b602897c2c5f6ff14c710d45030e5b4e3",
+          "size_bytes": 13293
+        },
+        "jj_g_hosts_radial_padova_legacy_logg43.csv": {
+          "filename": "jj_g_hosts_radial_padova_legacy_logg43.csv",
+          "sha256": "4d982e1a9016b8df6080fa290d5e7486ab3a40f19388f947705e816fc405d17a",
+          "size_bytes": 1780
+        },
+        "jj_g_hosts_raw_eligible_padova_legacy_logg43.csv": {
+          "filename": "jj_g_hosts_raw_eligible_padova_legacy_logg43.csv",
+          "sha256": "15774e515b08d14d7cbbee852eed9c9199c9e570777b83bec941e3f4c5b4fcc6",
+          "size_bytes": 8838788
+        },
+        "jj_g_hosts_summary_padova_legacy_logg43.json": {
+          "filename": "jj_g_hosts_summary_padova_legacy_logg43.json",
+          "sha256": "83f61decc21b0adf0596386625a8a395c3cf659fcab9ee41facacd97cb6029ae",
+          "size_bytes": 1131
+        }
+      },
+      "legacy_manifest": {
+        "filename": "SHA256SUMS_padova_legacy_logg43.txt",
+        "sha256": "ec08eefbae79657bd5c814aec3f14dc0de978ef19f34c6afe04e31cf004d40d4",
+        "size_bytes": 551
+      },
+      "parent": {
+        "filename": "jj_g_hosts_parent_prelogg_padova.csv",
+        "row_count": 252188,
+        "sha256": "1e5421a391d32cd26f4dd6b6007075508ab4e8b9efb992770278fb3bae1e6b23",
+        "size_bytes": 55970109
+      },
+      "projections": {
+        "canonical": {
+          "identity_sha256": "7ab43a863ca493e9a8bd1281cc762d13e945f311f3635dbf8c695fc46f3a510e",
+          "row_count": 184327,
+          "selector_column": "B_TAMS_MS",
+          "value_sha256": "b359db98cbc096660ebd7415536c6a2df445bbaf0164cc3894776b8cee32dcc7",
+          "weight_sum": 70.35471554055528
+        },
+        "legacy": {
+          "identity_sha256": "92a56090f5552d93bc164df9205d3a2d2e2a48fb188d26a61333a10182516f34",
+          "row_count": 127404,
+          "selector_column": "A_logg",
+          "value_sha256": "204abdbdafd583f2fff25ebd47a18c6dcd8cd45fc32fd77a54b609618822b56f",
+          "weight_sum": 52.42496762566609
+        }
+      },
+      "runtime_files": {
+        "JJ_tutorial2_parameters_original.txt": {
+          "filename": "JJ_tutorial2_parameters_original.txt",
+          "sha256": "e5919225b94e9ce8d8a7ad31553f0932bd437e2ae14f117dc39a37934e78a1c6",
+          "size_bytes": 7595
+        },
+        "JJ_tutorial2_parameters_runtime.txt": {
+          "filename": "JJ_tutorial2_parameters_runtime.txt",
+          "sha256": "0510dde5fb87a2a67c67c73200f07462b61cf024c0d16e0e41452a91f4ce5ad5",
+          "size_bytes": 7601
+        },
+        "JJ_tutorial2_sfr_peaks_parameters.txt": {
+          "filename": "JJ_tutorial2_sfr_peaks_parameters.txt",
+          "sha256": "56d25b9ea61f454630a222ce6a6414bd1eaeb13bd165c25e9559ebe5c6b5039b",
+          "size_bytes": 740
+        },
+        "NUMERICAL_RUNTIME_POLICY.json": {
+          "filename": "NUMERICAL_RUNTIME_POLICY.json",
+          "sha256": "9f0029dd9d2bf6974600ad6530e04dbdec0fd2dad810e20220868595a35ca87e",
+          "size_bytes": 1200
+        }
+      },
+      "schema_version": 1
     },
-    {
-      "id": "diagnostic-runtime-r3",
-      "role": "diagnostic_candidate",
-      "production_accepted": false,
-      "qualification_eligible": false,
-      "manifest_sha256": "37ae6f76de916da98d87c1335a1c9152d2a82a8a3852deb15bd7b25cfd6c90e2",
-      "file_sha256": {
-        "jj_g_hosts_radial_padova.csv": "265df30dee310c6fed7f1f20f9451e44ce1de011d9260135f80854ed58396816",
-        "jj_g_hosts_R_T_padova.csv": "687e54aa78bc8b804266ea6eb3021a763d029e220fc2ee0e6cbbca2aeaec77a7",
-        "jj_g_hosts_R_T_age_padova.csv": "62d3efeecca427491f30b9cf45abe3b89baf92278bb7a1993c14ca6151fb82ed",
-        "jj_g_hosts_raw_eligible_padova.csv": "8cfa2b9d97ee9da3c27c44f86df5706ad87fbcf23727612e0e2f888d3b9d1bb6",
-        "jj_g_hosts_summary_padova.json": "834eef56b6611163fee1ef8c0d42003b248c93748563858713ddb8d38ace5920"
+    "attestation_signers": [
+      {
+        "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF6o39g15REJBdvRMh21U9DUs+spMaeeIVw7seFaqWwi v4.0.4-local-attestor-a",
+        "signer_id": "v404-local-attestor-a"
       },
-      "summary_sha256_without_python": "7b6e5867e338212a08a3b6a8a4c68ad4480913ed32ae642139f67a34a9fcfbe6",
-      "qualification_report": null,
-      "note": "Single-run diagnostic representation; explicitly blocked from production and from qualification."
-    },
-    {
-      "id": "expected-simd-controlled-neutral",
-      "role": "diagnostic_candidate",
-      "production_accepted": false,
-      "qualification_eligible": true,
-      "manifest_sha256": "41b8b2f43fb7193b2c688f7e8236d97c5ef40c1c5da925bc02f9303504480af1",
-      "file_sha256": {
-        "jj_g_hosts_radial_padova.csv": "8cbd6b2eebd2603c1fa7a770de476dd72a47c0cedf4fa5807f9cd2200a9f71b2",
-        "jj_g_hosts_R_T_padova.csv": "c789032ee5c5ad33ca5ecb163600d4b96a618dd332bc831f0802876a308f85cf",
-        "jj_g_hosts_R_T_age_padova.csv": "3b63afa40bead46e8f3eb055ac2ef77f1f9de29647d2379598b674695a92eef7",
-        "jj_g_hosts_raw_eligible_padova.csv": "a2b6f407c70c236f2be9a9084f53fe9ba461f06aa5f44d6caae11696467e5a28",
-        "jj_g_hosts_summary_padova.json": "834eef56b6611163fee1ef8c0d42003b248c93748563858713ddb8d38ace5920"
-      },
-      "summary_sha256_without_python": "7b6e5867e338212a08a3b6a8a4c68ad4480913ed32ae642139f67a34a9fcfbe6",
-      "qualification_report": null,
-      "note": "Expected neutral-summary representation; remains blocked until two distinct fresh runs reproduce the complete canonical set bit for bit and a locked qualification report is added."
-    }
-  ],
-  "qualification_policy": {
-    "baseline_artifact_set_id": "historical-2026-08-23",
-    "required_distinct_fresh_repetitions": 2,
-    "exact_repeat_files": [
-      "SHA256SUMS_padova.txt",
+      {
+        "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA3LslBc9zXOtiUoZedp9hzUO67FiV3ny8VJBOHXHouP v4.0.4-local-attestor-b",
+        "signer_id": "v404-local-attestor-b"
+      }
+    ],
+    "auxiliary_files": [
+      "tams_ab_radial.csv",
+      "tams_ab_results.json"
+    ],
+    "canonical_files": [
       "jj_g_hosts_radial_padova.csv",
       "jj_g_hosts_R_T_padova.csv",
       "jj_g_hosts_R_T_age_padova.csv",
       "jj_g_hosts_raw_eligible_padova.csv",
       "jj_g_hosts_summary_padova.json"
     ],
-    "require_exact_identity_projection": true,
-    "require_exact_summary_projection": true,
-    "numeric_weight_comparison": {
-      "column": "N_surface_pc-2",
-      "relative_tolerance": 1e-12,
-      "absolute_tolerance": 0.0
-    }
-  },
-  "full_artifact_contract": {
-    "schema_version": 1,
-    "parent_file": "jj_g_hosts_parent_prelogg_padova.csv",
+    "canonical_manifest_name": "SHA256SUMS_padova.txt",
+    "legacy_files": [
+      "jj_g_hosts_radial_padova_legacy_logg43.csv",
+      "jj_g_hosts_R_T_padova_legacy_logg43.csv",
+      "jj_g_hosts_R_T_age_padova_legacy_logg43.csv",
+      "jj_g_hosts_raw_eligible_padova_legacy_logg43.csv",
+      "jj_g_hosts_summary_padova_legacy_logg43.json"
+    ],
+    "legacy_manifest_name": "SHA256SUMS_padova_legacy_logg43.txt",
+    "locked_inputs": {
+      "generation_programs": [
+        "research/jj-host-export/run_jj_export.py",
+        "research/jj-host-export/export_raw_eligible.py",
+        "research/jj-host-export/tams_ab_test.py",
+        "research/jj-host-export/promote_tams_provider.py",
+        "research/jj-host-export/assert_canonical_tams.py"
+      ],
+      "jj_commit": "2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54",
+      "jj_repository": "askenja/jjmodel",
+      "padova_archive": {
+        "data_lock_id": "jj_padova_multiband_archive",
+        "filename": "multiband_padova.zip",
+        "sha256": "97c8e09ea2669abe4147333f0fa141642e2c56d97b6f44de4e4518974ab7c7e8",
+        "size_bytes": 327078533
+      },
+      "parameters_original_sha256": "e5919225b94e9ce8d8a7ad31553f0932bd437e2ae14f117dc39a37934e78a1c6",
+      "parameters_runtime_sha256": "0510dde5fb87a2a67c67c73200f07462b61cf024c0d16e0e41452a91f4ce5ad5",
+      "private_repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
+      "public_repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline",
+      "sfr_peaks_parameters_sha256": "56d25b9ea61f454630a222ce6a6414bd1eaeb13bd165c25e9559ebe5c6b5039b"
+    },
     "parent_columns": [
       "R_kpc",
       "component",
@@ -165,6 +272,7 @@
       "f_HZ",
       "f_earth10"
     ],
+    "parent_file": "jj_g_hosts_parent_prelogg_padova.csv",
     "projection_columns": [
       "R_kpc",
       "component",
@@ -173,37 +281,6 @@
       "logg",
       "N_surface_pc-2"
     ],
-    "selector_columns": {
-      "canonical": "B_TAMS_MS",
-      "legacy": "A_logg"
-    },
-    "canonical_manifest_name": "SHA256SUMS_padova.txt",
-    "canonical_files": [
-      "jj_g_hosts_radial_padova.csv",
-      "jj_g_hosts_R_T_padova.csv",
-      "jj_g_hosts_R_T_age_padova.csv",
-      "jj_g_hosts_raw_eligible_padova.csv",
-      "jj_g_hosts_summary_padova.json"
-    ],
-    "legacy_manifest_name": "SHA256SUMS_padova_legacy_logg43.txt",
-    "legacy_files": [
-      "jj_g_hosts_radial_padova_legacy_logg43.csv",
-      "jj_g_hosts_R_T_padova_legacy_logg43.csv",
-      "jj_g_hosts_R_T_age_padova_legacy_logg43.csv",
-      "jj_g_hosts_raw_eligible_padova_legacy_logg43.csv",
-      "jj_g_hosts_summary_padova_legacy_logg43.json"
-    ],
-    "auxiliary_files": [
-      "tams_ab_radial.csv",
-      "tams_ab_results.json"
-    ],
-    "runtime_files": [
-      "JJ_tutorial2_parameters_original.txt",
-      "JJ_tutorial2_parameters_runtime.txt",
-      "JJ_tutorial2_sfr_peaks_parameters.txt",
-      "NUMERICAL_RUNTIME_POLICY.json"
-    ],
-    "repetition_manifest_name": "SHA256SUMS_host_qualification_repetition.txt",
     "provenance_files": [
       "HOST_RUN_PROVENANCE.json",
       "HOST_RUN_START_CHALLENGE.json",
@@ -212,59 +289,12 @@
       "HOST_RUN_ATTESTATION.json",
       "HOST_RUN_ATTESTATION.sig"
     ],
-    "locked_inputs": {
-      "jj_repository": "askenja/jjmodel",
-      "jj_commit": "2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54",
-      "public_repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline",
-      "private_repository": "jerseroman/Exo-Earth-Candidate-Population-Projection-Pipeline-private-production",
-      "padova_archive": {
-        "data_lock_id": "jj_padova_multiband_archive",
-        "filename": "multiband_padova.zip",
-        "sha256": "97c8e09ea2669abe4147333f0fa141642e2c56d97b6f44de4e4518974ab7c7e8",
-        "size_bytes": 327078533
-      },
-      "parameters_original_sha256": "e5919225b94e9ce8d8a7ad31553f0932bd437e2ae14f117dc39a37934e78a1c6",
-      "parameters_runtime_sha256": "0510dde5fb87a2a67c67c73200f07462b61cf024c0d16e0e41452a91f4ce5ad5",
-      "sfr_peaks_parameters_sha256": "56d25b9ea61f454630a222ce6a6414bd1eaeb13bd165c25e9559ebe5c6b5039b",
-      "generation_programs": [
-        "research/jj-host-export/run_jj_export.py",
-        "research/jj-host-export/export_raw_eligible.py",
-        "research/jj-host-export/tams_ab_test.py",
-        "research/jj-host-export/promote_tams_provider.py",
-        "research/jj-host-export/assert_canonical_tams.py"
-      ]
-    },
-    "attestation_signers": [
-      {
-        "signer_id": "v404-local-attestor-a",
-        "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF6o39g15REJBdvRMh21U9DUs+spMaeeIVw7seFaqWwi v4.0.4-local-attestor-a"
-      },
-      {
-        "signer_id": "v404-local-attestor-b",
-        "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA3LslBc9zXOtiUoZedp9hzUO67FiV3ny8VJBOHXHouP v4.0.4-local-attestor-b"
-      }
-    ],
     "qualification_policy": {
-      "required_distinct_fresh_repetitions": 2,
-      "required_distinct_signers": 2,
-      "nonce_bytes": 32,
-      "attestation_namespace": "exoearth-host-artifact-v4.0.4",
-      "start_challenge_namespace": "exoearth-host-artifact-start-v4.0.4",
-      "fresh_execution_controller": "verify_host_artifact_contract.execute_fresh_repetition",
-      "generation_argv_mode": "subprocess_no_shell_exact_pinned",
-      "require_controller_created_empty_roots": true,
-      "require_signed_pre_run_challenge": true,
-      "require_signed_completion_attestation": true,
-      "require_exact_clean_source_archives": true,
-      "require_exact_padova_extraction": true,
-      "require_runtime_executable_chain": true,
-      "require_identical_source_state": true,
-      "require_bit_identical_host_tuple": true,
-      "public_report_contains_row_level_hosts": false,
       "allowed_execution_environments": [
         "local_ubuntu_22_04_wsl2",
         "github_actions_ubuntu_22_04"
       ],
+      "attestation_namespace": "exoearth-host-artifact-v4.0.4",
       "exact_repeat_files": [
         "jj_g_hosts_parent_prelogg_padova.csv",
         "SHA256SUMS_padova.txt",
@@ -285,8 +315,113 @@
         "JJ_tutorial2_parameters_runtime.txt",
         "JJ_tutorial2_sfr_peaks_parameters.txt",
         "NUMERICAL_RUNTIME_POLICY.json"
-      ]
+      ],
+      "fresh_execution_controller": "verify_host_artifact_contract.execute_fresh_repetition",
+      "generation_argv_mode": "subprocess_no_shell_exact_pinned",
+      "nonce_bytes": 32,
+      "public_report_contains_row_level_hosts": false,
+      "require_bit_identical_host_tuple": true,
+      "require_controller_created_empty_roots": true,
+      "require_exact_clean_source_archives": true,
+      "require_exact_padova_extraction": true,
+      "require_identical_source_state": true,
+      "require_runtime_executable_chain": true,
+      "require_signed_completion_attestation": true,
+      "require_signed_pre_run_challenge": true,
+      "required_distinct_fresh_repetitions": 2,
+      "required_distinct_signers": 2,
+      "start_challenge_namespace": "exoearth-host-artifact-start-v4.0.4"
     },
-    "accepted_tuple": null
+    "repetition_manifest_name": "SHA256SUMS_host_qualification_repetition.txt",
+    "runtime_files": [
+      "JJ_tutorial2_parameters_original.txt",
+      "JJ_tutorial2_parameters_runtime.txt",
+      "JJ_tutorial2_sfr_peaks_parameters.txt",
+      "NUMERICAL_RUNTIME_POLICY.json"
+    ],
+    "schema_version": 1,
+    "selector_columns": {
+      "canonical": "B_TAMS_MS",
+      "legacy": "A_logg"
+    }
+  },
+  "identity_projection": {
+    "algorithm": "utf8-json-string-arrays-v1",
+    "columns": [
+      "R_kpc",
+      "component",
+      "Teff_K",
+      "age_Gyr",
+      "logg"
+    ],
+    "csv_dialect": "Python csv.excel with newline='' and UTF-8 decoding",
+    "encoding": "UTF-8",
+    "numeric_text_rule": "preserve decoded CSV field strings exactly; no numeric parsing or reformatting",
+    "record_terminator": "LF after every row",
+    "row_serialization": "compact JSON array of original CSV field strings",
+    "sha256": "8106808f3c1f63fdef38dc6c1d1b70d6e7068c0ea4f23c793f4f27c07593e3fc"
+  },
+  "manifest_name": "SHA256SUMS_padova.txt",
+  "qualification_policy": {
+    "baseline_artifact_set_id": "historical-2026-08-23",
+    "exact_repeat_files": [
+      "SHA256SUMS_padova.txt",
+      "jj_g_hosts_radial_padova.csv",
+      "jj_g_hosts_R_T_padova.csv",
+      "jj_g_hosts_R_T_age_padova.csv",
+      "jj_g_hosts_raw_eligible_padova.csv",
+      "jj_g_hosts_summary_padova.json"
+    ],
+    "numeric_weight_comparison": {
+      "absolute_tolerance": 0.0,
+      "column": "N_surface_pc-2",
+      "relative_tolerance": 1e-12
+    },
+    "require_exact_identity_projection": true,
+    "require_exact_summary_projection": true,
+    "required_distinct_fresh_repetitions": 2
+  },
+  "raw_file": "jj_g_hosts_raw_eligible_padova.csv",
+  "raw_schema": {
+    "columns": [
+      "R_kpc",
+      "component",
+      "Teff_K",
+      "age_Gyr",
+      "logg",
+      "N_surface_pc-2"
+    ],
+    "row_count": 184327,
+    "weight_column": "N_surface_pc-2"
+  },
+  "schema_version": 1,
+  "summary_file": "jj_g_hosts_summary_padova.json",
+  "summary_projection": {
+    "algorithm": "utf8-json-sorted-top-level-exclusions-v1",
+    "encoding": "UTF-8",
+    "excluded_top_level_keys": [
+      "python",
+      "tams_transfer_assumption"
+    ],
+    "input_rule": "strict JSON; duplicate keys and non-finite constants rejected",
+    "number_rule": "Python 3.10 json numeric parse and json.dumps emission; no numeric coercion",
+    "serialization": "JSON sort_keys=true, ensure_ascii=false, separators=(',',':'), allow_nan=false",
+    "sha256": "19f95d88a3b5f4d178f62154333451b214d3db4a25c7243e5353962872e53a50"
+  },
+  "summary_required_values": {
+    "N_G_hosts_age_ge_4p57_R4_14": 1238302534.4196892,
+    "N_G_hosts_age_ge_4p57_R7_9": 263061992.36674237,
+    "host_estimand.age_Gyr_min": 4.57,
+    "host_estimand.explicit_metallicity_dimension": false,
+    "host_estimand.main_sequence_selector": "Rstar <= public Berger/Huber PARSEC TAMS boundary at Teff, plus logg < 7 compact-remnant veto",
+    "host_provider_id": "jj_padova_dr05_parsec_tams_v1",
+    "isochrone_family": "Padova/PARSEC",
+    "jj_commit": "2828a2e8bfc379ba9c8ef4b4d0477ab5febe3b54",
+    "jj_repository": "askenja/jjmodel",
+    "jj_version_expected": "1.0.1",
+    "legacy_provider_files_suffix": "_legacy_logg43",
+    "no_GHZ_SN_mask": true,
+    "no_planet_occurrence_metallicity_correction": true,
+    "thick_disk_fraction_R7_9": 0.19893903660102683
   }
 }

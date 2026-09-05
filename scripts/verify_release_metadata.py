@@ -384,7 +384,7 @@ def main() -> None:
         if base_exists:
             changed = set(
                 subprocess.run(
-                    ["git", "diff", "--name-only", base, "HEAD", "--"],
+                    ["git", "diff", "--name-only", base, "--"],
                     cwd=ROOT,
                     check=True,
                     capture_output=True,

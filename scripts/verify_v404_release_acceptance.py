@@ -157,6 +157,24 @@ RECOVERY_PROTECTED_A11_RECORDS_SHA256 = (
     "587351085fc22bd144e4557280f93937a67f26e02aa5d41d2bdeeb18523d6dea"
 )
 RECOVERY_PROTECTED_A11_TOTAL_SIZE_BYTES = 823_038
+RECOVERY_POSTCOMPUTATION_A11_RECORDS = {
+    "research/bryson-joint-posterior/freeze_v4_numerical_results.py": {
+        "sha256": "3d214cffa84ec0134e66b649f5ebe8d839d76a1f0ea6eec8a0b0274273601cec",
+        "size_bytes": 162_457,
+    },
+    "research/bryson-joint-posterior/frozen-v4/V4_NUMERICAL_FREEZE.json": {
+        "sha256": "a4ce3d7f9f3ad0c35c33df6ae24e9457e5f88d2d90d36c196f7aea253d7ca6ea",
+        "size_bytes": 14_163,
+    },
+    "research/bryson-joint-posterior/frozen-v4/v4_galactic_quantiles.csv": {
+        "sha256": "8d38fe2680de64d994590e83a4e7b8f6376ba063f913856f9e236d935afcac59",
+        "size_bytes": 1_209,
+    },
+    "research/bryson-joint-posterior/frozen-v4/v4_parameter_quantiles.csv": {
+        "sha256": "64b66ad0ee4fac8f03e1d433bc92b264b4bec22b13a986d46ea120a353da934b",
+        "size_bytes": 911,
+    },
+}
 RECOVERY_SHARD_MANIFEST_RECORDS_SHA256 = (
     "d54b6e83d2de645e8f228f645d6f5751077aac02c799265338c7d5c1001d57d8"
 )
@@ -293,6 +311,18 @@ POST_COMPUTATION_STATIC_PATHS = frozenset(
         "provenance/PUBLIC_EXCLUSIONS.csv",
         "provenance/RELEASE_4_0_4_CHANGE_RECORD.json",
         "provenance/ROMAN_MIT_PATHS.txt",
+        "research/bryson-joint-posterior/freeze_v4_numerical_results.py",
+        "research/jj-host-export/test_age_cut_ssp_contract.py",
+        "research/jj-tams-convergence/test_radial_ssp_contract.py",
+        "research/v4-validation/frozen-statistical-baseline/SHA256SUMS_v4_statistical_baseline.txt",
+        "research/v4-validation/frozen-statistical-baseline/V4_NUMERICAL_FREEZE_v4_0_3.json",
+        "research/v4-validation/frozen-statistical-baseline/v4_galactic_quantiles_v4_0_3.csv",
+        "research/v4-validation/test_v404_release_acceptance.py",
+        "scripts/build_public_package.py",
+        "scripts/build_v404_results_package.py",
+        "scripts/verify_public_package_roundtrip.py",
+        "scripts/verify_release_metadata.py",
+        "scripts/verify_v404_release_acceptance.py",
         *RECOVERY_PUBLIC_EVIDENCE_PATHS.values(),
     }
 )
@@ -435,6 +465,17 @@ LOCAL_BINDING_FIELDS = {
     "public_projection_rewritten_manifest_count",
 }
 
+LOCAL_PUBLIC_PROJECTION_BINDING_FIELDS = {
+    "public_projection_policy_sha256",
+    "public_projection_file_count",
+    "public_projection_excluded_file_count",
+    "public_projection_excluded_file_set_sha256",
+    "public_projection_passthrough_file_count",
+    "public_projection_passthrough_total_size_bytes",
+    "public_projection_passthrough_file_set_sha256",
+    "public_projection_rewritten_manifest_count",
+}
+
 
 class ReleaseAcceptanceError(RuntimeError):
     """A public release invariant was not proved."""
@@ -475,6 +516,42 @@ def canonical_json_bytes(value: Any) -> bytes:
         ).encode("utf-8")
     except (TypeError, ValueError) as error:
         fail(f"cannot serialize canonical JSON: {error}")
+
+
+def production_summary_json_bytes(value: Any) -> bytes:
+    """Return the exact pretty-JSON form emitted by the propagation producer."""
+
+    try:
+        return (
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                allow_nan=False,
+                sort_keys=True,
+                indent=2,
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        fail(f"cannot serialize production summary JSON: {error}")
+
+
+def _local_production_report_json_bytes(value: Any) -> bytes:
+    """Reproduce the byte format emitted by run_v404_local_production.py."""
+
+    try:
+        return (
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                allow_nan=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        fail(f"cannot serialize local production report JSON: {error}")
 
 
 def _recovery_canonical_json_bytes(value: Any) -> bytes:
@@ -2174,7 +2251,12 @@ def _validate_results_report(
         exact_keys,
         "embedded local production report",
     )
-    if data != canonical_json_bytes(report):
+    expected_report_bytes = (
+        canonical_json_bytes(report)
+        if public_projection
+        else _local_production_report_json_bytes(report)
+    )
+    if data != expected_report_bytes:
         fail("embedded local production report is not canonical JSON bytes")
     if (
         type(report["schema_version"]) is not int
@@ -3077,13 +3159,16 @@ def _rederive_headline_q50_from_draws(
 ) -> tuple[float, int]:
     """Strictly decode the accepted deterministic gzip/CSV and recompute q50."""
 
+    expected_filename = f"galactic_posterior_draws_{branch}.csv".encode("ascii")
     if (
-        len(data) < 18
+        len(data) < 18 + len(expected_filename) + 1
         or data[:3] != b"\x1f\x8b\x08"
-        or data[3] != 0
+        or data[3] != 8
         or data[4:8] != b"\x00\x00\x00\x00"
         or data[8] != 2
         or data[9] != 255
+        or data[10 : 10 + len(expected_filename)] != expected_filename
+        or data[10 + len(expected_filename)] != 0
     ):
         fail(f"signed {branch} headline draws lack the deterministic gzip header")
     decoder = zlib.decompressobj(wbits=16 + zlib.MAX_WBITS)
@@ -3160,8 +3245,11 @@ def _signed_headline_q50(
             load_json_bytes(data, f"signed {branch} propagation summary"),
             f"signed {branch} propagation summary",
         )
-        if data != canonical_json_bytes(summary):
-            fail(f"signed {branch} propagation summary is not canonical JSON bytes")
+        if data != production_summary_json_bytes(summary):
+            fail(
+                f"signed {branch} propagation summary does not use the exact "
+                "production JSON format"
+            )
         if summary.get("branch") != branch:
             fail(f"signed {branch} propagation summary branch changed")
         source_samples = _mapping(
@@ -3556,6 +3644,7 @@ def _verify_host(
     return {
         "contract_sha256": contract_snapshot.sha256,
         "report_sha256": report_snapshot.sha256,
+        "report_size_bytes": report_snapshot.size_bytes,
         "report_name": report_snapshot.path.name,
         "accepted_id": candidate["id"],
         "report_id": report["qualification_id"],
@@ -4007,7 +4096,10 @@ def _verify_freeze_cross_bindings(
         )
         qualification_reports = host.get("qualification_reports")
         expected_reports = {
-            components["host"]["report_name"]: components["host"]["report_sha256"]
+            components["host"]["report_name"]: {
+                "sha256": components["host"]["report_sha256"],
+                "size_bytes": components["host"]["report_size_bytes"],
+            }
         }
         _expect(
             qualification_reports,
@@ -4082,7 +4174,14 @@ def _verify_freeze_cross_bindings(
                 "public_projection_rewritten_manifest_count"
             ],
         }
-        for field in LOCAL_BINDING_FIELDS:
+        # The numerical freeze post-dates and binds the public projection
+        # policy.  The sensitivity freeze intentionally binds the signed
+        # local run at the older core schema and therefore omits those eight
+        # derived public-projection fields.
+        fields = LOCAL_BINDING_FIELDS
+        if label == "sensitivity":
+            fields = LOCAL_BINDING_FIELDS - LOCAL_PUBLIC_PROJECTION_BINDING_FIELDS
+        for field in fields:
             _expect(
                 local.get(field), expected_local[field], f"{label} local-run {field}"
             )

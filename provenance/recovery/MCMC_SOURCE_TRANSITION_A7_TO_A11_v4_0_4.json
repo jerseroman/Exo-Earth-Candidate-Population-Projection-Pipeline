@@ -1,0 +1,340 @@
+{
+  "from_source": {
+    "archive_sha256": "25293c47d793d8e65fbf7b26a79ef14616026a31528b17de9f3021f30ca9f563",
+    "archive_size_bytes": 3686400,
+    "commit": "6263d5fdc1d472900a08c12c9483f96ef3e23105",
+    "tree": "6883388e735b4c6fde4a45f0754d1c691605818f"
+  },
+  "protected_paths": [
+    {
+      "bit_identical": true,
+      "from_sha256": "734cfefe46b7c042f08a5c6e5843037554bb78278516b28ed760acd1e2f72f73",
+      "from_size_bytes": 15628,
+      "path": "provenance/DATA_LOCKS.json",
+      "to_sha256": "734cfefe46b7c042f08a5c6e5843037554bb78278516b28ed760acd1e2f72f73",
+      "to_size_bytes": 15628
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "980125eaae64f6a0ddf57cd357b50b6d6f9db58bf7e2075a05129181ffb842dc",
+      "from_size_bytes": 440,
+      "path": "requirements.in",
+      "to_sha256": "980125eaae64f6a0ddf57cd357b50b6d6f9db58bf7e2075a05129181ffb842dc",
+      "to_size_bytes": 440
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "57ae231da876909766a2cc84da110b71b4b37e9809ff4fd5a7bd416642c816df",
+      "from_size_bytes": 72285,
+      "path": "requirements.txt",
+      "to_sha256": "57ae231da876909766a2cc84da110b71b4b37e9809ff4fd5a7bd416642c816df",
+      "to_size_bytes": 72285
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "47f2a150688eec46af09418f025b17db0a519f7d2f208aa365f2db3ffa8b46f3",
+      "from_size_bytes": 79,
+      "path": "research/bryson-joint-posterior/IPython/__init__.py",
+      "to_sha256": "47f2a150688eec46af09418f025b17db0a519f7d2f208aa365f2db3ffa8b46f3",
+      "to_size_bytes": 79
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "567fbe51cda2a5216589a7135bc876f70883faaccfc77cba48875ae57d38b7f3",
+      "from_size_bytes": 124,
+      "path": "research/bryson-joint-posterior/IPython/display.py",
+      "to_sha256": "567fbe51cda2a5216589a7135bc876f70883faaccfc77cba48875ae57d38b7f3",
+      "to_size_bytes": 124
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "e404d08ad1d68bcad2b2a3785b541ce55e43703d0d1b8e3279bfe193e2bae750",
+      "from_size_bytes": 5996,
+      "path": "research/bryson-joint-posterior/MCMC_PROTOCOL.md",
+      "to_sha256": "e404d08ad1d68bcad2b2a3785b541ce55e43703d0d1b8e3279bfe193e2bae750",
+      "to_size_bytes": 5996
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "07f56cf04376f3d1972ab51a43d4a8c9ffb5af437ef879a314c0b7c48c5e6e0a",
+      "from_size_bytes": 2627,
+      "path": "research/bryson-joint-posterior/MEASUREMENT_ERROR_MODES.md",
+      "to_sha256": "07f56cf04376f3d1972ab51a43d4a8c9ffb5af437ef879a314c0b7c48c5e6e0a",
+      "to_size_bytes": 2627
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "37477d3db335a20d29024b76c3cef02fe4b28e092d877873813112dbc903b7e2",
+      "from_size_bytes": 2252,
+      "path": "research/bryson-joint-posterior/MODIFICATIONS_BRYSON.md",
+      "to_sha256": "37477d3db335a20d29024b76c3cef02fe4b28e092d877873813112dbc903b7e2",
+      "to_size_bytes": 2252
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "d1ada5f7fdb1bfab11bcefd8675d6284e1b0db2b8ac4b5793fd680488cde1c18",
+      "from_size_bytes": 4660,
+      "path": "research/bryson-joint-posterior/PHASE1_MEASUREMENT_ERROR_REPORT.md",
+      "to_sha256": "d1ada5f7fdb1bfab11bcefd8675d6284e1b0db2b8ac4b5793fd680488cde1c18",
+      "to_size_bytes": 4660
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "a8cf8eb45389a769058e9bdd5d9de67015a80a310af1b400ce4ee87419d22193",
+      "from_size_bytes": 5365,
+      "path": "research/bryson-joint-posterior/PHASE2_NUMERICAL_FREEZE_REPORT.md",
+      "to_sha256": "a8cf8eb45389a769058e9bdd5d9de67015a80a310af1b400ce4ee87419d22193",
+      "to_size_bytes": 5365
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "65f58b4d6ca272fc39194c6ee7720b37e8c328e8859aea30b07e357ad4aa30c0",
+      "from_size_bytes": 100974,
+      "path": "research/bryson-joint-posterior/aggregate_hab2_joint_posterior.py",
+      "to_sha256": "65f58b4d6ca272fc39194c6ee7720b37e8c328e8859aea30b07e357ad4aa30c0",
+      "to_size_bytes": 100974
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "0756fd450e1f0bdc1aaceb4c85c444034ff9f7d058c21299a6a48856232f9ca9",
+      "from_size_bytes": 29009,
+      "path": "research/bryson-joint-posterior/catalog_perturbation_audit.py",
+      "to_sha256": "0756fd450e1f0bdc1aaceb4c85c444034ff9f7d058c21299a6a48856232f9ca9",
+      "to_size_bytes": 29009
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "2ec641b5a320140391cd749c5827486e0e8589be8ab5555ca08cb212addd9efc",
+      "from_size_bytes": 6087,
+      "path": "research/bryson-joint-posterior/clustered_monte_carlo.py",
+      "to_sha256": "2ec641b5a320140391cd749c5827486e0e8589be8ab5555ca08cb212addd9efc",
+      "to_size_bytes": 6087
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "5872f1de16d42dff255841014d819c4966c075c2f1efd180ac9825ba3f762fc2",
+      "from_size_bytes": 8886,
+      "path": "research/bryson-joint-posterior/compare_mcmc_seed_families.py",
+      "to_sha256": "5872f1de16d42dff255841014d819c4966c075c2f1efd180ac9825ba3f762fc2",
+      "to_size_bytes": 8886
+    },
+    {
+      "bit_identical": false,
+      "from_sha256": "e2512e10037c74482b32d6ed3df1f88e478717e9bbb662b020fc51c38bfdc6df",
+      "from_size_bytes": 153650,
+      "path": "research/bryson-joint-posterior/freeze_v4_numerical_results.py",
+      "to_sha256": "3d214cffa84ec0134e66b649f5ebe8d839d76a1f0ea6eec8a0b0274273601cec",
+      "to_size_bytes": 162457
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "a4ce3d7f9f3ad0c35c33df6ae24e9457e5f88d2d90d36c196f7aea253d7ca6ea",
+      "from_size_bytes": 14163,
+      "path": "research/bryson-joint-posterior/frozen-v4/V4_NUMERICAL_FREEZE.json",
+      "to_sha256": "a4ce3d7f9f3ad0c35c33df6ae24e9457e5f88d2d90d36c196f7aea253d7ca6ea",
+      "to_size_bytes": 14163
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "70e47ca19112c9e2b909464b4fc1a4dbfb373731b2e6305c3d37b4224db555df",
+      "from_size_bytes": 310,
+      "path": "research/bryson-joint-posterior/frozen-v4/V4_NUMERICAL_FREEZE.md",
+      "to_sha256": "70e47ca19112c9e2b909464b4fc1a4dbfb373731b2e6305c3d37b4224db555df",
+      "to_size_bytes": 310
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "8d38fe2680de64d994590e83a4e7b8f6376ba063f913856f9e236d935afcac59",
+      "from_size_bytes": 1209,
+      "path": "research/bryson-joint-posterior/frozen-v4/v4_galactic_quantiles.csv",
+      "to_sha256": "8d38fe2680de64d994590e83a4e7b8f6376ba063f913856f9e236d935afcac59",
+      "to_size_bytes": 1209
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "64b66ad0ee4fac8f03e1d433bc92b264b4bec22b13a986d46ea120a353da934b",
+      "from_size_bytes": 911,
+      "path": "research/bryson-joint-posterior/frozen-v4/v4_parameter_quantiles.csv",
+      "to_sha256": "64b66ad0ee4fac8f03e1d433bc92b264b4bec22b13a986d46ea120a353da934b",
+      "to_size_bytes": 911
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "1748de7be6573e44fe10e39d5b22ce84067de30524b9d85c102220ff8e05f1d7",
+      "from_size_bytes": 403,
+      "path": "research/bryson-joint-posterior/ipywidgets.py",
+      "to_sha256": "1748de7be6573e44fe10e39d5b22ce84067de30524b9d85c102220ff8e05f1d7",
+      "to_size_bytes": 403
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "00e316ecf6e37f8347efe275a0acdbc7b47f3c217a1f07331321323579889229",
+      "from_size_bytes": 50681,
+      "path": "research/bryson-joint-posterior/likelihood_grid_convergence.py",
+      "to_sha256": "00e316ecf6e37f8347efe275a0acdbc7b47f3c217a1f07331321323579889229",
+      "to_size_bytes": 50681
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "639401a8b9f685ca8d5384caf0a6889f67087da3e1ff3efec63fc3d6b3045d5e",
+      "from_size_bytes": 4242,
+      "path": "research/bryson-joint-posterior/mcmc_convergence.py",
+      "to_sha256": "639401a8b9f685ca8d5384caf0a6889f67087da3e1ff3efec63fc3d6b3045d5e",
+      "to_size_bytes": 4242
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "544617f61403b5e8bd3a449bb8d208424df4d0f5139b66aa7f27f29657f35890",
+      "from_size_bytes": 10286,
+      "path": "research/bryson-joint-posterior/measurement_error.py",
+      "to_sha256": "544617f61403b5e8bd3a449bb8d208424df4d0f5139b66aa7f27f29657f35890",
+      "to_size_bytes": 10286
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "64a0be90b4443cf319fae12ac11a7d1bfe38a101b28015d352582adce9dfb682",
+      "from_size_bytes": 17390,
+      "path": "research/bryson-joint-posterior/propagate_hab2_joint_posterior.py",
+      "to_sha256": "64a0be90b4443cf319fae12ac11a7d1bfe38a101b28015d352582adce9dfb682",
+      "to_size_bytes": 17390
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "e9a8c2b43c10bc09e1e57e2978f18d7c0e96a57395cddded9da2cc80ace956fd",
+      "from_size_bytes": 32831,
+      "path": "research/bryson-joint-posterior/raw_chain_evidence.py",
+      "to_sha256": "e9a8c2b43c10bc09e1e57e2978f18d7c0e96a57395cddded9da2cc80ace956fd",
+      "to_size_bytes": 32831
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "2b3b7b1e65a583e5041cf8a8b62edca3105cffef6a25da9fb9a845ce1aa3c618",
+      "from_size_bytes": 48498,
+      "path": "research/bryson-joint-posterior/run_hab2_joint_posterior.py",
+      "to_sha256": "2b3b7b1e65a583e5041cf8a8b62edca3105cffef6a25da9fb9a845ce1aa3c618",
+      "to_size_bytes": 48498
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "06b034ef592d79de5c7543cdc413c5d192035d564f7f895fe73ade889b4bd1f7",
+      "from_size_bytes": 10552,
+      "path": "research/bryson-joint-posterior/test_accepted_catalog_replay.py",
+      "to_sha256": "06b034ef592d79de5c7543cdc413c5d192035d564f7f895fe73ade889b4bd1f7",
+      "to_size_bytes": 10552
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "8555ff879be2c0c63bc90c114a8f2f5d41b951992e017de4cde99488e396c380",
+      "from_size_bytes": 51526,
+      "path": "research/bryson-joint-posterior/test_adaptive_aggregation.py",
+      "to_sha256": "8555ff879be2c0c63bc90c114a8f2f5d41b951992e017de4cde99488e396c380",
+      "to_size_bytes": 51526
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "72dd94a0ec4a3b9a179d64d881482d9c9cb73cd6840e224461f5ccf5d326d177",
+      "from_size_bytes": 13290,
+      "path": "research/bryson-joint-posterior/test_catalog_perturbation_audit.py",
+      "to_sha256": "72dd94a0ec4a3b9a179d64d881482d9c9cb73cd6840e224461f5ccf5d326d177",
+      "to_size_bytes": 13290
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "4c993a4d868018b67642caec0663a77a1404f412b40a5df5e0a57cf8b56c214f",
+      "from_size_bytes": 2874,
+      "path": "research/bryson-joint-posterior/test_clustered_monte_carlo.py",
+      "to_sha256": "4c993a4d868018b67642caec0663a77a1404f412b40a5df5e0a57cf8b56c214f",
+      "to_size_bytes": 2874
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "a38328c9a5cfcd1554d057dce45c222ee85cdda84d8585ed17df024ada8cb9d7",
+      "from_size_bytes": 4376,
+      "path": "research/bryson-joint-posterior/test_compare_mcmc_seed_families.py",
+      "to_sha256": "a38328c9a5cfcd1554d057dce45c222ee85cdda84d8585ed17df024ada8cb9d7",
+      "to_size_bytes": 4376
+    },
+    {
+      "bit_identical": false,
+      "from_sha256": "0a8e00cf52fd8deca976ed99edc3a0eed5b26214d44b34f24832a87dee279cee",
+      "from_size_bytes": 31840,
+      "path": "research/bryson-joint-posterior/test_freeze_v4_numerical_results.py",
+      "to_sha256": "4de8b4f047db8eb4bc00f4d9a6c11f5410fd4fefffa0c8dec7f4f22161ec80d6",
+      "to_size_bytes": 53897
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "201ef5b24ba6ba636f7bac6c58cb1cc8844d083eee3a023244096bdb92a00b33",
+      "from_size_bytes": 16984,
+      "path": "research/bryson-joint-posterior/test_likelihood_grid_convergence.py",
+      "to_sha256": "201ef5b24ba6ba636f7bac6c58cb1cc8844d083eee3a023244096bdb92a00b33",
+      "to_size_bytes": 16984
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "46bf4232be5cc50490e50998de04d4479b2b2d05695d67c2b01322ad98d698b7",
+      "from_size_bytes": 2864,
+      "path": "research/bryson-joint-posterior/test_mcmc_convergence.py",
+      "to_sha256": "46bf4232be5cc50490e50998de04d4479b2b2d05695d67c2b01322ad98d698b7",
+      "to_size_bytes": 2864
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "1766f441ee18c3dfe6fd6f27753491360d6f12972f933fc1db47404e22b10e02",
+      "from_size_bytes": 14533,
+      "path": "research/bryson-joint-posterior/test_measurement_error.py",
+      "to_sha256": "1766f441ee18c3dfe6fd6f27753491360d6f12972f933fc1db47404e22b10e02",
+      "to_size_bytes": 14533
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "f3d413e6d3b90df872ebedf4309d845bdf78e7240a7d86fb3c5bdf60b6e1cd20",
+      "from_size_bytes": 2512,
+      "path": "research/bryson-joint-posterior/test_propagate_host_measure.py",
+      "to_sha256": "f3d413e6d3b90df872ebedf4309d845bdf78e7240a7d86fb3c5bdf60b6e1cd20",
+      "to_size_bytes": 2512
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "a002e701275dbf83638bf54b16530227ecb1a96fcbf4096a469d48b35cddcc7e",
+      "from_size_bytes": 15072,
+      "path": "research/bryson-joint-posterior/test_raw_chain_evidence.py",
+      "to_sha256": "a002e701275dbf83638bf54b16530227ecb1a96fcbf4096a469d48b35cddcc7e",
+      "to_size_bytes": 15072
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "c59b4d03bdb6903c62eeb421d24010917385e2579db62187fcf9a97c02eac2b7",
+      "from_size_bytes": 20219,
+      "path": "research/bryson-joint-posterior/test_run_hab2_provenance.py",
+      "to_sha256": "c59b4d03bdb6903c62eeb421d24010917385e2579db62187fcf9a97c02eac2b7",
+      "to_size_bytes": 20219
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "4230f5da1b4c0c4ede1d43fbf3f15b0f089db31b717c770f608e9e8327f16bde",
+      "from_size_bytes": 11710,
+      "path": "scripts/verify_dependency_lock.py",
+      "to_sha256": "4230f5da1b4c0c4ede1d43fbf3f15b0f089db31b717c770f608e9e8327f16bde",
+      "to_size_bytes": 11710
+    },
+    {
+      "bit_identical": true,
+      "from_sha256": "551a65686008733b8b9199432bcff0061dc4ef5a5f1900b6c44fad03ea4695d2",
+      "from_size_bytes": 4836,
+      "path": "scripts/verify_numerical_runtime.py",
+      "to_sha256": "551a65686008733b8b9199432bcff0061dc4ef5a5f1900b6c44fad03ea4695d2",
+      "to_size_bytes": 4836
+    }
+  ],
+  "report_id": "89e56bd77b1379f3be95837fb135a89cffeb2852dd8df190ed0efbed62618f41",
+  "schema_version": 1,
+  "status": "PASS",
+  "to_source": {
+    "archive_sha256": "5d9dbe4a035afed81baff02483b0d984b6e2911886c18649c4c1ddd47ee5195d",
+    "archive_size_bytes": 4024320,
+    "commit": "0f4d613b0f89d26ec64450974bfbfe79422e98a5",
+    "tree": "7d3ab13fce4df5d9c5c392a25f5ca832721160e1"
+  },
+  "transition_id": "a7-to-a11-mcmc-equivalence-v4.0.4"
+}

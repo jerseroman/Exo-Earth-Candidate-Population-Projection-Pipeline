@@ -32,6 +32,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import zipfile
 from pathlib import Path, PurePosixPath
@@ -69,6 +70,15 @@ def is_link_or_reparse(value: os.stat_result) -> bool:
     return stat.S_ISLNK(value.st_mode) or bool(
         getattr(value, "st_file_attributes", 0) & REPARSE_POINT
     )
+
+
+def verification_environment(source: Path, source_checksum: Path) -> dict[str, str]:
+    environment = dict(os.environ)
+    environment["PYTHON"] = sys.executable
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    environment["V404_TRUSTED_SOURCE_ARCHIVE"] = str(source)
+    environment["V404_TRUSTED_SOURCE_CHECKSUM"] = str(source_checksum)
+    return environment
 
 
 def plain_input_path(value: Path, label: str) -> Path:
@@ -901,9 +911,7 @@ def main() -> None:
             cwd=ROOT,
             check=True,
         )
-        environment = dict(os.environ)
-        environment["V404_TRUSTED_SOURCE_ARCHIVE"] = str(source)
-        environment["V404_TRUSTED_SOURCE_CHECKSUM"] = str(source_checksum)
+        environment = verification_environment(source, source_checksum)
         subprocess.run([make, "verify"], cwd=root, env=environment, check=True)
         subprocess.run(
             [make, "public-package"], cwd=root, env=environment, check=True

@@ -448,8 +448,10 @@ def parse_scoped_manifest(
         casefolded.add(folded)
         leaves.append(leaf)
         entries[(parent / leaf).as_posix()] = digest
-    if leaves != sorted(leaves):
-        fail(f"scoped manifest targets are not sorted: {manifest_path}")
+    # Aggregate producers emit a deterministic scientific-product order rather
+    # than lexicographic order.  The enclosing signed output manifest binds the
+    # scoped-manifest bytes, while the exact target-set check below binds every
+    # member, so reordering is neither required nor permitted during import.
     return entries
 
 

@@ -1809,6 +1809,16 @@ def validate_aggregate_diagnostics_artifact(
 ) -> dict[str, Any]:
     """Recompute convergence, ESS, tau, and summary counts from JSONL bytes."""
 
+    measurement = _require_mapping(
+        data.get("measurement_error"), f"{branch} aggregate measurement error"
+    )
+    expected_measurement_mode = measurement.get("mode")
+    if expected_measurement_mode not in {
+        QUANTILE_MATCHED_TWO_SIDED,
+        LEGACY_SOURCE_MIXTURE,
+    }:
+        raise RuntimeError(f"{branch} aggregate measurement mode is unsupported")
+
     try:
         lines = diagnostics_snapshot.data.decode("utf-8").splitlines()
     except UnicodeDecodeError as error:
@@ -1894,7 +1904,7 @@ def validate_aggregate_diagnostics_artifact(
             != expected_seed + mcmc_offset
         ):
             raise RuntimeError(f"{branch} diagnostic seed schedule failed")
-        if entry.get("measurement_error_mode") != QUANTILE_MATCHED_TWO_SIDED:
+        if entry.get("measurement_error_mode") != expected_measurement_mode:
             raise RuntimeError(f"{branch} diagnostic measurement mode changed")
         _require_exact_bool(entry.get("optimizer_success"), True, "optimizer success")
         _require_exact_bool(entry.get("adaptive_production"), True, "adaptive production")

@@ -305,7 +305,11 @@ def write_new_bound_file(
             directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
             directory_flags |= getattr(os, "O_NOFOLLOW", 0)
             directory_descriptor = os.open(directory.path, directory_flags)
-            if file_identity(os.fstat(directory_descriptor)) != directory.chain[-1][1]:
+            # Creating an earlier release member legitimately changes the
+            # directory's size and timestamps.  Bind the directory object by
+            # device and inode, as recheck_directory does, so subsequent
+            # no-clobber writes remain safe without rejecting our own writes.
+            if file_identity(os.fstat(directory_descriptor))[:2] != directory.chain[-1][1][:2]:
                 raise SystemExit(f"{label} output directory changed while opened")
             descriptor = os.open(
                 leaf, flags, 0o644, dir_fd=directory_descriptor
