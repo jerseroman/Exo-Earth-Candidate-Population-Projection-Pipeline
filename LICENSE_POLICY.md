@@ -78,26 +78,21 @@ third-party source rows embedded in an output. Row-level catalog extracts and
 mixed-origin archives are excluded from the public package unless separately
 cleared.
 
-The source-package path decision above and the separately built v4.0.4 results
-archive have distinct boundaries. The signed local qualification tree retains
-exactly 88 files for internal verification. The canonical policy in
-`provenance/PUBLIC_RESULTS_POLICY_v4_0_4.json` projects that tree to exactly 70
-public result paths: 18 row-level DR25 or serialized MCMC-trajectory files are
-excluded, five directory-scoped manifests are deterministically rewritten, and
-63 signed files pass through byte-for-byte. The public report and root manifest
-are also regenerated to describe only that 70-file projection.
+The source package and the separately built v4.0.4 results archive have
+distinct boundaries. The canonical policy in
+`provenance/PUBLIC_RESULTS_POLICY_v4_0_4.json` enumerates the exact public
+results paths and exclusions. The final public projection must exclude
+row-level DR25 material, complete serialized MCMC trajectories, and row-level
+native PARSEC track extracts. Affected directory-scoped manifests, the public
+report, and the root manifest must be regenerated so that they describe only
+the public projection.
 
-The policy explicitly classifies 13 retained generated-derived products:
-aggregate correlation tables, occurrence-posterior samples prepared for
-Galactic propagation, Galactic derived draws, and likelihood-grid parameter
-points. None is a third-party row table or a complete serialized MCMC
-trajectory, and none includes the chain log-probability column. The two
-likelihood-grid selected-point tables deliberately retain limited selection
-provenance (`posterior_row_number`, `global_trial`, `production_step`, and
-`walker`) for independently reproducing the grid audit; they do not expose the
-full chains from which those points were selected. Their presence in the
-separate results archive does not assert that they are members of the older
-source-release audit bundle described elsewhere in the repository.
+Generated aggregate products may be retained only when the results policy and
+the results archive's scope-specific license matrix classify them explicitly.
+Limited provenance needed to reproduce an aggregate audit does not authorize
+publication of its excluded row-level source material or full private chains.
+Presence in the separate results archive also does not make a result path part
+of the source package's license matrix.
 
 ## Public package and Zenodo
 
@@ -108,8 +103,8 @@ The excluded paths and reasons are also recorded in
 `provenance/PUBLIC_EXCLUSIONS.csv`. The package builder emits a filtered matrix
 and manifest so the sanitized archive remains independently verifiable.
 For the separate results ZIP, the source-tree license gate is supplemented by
-the exact runtime projection policy described above; a results path not in its
-70-path set is rejected.
+the exact runtime projection policy described above; a results path not
+explicitly admitted by that policy is rejected.
 
 Because excluded material exists in the **private production repository's Git
 history**, that private repository must not be made public by changing its
@@ -117,11 +112,13 @@ visibility. A clean public repository is initialized from the audited ZIP.
 The ZIP uses the audited root README and omits the private maintainer checklist;
 it is therefore not subject to the private-history prohibition.
 
-Zenodo metadata must declare the mixed MIT and GPL-2.0-only licensing. The ZIP
-itself contains the path-level matrix and all applicable license texts. Because
-a single CFF license field does not express the path-specific mapping
-unambiguously, `CITATION.cff` uses `license-url` to point to this policy instead
-of attempting to encode the repository as one blanket license list.
+Zenodo metadata must declare the mixed MIT and GPL-2.0-only licensing. Each ZIP
+must contain its own scope-specific policy, complete path-level license matrix,
+and all applicable license texts. Resource-level metadata does not override
+those path-specific assignments. Because a single CFF license field does not
+express the mapping unambiguously, `CITATION.cff` uses `license-url` to point to
+this policy instead of attempting to encode the repository as one blanket
+license list.
 
 ## No warranty
 

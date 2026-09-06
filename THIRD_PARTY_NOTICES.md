@@ -38,13 +38,15 @@ The workflows fetch `askenja/jjmodel` commit
 remains under Dr. Kseniia Sysoliatina's MIT License, preserved in
 `LICENSES/MIT-jjmodel.txt`.
 
-## PARSEC/Padova and completeness inputs
+## Standalone PARSEC tracks, JJModel multiband data, and completeness inputs
 
-Large PARSEC/Padova archives and Bryson completeness contours are fetch-only.
-They are not included in the public ZIP. Their scientific citation and
-download provenance do not constitute a new redistribution license.
+The standalone PARSEC v1.2S stellar-track archives identified as
+`parsec_tracks_*` and the Bryson completeness contours are fetch-only. Raw
+archives and row-level native-track extracts are not included in the public
+packages. Scientific citation and download provenance do not constitute a new
+redistribution license.
 
-The official JJModel PARSEC/PADOVA multiband archive is
+The distinct official JJModel PARSEC/PADOVA multiband archive is
 `multiband_padova.zip`, DOI `10.11588/DATA/ZCXHOE/7XCJQP`, part of Sysoliatina
 (2022), *JJ-model isochrone set: PARSEC, MIST, and BaSTI stellar evolution*,
 heiDATA, V1. The archive is licensed CC BY 4.0 and its official terms require
@@ -53,9 +55,9 @@ not redistributed here. The official record reports MD5
 `c89b82279db57e05705b8795186d3372`; the locally verified SHA-256 is recorded in
 `provenance/DATA_LOCKS.json`.
 
-Completeness contours and DR25 catalogs remain `NOASSERTION` for
-redistribution. Their hashes authorize only reproducible local acquisition and
-verification, not republication.
+The standalone PARSEC track archives, completeness contours, and DR25 catalogs
+remain `NOASSERTION` for redistribution. Their hashes authorize only
+reproducible local acquisition and verification, not republication.
 
 ## Python dependencies
 

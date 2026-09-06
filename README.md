@@ -64,8 +64,9 @@ python scripts/fetch_locked_inputs.py --list
 python scripts/fetch_locked_inputs.py --id completeness_constant
 ```
 
-The PARSEC/PADOVA archive requires acknowledgement of its official CC BY 4.0
-terms and citation requirements:
+The separately archived JJModel PARSEC/PADOVA multiband isochrone dataset
+requires acknowledgement of its official CC BY 4.0 terms and citation
+requirements:
 
 ```bash
 python scripts/fetch_locked_inputs.py \
@@ -87,9 +88,13 @@ as MIT in `provenance/LICENSE_MATRIX.csv` and
 `provenance/ROMAN_MIT_PATHS.txt` are offered under MIT. The Bryson-derived
 component is conservatively conveyed under GPL-2.0-only. Daniel Huber's
 redistributed TAMS table retains his MIT notice.
-The PARSEC/PADOVA archive is fetch-only under CC BY 4.0 and is not included in
-this source tree. Catalog and completeness files with no confirmed
-redistribution grant are likewise fetch-only and excluded.
+The JJModel PARSEC/PADOVA multiband archive identified as
+`jj_padova_multiband_archive` is fetch-only under CC BY 4.0 and is not included
+in this source tree. It is distinct from the standalone PARSEC v1.2S
+stellar-track archives identified as `parsec_tracks_*`; those track archives
+are fetch-only, are recorded as `NOASSERTION` for redistribution, and are also
+excluded. Catalog and completeness files with no confirmed redistribution
+grant are likewise fetch-only and excluded.
 
 The authoritative assignment for every distributed path is
 `provenance/LICENSE_MATRIX.csv`. See `LICENSE_POLICY.md`,
